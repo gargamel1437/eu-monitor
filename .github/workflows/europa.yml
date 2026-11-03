@@ -1,0 +1,58 @@
+name: EU-monitor bijwerken
+
+on:
+  schedule:
+    - cron: "15 6,11,17 * * *"   # 07:15, 12:15 en 18:15 Nederlandse wintertijd
+  workflow_dispatch:              # handmatig starten via de knop "Run workflow"
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  bouwen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment:
+      name: github-pages
+      url: ${{ steps.publiceren.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # De bewaarde gegevens (dossiers, stemmingen, debatten) van de vorige run terugzetten.
+      # Lukt dat niet, dan gebruikt de site de versie die in de repository staat.
+      - name: Bewaarde gegevens terugzetten
+        uses: actions/cache/restore@v4
+        with:
+          path: data
+          key: eu-data-${{ github.run_id }}
+          restore-keys: eu-data-
+
+      - name: Gegevens ophalen en pagina maken
+        env:
+          TZ: Europe/Amsterdam
+        run: |
+          python3 europa.py
+          mkdir -p site
+          cp index.html web/* site/
+
+      - name: Gegevens bewaren voor de volgende run
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: data
+          key: eu-data-${{ github.run_id }}
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: publiceren
+        uses: actions/deploy-pages@v4

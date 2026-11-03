@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>EU-monitor</title>
+<meta name="theme-color" content="#dfe7ff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#060914" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="robots" content="noindex, nofollow">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icoon.png">
+<link rel="icon" href="icoon.png">
+<meta name="apple-mobile-web-app-title" content="EU-monitor">
+<link rel="apple-touch-icon" href="icoon.png">
+<style>{{STIJL}}</style>
+</head>
+<body>
+<div class="topbalk" id="topbalk"><div id="kleine-titel">Overzicht</div></div>
+
+<div class="wrap">
+  {{MELDINGEN}}
+
+  <!-- ============ OVERZICHT ============ -->
+  <section class="tab actief" id="overzicht" data-titel="Overzicht">
+    <header class="groot"><h1>Overzicht</h1><p class="sub">EU-monitor · bijgewerkt {{BIJGEWERKT}}</p></header>
+    <input class="zoek" id="ov-zoek" type="search" placeholder="Zoek in dossiers, stemmingen, debatten, mensen en nieuws…" aria-label="Zoek in alles">
+    <div id="ov-resultaten" class="verborgen" style="margin-top:10px"></div>
+    <div id="ov-data"></div>
+{{OV_NIEUWS}}
+  </section>
+
+  <!-- ============ NIEUWS ============ -->
+  <section class="tab" id="nieuws" data-titel="Nieuws">
+    <header class="groot"><h1>Nieuws</h1><p class="sub">{{AANTAL}} berichten · afgelopen 5 dagen</p></header>
+    <input class="zoek" id="zoek" type="search" placeholder="Zoek in het EU-nieuws…" aria-label="Zoeken">
+    <div class="chips" id="terrein-knoppen" aria-label="Beleidsterrein">{{TERREIN_KNOPPEN}}</div>
+    <div class="schakel" id="kanaal-schakel">
+      <button class="actief" data-toon="kanaal-media">Nieuws uit de media <small>{{AANTAL_MEDIA}}</small></button>
+      <button data-toon="kanaal-officieel">Uit Brussel zelf <small>{{AANTAL_OFFICIEEL}}</small></button>
+    </div>
+    <div id="kanaal-media">
+      <p class="intro">Journalistiek nieuws over de EU van NOS (alleen berichten over de EU), Politico Europe en Euractiv. Politico en Euractiv zijn Engelstalig en hebben het label EN.</p>
+      <div class="chips bron-knoppen" aria-label="Bron">{{BRON_KNOPPEN_MEDIA}}</div>
+      <div class="nieuwslijst">
+{{NIEUWS_MEDIA}}
+      </div>
+    </div>
+    <div id="kanaal-officieel" class="verborgen">
+      <div class="melding officieel-uitleg"><b>Let op: dit is geen journalistiek.</b> Dit zijn persberichten, toespraken en verklaringen van de Europese Commissie en de Raad van de EU zelf. Ze laten zien wat Brussel wil uitdragen. Gebruik ze als primaire bron, maar zoek voor een artikel altijd een tweede bron en een reactie.</div>
+      <div class="chips bron-knoppen" aria-label="Bron">{{BRON_KNOPPEN_OFFICIEEL}}</div>
+      <div class="nieuwslijst">
+{{NIEUWS_OFFICIEEL}}
+      </div>
+    </div>
+    <p class="leeg verborgen" id="niets">Geen berichten met deze filters.</p>
+    <p class="klein" style="margin:14px 4px">De samenvattingen zijn de eerste regels van het bericht zelf; klik door voor het origineel. Het gele label <span class="label voorstel">Voorstel</span> betekent dat de Commissie iets nieuws voorstelt.</p>
+  </section>
+
+  <!-- ============ AGENDA ============ -->
+  <section class="tab" id="agenda" data-titel="Agenda">
+    <header class="groot"><h1>Agenda</h1><p class="sub">Komende 4 weken en de debatten van de laatste drie zittingen</p></header>
+    <div class="schakel"><button class="actief" data-toon="a-komend">Komende 4 weken</button><button data-toon="a-afgelopen">Afgelopen debatten</button></div>
+    <div id="a-komend">
+      <p class="intro">Plenaire vergaderingen met hun debatten, en de geplande stappen in dossiers volgens de Legislative Observatory, zoals stemmingen in parlementscommissies en de verwachte plenaire behandeling. Met <b>＋ Agenda</b> zet je een item in je eigen agenda.</p>
+      <div class="filterrij"><input class="zoek" id="a-zoek" type="search" placeholder="Zoek in de agenda…" style="flex:1;min-width:180px">
+        <select class="kies" id="a-soort"><option value="">Alles</option><option>Plenaire vergadering</option><option>Parlementscommissie</option><option>Dossierstap</option><option>Raad</option></select></div>
+      <div id="a-lijst"></div>
+      {{OPGEHAALD_PARLEMENT}}
+    </div>
+    <div id="a-afgelopen" class="verborgen">
+      <div class="filterrij"><input class="zoek" id="db-zoek" type="search" placeholder="Zoek een debat…" style="flex:1;min-width:180px">
+        <select class="kies" id="db-sort"><option value="datum">Op datum</option><option value="sprekers">Op aantal sprekers</option></select>
+        <label class="optie"><input type="checkbox" id="db-nl"> met Nederlandse sprekers</label></div>
+      <div id="db-lijst"></div>
+    </div>
+  </section>
+
+  <!-- ============ DOSSIERS ============ -->
+  <section class="tab" id="dossiers" data-titel="Dossiers">
+    <header class="groot"><h1>Dossiers</h1><p class="sub">Alle lopende procedures van het Europees Parlement</p></header>
+    <input class="zoek" id="d-zoek" type="search" placeholder="Zoek op titel, nummer, rapporteur of commissaris…">
+    <div class="chips" id="d-fasen"></div>
+    <div class="filterrij">
+      <select class="kies" id="d-terrein"></select><select class="kies" id="d-commissie"></select>
+      <select class="kies" id="d-soort"></select><select class="kies" id="d-jaar"></select>
+      <select class="kies" id="d-sort"><option value="laatst">Laatst bijgewerkt</option><option value="nieuw">Nieuwste eerst</option><option value="gepland">Eerstvolgende geplande stap</option><option value="naam">Op naam</option></select>
+    </div>
+    <div class="filterrij">
+      <label class="optie"><input type="checkbox" id="d-nl"> Nederlandse (schaduw)rapporteur</label>
+      <label class="optie"><input type="checkbox" id="d-volg"> alleen mijn volglijst</label>
+      <label class="optie"><input type="checkbox" id="d-afgerond"> ook afgerond (laatste 6 maanden)</label>
+    </div>
+    <p class="telling" id="d-aantal"></p>
+    <div id="d-lijst"></div>
+    <div class="knoprij"><button class="knop tweede verborgen" id="d-meer">Toon meer</button></div>
+    {{OPGEHAALD_DOSSIERS}}
+  </section>
+
+  <!-- ============ STEMMINGEN ============ -->
+  <section class="tab" id="stemmingen" data-titel="Stemmingen">
+    <header class="groot"><h1>Stemmingen</h1><p class="sub">Alle hoofdstemmingen van de laatste twee zittingen</p></header>
+    <input class="zoek" id="s-zoek" type="search" placeholder="Zoek een stemming of procedurenummer…">
+    <div class="filterrij">
+      <select class="kies" id="s-terrein"></select><select class="kies" id="s-zitting"></select>
+      <select class="kies" id="s-uitslag"><option value="">Aangenomen en verworpen</option><option value="ADOPTED">Aangenomen</option><option value="REJECTED">Verworpen</option></select>
+      <select class="kies" id="s-sort"><option value="datum">Nieuwste eerst</option><option value="oud">Oudste eerst</option><option value="verschil">Kleinste verschil voor/tegen</option><option value="onthouden">Meeste onthoudingen</option></select>
+    </div>
+    <div class="filterrij">
+      <label class="optie"><input type="checkbox" id="s-verdeeld"> Nederlandse partijen stemden verschillend</label>
+      <label class="optie"><input type="checkbox" id="s-afwijk"> een NL-partij stemde anders dan haar fractie</label>
+    </div>
+    <p class="telling" id="s-aantal"></p>
+    <div id="s-lijst"></div>
+    {{OPGEHAALD_STEMMEN}}
+  </section>
+
+  <!-- ============ MENSEN ============ -->
+  <section class="tab" id="mensen" data-titel="Mensen">
+    <header class="groot"><h1>Mensen</h1><p class="sub">Europarlementariërs: rollen in dossiers, debatten en stemgedrag</p></header>
+    <input class="zoek" id="m-zoek" type="search" placeholder="Zoek een naam of partij…">
+    <div class="filterrij">
+      <select class="kies" id="m-wie"><option value="NL">Nederlandse leden</option><option value="alle">Alle europarlementariërs</option></select>
+      <label class="optie"><input type="checkbox" id="m-volg"> alleen mijn volglijst</label>
+      <label class="optie"><input type="checkbox" id="m-rol"> (schaduw)rapporteur in een lopend dossier</label>
+    </div>
+    <p class="telling" id="m-aantal"></p>
+    <div id="m-lijst"></div>
+    <p class="klein" style="margin:6px 4px">Stemgedrag per persoon is er alleen voor Nederlandse leden. Bij "Alle europarlementariërs" zonder zoekterm zie je alleen wie rapporteur is.</p>
+  </section>
+
+  <!-- ============ BRONNEN ============ -->
+  <section class="tab" id="bronnen" data-titel="Bronnen">
+    <header class="groot"><h1>Bronnen en beperkingen</h1><p class="sub">Wat deze site wel en niet dekt</p></header>
+{{BRONNEN}}
+  </section>
+
+  <footer>EU-monitor · eigen overzicht · <a href="#bronnen">Bronnen en beperkingen</a> · <a href="#" id="thema">Donker/licht</a></footer>
+</div>
+
+<nav class="tabs" aria-label="Onderdelen"><div class="pil">
+  <span class="lens" id="lens" aria-hidden="true"></span>
+  <a href="#overzicht" data-tab="overzicht"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg>Overzicht</a>
+  <a href="#nieuws" data-tab="nieuws"><svg viewBox="0 0 24 24"><path d="M4 5h13v14H6a2 2 0 0 1-2-2z"/><path d="M17 9h3v8a2 2 0 0 1-2 2"/><path d="M8 9h5M8 13h5"/></svg>Nieuws</a>
+  <a href="#agenda" data-tab="agenda"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Agenda</a>
+  <a href="#dossiers" data-tab="dossiers"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h7M9 8h3"/></svg>Dossiers</a>
+  <a href="#stemmingen" data-tab="stemmingen"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg>Stemmen</a>
+  <a href="#mensen" data-tab="mensen"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Mensen</a>
+</div></nav>
+
+<div class="uitlegpop" id="uitlegpop" role="tooltip" hidden><b></b><p></p></div>
+<script id="begrippen" type="application/json">{{BEGRIPPEN}}</script>
+<script id="data-meta" type="application/json">{{DATA_META}}</script>
+<script id="data-dossiers" type="application/json">{{DATA_DOSSIERS}}</script>
+<script id="data-stemmen" type="application/json">{{DATA_STEMMEN}}</script>
+<script id="data-parlement" type="application/json">{{DATA_PARLEMENT}}</script>
+<script id="data-leden" type="application/json">{{DATA_LEDEN}}</script>
+<script>
+{{APP}}
+</script>
+</body>
+</html>

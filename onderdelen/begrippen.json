@@ -1,0 +1,257 @@
+[
+ {
+  "term": "Raad van Europa",
+  "patroon": "Raad van Europa",
+  "uitleg": "Geen EU-instelling! Dit is een aparte organisatie van 46 landen, gevestigd in Straatsburg, die over mensenrechten gaat. Het Europees Hof voor de Rechten van de Mens hoort erbij."
+ },
+ {
+  "term": "Europese Raad",
+  "patroon": "Europese Raad",
+  "uitleg": "De regeringsleiders van de 27 lidstaten (voor Nederland de premier). Deze raad maakt geen wetten, maar bepaalt de grote lijnen tijdens de EU-toppen. De voorzitter is António Costa."
+ },
+ {
+  "term": "Raad van de EU",
+  "patroon": "Raad van de (EU|Europese Unie)|\\bRaad\\b",
+  "uitleg": "De ministers van de 27 lidstaten, per onderwerp (bijvoorbeeld alle landbouwministers). De Raad beslist samen met het Parlement over wetten. Het voorzitterschap wisselt elk half jaar van land."
+ },
+ {
+  "term": "Europese Commissie",
+  "patroon": "Europese Commissie|\\bCommissie\\b",
+  "uitleg": "Het dagelijks bestuur van de EU, met één commissaris per land. Alleen de Commissie mag wetten voorstellen (het initiatiefrecht). Ze controleert ook of landen zich aan de regels houden. De voorzitter is Ursula von der Leyen."
+ },
+ {
+  "term": "Europees Parlement",
+  "patroon": "Europees Parlement|\\bParlement\\b",
+  "uitleg": "720 leden, in 2024 rechtstreeks gekozen door de burgers. Het Parlement beslist samen met de Raad over wetten en de begroting. De leden zitten in fracties per politieke stroming, niet per land."
+ },
+ {
+  "term": "Hof van Justitie",
+  "patroon": "Hof van Justitie",
+  "uitleg": "Het hoogste EU-hof, in Luxemburg. Het bepaalt hoe EU-recht moet worden uitgelegd, en kan landen of instellingen veroordelen."
+ },
+ {
+  "term": "commissie van het Parlement",
+  "patroon": "[Pp]arlementscommissie|parlementaire commissie|\\bcommissie\\b|\\b(ENVI|LIBE|ITRE|IMCO|ECON|AGRI|AFET|BUDG|REGI|EMPL|TRAN|JURI|INTA|CULT|SEDE)\\b",
+  "uitleg": "Een vaste werkgroep van europarlementariërs voor één onderwerp, bijvoorbeeld ENVI (milieu en klimaat), LIBE (burgerrechten en migratie) of ITRE (industrie en energie). Hier wordt een wetsvoorstel eerst behandeld."
+ },
+ {
+  "term": "Triloog",
+  "patroon": "[Tt]riloog|trilogue",
+  "uitleg": "Onderhandelingen tussen het Parlement, de Raad en de Commissie, achter gesloten deuren, om tot één tekst te komen. Als er een akkoord is, moeten het Parlement en de Raad dat nog formeel goedkeuren."
+ },
+ {
+  "term": "Rapporteur",
+  "patroon": "[Rr]apporteur",
+  "uitleg": "De europarlementariër die namens het Parlement over een wetsvoorstel gaat: die schrijft het verslag en onderhandelt in de triloog. Schaduwrapporteurs doen dat namens de andere fracties."
+ },
+ {
+  "term": "Plenaire vergadering",
+  "patroon": "[Pp]lenaire( vergadering)?",
+  "uitleg": "Een vergadering van het hele Parlement, meestal vier dagen per maand in Straatsburg, soms twee dagen in Brussel. Hier wordt gedebatteerd en gestemd."
+ },
+ {
+  "term": "Straatsburg",
+  "patroon": "Straatsburg",
+  "uitleg": "De officiële zetel van het Europees Parlement. Daar zijn de meeste plenaire vergaderingen. Het werk in de commissies en de korte zittingen gebeuren in Brussel."
+ },
+ {
+  "term": "Verordening",
+  "patroon": "[Vv]erordening(en)?",
+  "uitleg": "Een EU-wet die meteen geldt in alle lidstaten, precies zoals hij is opgeschreven (in het Engels: regulation)."
+ },
+ {
+  "term": "Richtlijn",
+  "patroon": "[Rr]ichtlijn(en)?",
+  "uitleg": "Een EU-wet die een doel vastlegt (in het Engels: directive). Elk land moet die zelf binnen een termijn in een eigen nationale wet zetten."
+ },
+ {
+  "term": "Mededeling",
+  "patroon": "[Mm]ededeling|kadermededeling",
+  "uitleg": "Een plan of strategie van de Commissie zonder wetten erin (in het Engels: communication). Er volgen geen verplichtingen uit."
+ },
+ {
+  "term": "Gewone wetgevingsprocedure",
+  "patroon": "gewone wetgevingsprocedure|\\(COD\\)",
+  "uitleg": "De standaardmanier om EU-wetten te maken. De Commissie doet een voorstel, het Parlement en de Raad bepalen elk hun standpunt, ze onderhandelen in de triloog en keuren het akkoord daarna allebei goed. Een procedurenummer met (COD) hoort hierbij."
+ },
+ {
+  "term": "Gekwalificeerde meerderheid",
+  "patroon": "[Gg]ekwalificeerde meerderheid",
+  "uitleg": "Zo stemt de Raad meestal. Minstens 55% van de lidstaten (15 van de 27) moet voor zijn, en die landen moeten samen minstens 65% van de EU-bevolking vertegenwoordigen."
+ },
+ {
+  "term": "Unanimiteit",
+  "patroon": "[Uu]nanimiteit|\\bveto\\b",
+  "uitleg": "Alle lidstaten moeten akkoord zijn; één land kan een besluit dus tegenhouden. Dat geldt onder meer voor belastingen en voor buitenlands beleid."
+ },
+ {
+  "term": "Coreper",
+  "patroon": "Coreper",
+  "uitleg": "Het overleg van de vaste vertegenwoordigers (de 'EU-ambassadeurs') van de lidstaten. Hier wordt veel van het werk van de Raad voorbereid."
+ },
+ {
+  "term": "Gedelegeerde handeling",
+  "patroon": "[Gg]edelegeerde handeling(en)?|delegated acts?",
+  "uitleg": "Een technische regel die de Commissie zelf mag vaststellen om een wet in te vullen. Het Parlement en de Raad kunnen er bezwaar tegen maken."
+ },
+ {
+  "term": "Omnibus",
+  "patroon": "[Oo]mnibus",
+  "uitleg": "Een pakket voorstellen dat in één keer meerdere bestaande wetten aanpast. De Commissie gebruikt de term vaak bij voorstellen die regels 'vereenvoudigen'."
+ },
+ {
+  "term": "Subsidiariteit",
+  "patroon": "[Ss]ubsidiariteit",
+  "uitleg": "Het principe dat de EU alleen iets regelt als dat beter werkt dan wanneer landen het zelf doen. Nationale parlementen kunnen bezwaar maken met een 'gele kaart'."
+ },
+ {
+  "term": "Werkprogramma",
+  "patroon": "[Ww]erkprogramma",
+  "uitleg": "Het jaarplan van de Commissie, met de voorstellen die ze dat jaar wil doen."
+ },
+ {
+  "term": "Eurogroep",
+  "patroon": "Eurogroep|Eurogroup",
+  "uitleg": "Het overleg van de ministers van Financiën van de landen met de euro. Dit is geen officiële EU-instelling."
+ },
+ {
+  "term": "Publicatieblad",
+  "patroon": "Publicatieblad|Official Journal",
+  "uitleg": "De officiële krant van de EU. Een wet staat pas vast als hij hierin is gepubliceerd."
+ },
+ {
+  "term": "Legislative Observatory",
+  "patroon": "Legislative Observatory|OEIL",
+  "uitleg": "De officiële volger van wetgeving van het Europees Parlement. Daar zie je per procedurenummer elke stap van een voorstel."
+ },
+ {
+  "term": "Eerste lezing",
+  "patroon": "1e lezing|eerste lezing",
+  "uitleg": "De eerste ronde waarin het Parlement en de Raad hun standpunt over een voorstel bepalen. De meeste wetten worden al in deze ronde aangenomen, na een akkoord in de triloog."
+ },
+ {
+  "term": "Spoedprocedure",
+  "patroon": "[Ss]poedprocedure",
+  "uitleg": "Een fractie kan vragen om een voorstel versneld te behandelen, zonder de gewone ronde in een parlementscommissie."
+ },
+ {
+  "term": "Fractie",
+  "patroon": "[Ff]ractie(s)?",
+  "uitleg": "Een groep europarlementariërs uit verschillende landen met dezelfde politieke kleur. Nationale partijen sluiten zich aan bij een fractie."
+ },
+ {
+  "term": "EVP",
+  "patroon": "\\bEVP\\b",
+  "uitleg": "Europese Volkspartij (European People's Party), de christendemocratische fractie. De grootste fractie."
+ },
+ {
+  "term": "S&D",
+  "patroon": "S&D",
+  "uitleg": "Progressieve Alliantie van Socialisten en Democraten."
+ },
+ {
+  "term": "PfE",
+  "patroon": "\\bPfE\\b|Patriotten voor Europa",
+  "uitleg": "Patriotten voor Europa (Patriots for Europe). Nederlandse partij: PVV."
+ },
+ {
+  "term": "ECR",
+  "patroon": "\\bECR\\b",
+  "uitleg": "Europese Conservatieven en Hervormers (European Conservatives and Reformists). Nederlandse partij: SGP."
+ },
+ {
+  "term": "Renew Europe",
+  "patroon": "\\bRenew( Europe)?\\b",
+  "uitleg": "De liberale fractie. Nederlandse partijen: VVD en D66."
+ },
+ {
+  "term": "Groenen/EVA",
+  "patroon": "\\bGroenen(/EVA)?\\b",
+  "uitleg": "De Groenen/Vrije Europese Alliantie."
+ },
+ {
+  "term": "Links",
+  "patroon": "\\bLinks\\b(?= \\d| –|<)",
+  "uitleg": "De fractie The Left (Links). Nederlandse partij: PvdD."
+ },
+ {
+  "term": "ESN",
+  "patroon": "\\bESN\\b|Europa van Soevereine Naties",
+  "uitleg": "Europa van Soevereine Naties (Europe of Sovereign Nations). Er zitten geen Nederlandse partijen in."
+ },
+ {
+  "term": "Niet-ingeschreven",
+  "patroon": "Niet-ingeschreven",
+  "uitleg": "Europarlementariërs die bij geen enkele fractie horen."
+ },
+ {
+  "term": "PRO",
+  "patroon": "\\bPRO\\b",
+  "uitleg": "De samengevoegde partij van GroenLinks en PvdA. In het Europees Parlement zitten de leden in twee fracties: S&D en de Groenen/EVA."
+ },
+ {
+  "term": "Frontex",
+  "patroon": "Frontex",
+  "uitleg": "Het Europees Grens- en kustwachtagentschap, gevestigd in Warschau. Het helpt lidstaten bij het bewaken van de buitengrenzen en bij terugkeer."
+ },
+ {
+  "term": "HowTheyVote.eu",
+  "patroon": "HowTheyVote(\\.eu)?",
+  "uitleg": "Een onafhankelijke, gratis website die per stemming in het Europees Parlement laat zien hoe elk lid stemde. De gegevens komen van het Parlement zelf."
+ },
+ {
+  "term": "Eurocommissaris",
+  "patroon": "[Ee]urocommissaris",
+  "uitleg": "Een lid van de Europese Commissie. Er is er één per land; elke commissaris is verantwoordelijk voor een eigen beleidsterrein. Namens Nederland is dat Wopke Hoekstra."
+ },
+ {
+  "term": "Hoge Vertegenwoordiger",
+  "patroon": "[Hh]oge [Vv]ertegenwoordiger|High Representative",
+  "uitleg": "De 'minister van Buitenlandse Zaken' van de EU, en ook vicevoorzitter van de Commissie. Nu is dat Kaja Kallas."
+ },
+ {
+  "term": "Ursula von der Leyen",
+  "patroon": "(Ursula )?[Vv]on der Leyen",
+  "uitleg": "Voorzitter van de Europese Commissie (Duitsland, EVP)."
+ },
+ {
+  "term": "António Costa",
+  "patroon": "(António )?Costa\\b",
+  "uitleg": "Voorzitter van de Europese Raad, de EU-toppen (Portugal)."
+ },
+ {
+  "term": "Roberta Metsola",
+  "patroon": "(Roberta )?Metsola",
+  "uitleg": "Voorzitter van het Europees Parlement (Malta, EVP)."
+ },
+ {
+  "term": "Kaja Kallas",
+  "patroon": "(Kaja )?Kallas",
+  "uitleg": "Hoge Vertegenwoordiger voor buitenlands beleid en vicevoorzitter van de Commissie (Estland)."
+ },
+ {
+  "term": "Wopke Hoekstra",
+  "patroon": "(Wopke )?Hoekstra",
+  "uitleg": "De Nederlandse eurocommissaris, voor klimaat, netto-nul en schone groei (CDA, EVP)."
+ },
+ {
+  "term": "Teresa Ribera",
+  "patroon": "(Teresa )?Ribera",
+  "uitleg": "Uitvoerend vicevoorzitter van de Commissie, voor de schone transitie en mededinging (Spanje)."
+ },
+ {
+  "term": "Magnus Brunner",
+  "patroon": "(Magnus )?Brunner",
+  "uitleg": "Eurocommissaris voor binnenlandse zaken en migratie (Oostenrijk)."
+ },
+ {
+  "term": "Hadja Lahbib",
+  "patroon": "(Hadja )?Lahbib",
+  "uitleg": "Eurocommissaris voor paraatheid, crisisbeheer en gelijkheid (België)."
+ },
+ {
+  "term": "Henna Virkkunen",
+  "patroon": "(Henna )?Virkkunen",
+  "uitleg": "Uitvoerend vicevoorzitter van de Commissie, voor technologie, veiligheid en democratie (Finland)."
+ }
+]

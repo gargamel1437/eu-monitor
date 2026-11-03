@@ -1,0 +1,9 @@
+{
+  "name": "EU-monitor",
+  "short_name": "EU-monitor",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#e4ebff",
+  "theme_color": "#e4ebff",
+  "icons": [{ "src": "icoon.png", "sizes": "512x512", "type": "image/png" }]
+}
