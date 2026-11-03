@@ -40,7 +40,7 @@ ONDERDELEN = MAP / "onderdelen"
 SITE = MAP / "site"
 AFGEROND_TONEN_DAGEN = 183          # afgeronde dossiers van het afgelopen halfjaar tonen
 UPDATE_TIJDEN = ["07:15", "12:15", "18:15"]   # Nederlandse tijd, zie .github/workflows/europa.yml
-JS_VOLGORDE = ["basis", "panelen", "nieuws", "dossiers", "stemmingen", "mensen", "agenda", "overzicht", "instellingen", "start"]
+JS_VOLGORDE = ["basis", "panelen", "filters", "nieuws", "dossiers", "stemmingen", "mensen", "agenda", "overzicht", "instellingen", "start"]
 FRACTIE_BEGRIP = {"EVP": "EVP", "S&D": "S&D", "PfE": "PfE", "ECR": "ECR", "Renew Europe": "Renew",
                   "Groenen/EVA": "Groenen", "Links": "Links", "ESN": "ESN", "Niet-ingeschreven": "Niet-ingeschreven"}
 
@@ -298,6 +298,8 @@ def agenda_items(p, lijst, vergaderingen):
 
     uit += vaste_punten(zittingen, nu, grens)
     for i in uit:
+        i["wat"], i["wie"] = categorieen(i)
+        i["id"] = hashlib.sha1(f"{i['soort']}|{i['titel']}|{i['datum']}".encode()).hexdigest()[:10]
         i.pop("en", None)
         i.setdefault("dossiers", [])
         i["dossiers"].sort(key=lambda x: x["titel"])
@@ -311,7 +313,59 @@ def agenda_items(p, lijst, vergaderingen):
     uit.sort(key=lambda i: (i["datum"], volgorde[i["soort"]], i.get("begin", ""), i["titel"]))
     toppen = [{"datum": v["datum"], "eind": v.get("eind", ""), "titel": v["titel"], "plaats": v.get("plaats", ""), "url": v["url"]}
               for v in vergaderingen if v["soort"] == "EU-top" and v["datum"] > grens]
-    return {"items": uit, "later": p.get("later", [])[:1], "toppen_later": toppen[:2]}
+    # verder vooruit (voor de maand- en jaarweergave): bekende plenaire zittingen, Raad en toppen
+    verder = []
+    for z in p.get("kalender", []):
+        if z["begin"] > grens:
+            verder.append({"datum": z["begin"], "eind_datum": z["eind"] if z["eind"] != z["begin"] else "", "soort": "Plenaire vergadering",
+                           "titel": f"Plenaire zitting in {z['plaats']}", "plaats": z["plaats"], "wie": ["Europees Parlement"],
+                           "wat": ["Debatten", "Stemmingen en besluiten"]})
+    for v in vergaderingen:
+        if v["datum"] > grens:
+            x = {"datum": v["datum"], "eind_datum": v.get("eind", ""), "soort": v["soort"], "titel": v["titel"], "plaats": v.get("plaats", ""),
+                 "url": v["url"], "extra": "Informeel: er worden geen besluiten genomen." if v.get("informeel") else ""}
+            x["wat"], x["wie"] = categorieen(x)
+            verder.append(x)
+    for x in verder:
+        x["id"] = hashlib.sha1(f"{x['soort']}|{x['titel']}|{x['datum']}".encode()).hexdigest()[:10]
+        x["verder"] = True
+        for k in ("eind_datum", "extra"):
+            if not x.get(k):
+                x.pop(k, None)
+    verder.sort(key=lambda x: (x["datum"], x["titel"]))
+    return {"items": uit, "verder": verder, "later": p.get("later", [])[:1], "toppen_later": toppen[:2]}
+
+
+TOP_EU = re.compile(r"Europese Raad|EU-regeringsleiders|regeringsleiders", re.I)
+
+
+def categorieen(i):
+    """Wat er gebeurt en wie het doet, voor de filters van de agenda. Een item kan bij meer horen."""
+    soort, titel, wat, wie = i["soort"], i["titel"], [], []
+    informeel = "Informele" in titel or "Informeel" in (i.get("extra") or "")
+    if soort == "Plenaire vergadering":
+        wie = ["Europees Parlement"]
+        stemt = any(b.get("soort") == "Stemmingen" for d in i.get("dagen", []) for b in d.get("blokken", [])) or not i.get("dagen")
+        wat = ["Debatten"] + (["Stemmingen en besluiten"] if stemt else [])
+    elif soort == "Raad":
+        wie = ["Raad van de EU"]
+        if i.get("ref"):
+            wat = ["Wetgevingsstappen", "Ministersoverleg"]
+        else:
+            wat = ["Ministersoverleg"] + ([] if informeel or "Eurogroep" in titel else ["Stemmingen en besluiten"])
+    elif soort == "EU-top":
+        wat = ["Toppen"]
+        wie = ["Europese Raad"] if TOP_EU.search(titel) else ["Internationaal"]
+    elif soort == "Commissie":
+        wie = ["Europese Commissie"]
+        wat = ["Persmomenten"] + (["Stemmingen en besluiten"] if i.get("vast") == "college" else [])
+    elif soort == "Parlementscommissie":
+        wie = ["Europees Parlement"]
+        wat = ["Wetgevingsstappen"] + (["Stemmingen en besluiten"] if re.search(r"stem|vote", titel, re.I) else [])
+    else:
+        wat = ["Wetgevingsstappen"]
+        wie = ["Raad van de EU"] if re.search(r"Raad|Council", titel) else ["Europees Parlement"]
+    return wat, wie
 
 
 def dossier_ics(lijst):

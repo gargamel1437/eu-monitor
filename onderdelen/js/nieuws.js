@@ -1,17 +1,35 @@
-// ---------- Nieuws: filters op onderwerp, bron en zoekterm (de berichten zelf staan al in de pagina) ----------
-var filter = { terrein: "", bron: "", zoek: "" }, nieuwsWacht = null;
-function pasToe() {
-  var zichtbaar = 0, z = zoeker(filter.zoek);
+// =====================================================================
+//  nieuws.js: de berichten staan al in de pagina. Hier: zoeken en de filters (onderwerp en
+//  bron, meerdere tegelijk), en de instellingen (bronnen uit, Engelstalig uit).
+//  Hetzelfde nieuws van meerdere media is al bij het bouwen samengevoegd ("Ook bij: …").
+// =====================================================================
+
+var nieuwsZoek = "", nieuwsWacht = null;
+function nieuwsOpties(veld) {
+  var tel = {};
   alle("li.bericht").forEach(function (li) {
+    (veld === "bron" ? (li.dataset.bronnen || li.dataset.bron).split("|") : li.dataset.terrein.split("|")).forEach(function (x) { if (x) tel[x] = (tel[x] || 0) + 1; });
+  });
+  return Object.keys(tel).sort(function (x, y) { return x === "Overig" ? 1 : y === "Overig" ? -1 : x.localeCompare(y); })
+    .filter(function (x) { return veld !== "bron" || INST.bronnenUit.indexOf(x) < 0; })
+    .map(function (x) { return [x, x + " (" + tel[x] + ")"]; });
+}
+var NF = maakFilter("n", [
+  { id: "onderwerp", naam: "Onderwerp", meer: true, standaard: [], opties: function () { return nieuwsOpties("terrein"); } },
+  { id: "bron", naam: "Bron", meer: true, standaard: [], opties: function () { return nieuwsOpties("bron"); } }
+], function () { pasToe(); });
+
+function pasToe() {
+  var zichtbaar = 0, z = zoeker(nieuwsZoek);
+  alle("li.bericht").forEach(function (li) {
+    var bronnen = (li.dataset.bronnen || li.dataset.bron).split("|");
     var ok = INST.bronnenUit.indexOf(li.dataset.bron) < 0 && (INST.engels || li.dataset.taal !== "en")
-      && (!filter.terrein || li.dataset.terrein.split("|").indexOf(filter.terrein) >= 0)
-      && (!filter.bron || li.dataset.bron === filter.bron)
-      && z.past(li.textContent + " " + (li.dataset.bron || ""), li);
+      && NF.past("onderwerp", li.dataset.terrein.split("|")) && NF.past("bron", bronnen)
+      && z.past(li.textContent + " " + bronnen.join(" "), li);
     li.classList.toggle("verborgen", !ok);
-    if (ok) zichtbaar++;
   });
   var paneel = document.querySelector("#nieuws [id^=kanaal-]:not(.verborgen)");
-  zichtbaar = paneel ? alle("li.bericht:not(.verborgen)", paneel).length : zichtbaar;
+  zichtbaar = paneel ? alle("li.bericht:not(.verborgen)", paneel).length : 0;
   alle(".nieuwslijst ul.berichten").forEach(function (ul) {
     var leeg = !ul.querySelector("li.bericht:not(.verborgen)");
     ul.classList.toggle("verborgen", leeg);
@@ -20,45 +38,11 @@ function pasToe() {
   document.getElementById("niets").classList.toggle("verborgen", zichtbaar > 0);
   bedoelJe("zoek", z);
 }
-function chips(id, doel, sleutel, opnieuw) {
-  var rij = document.getElementById(id);
-  if (!rij) return;
-  rij.addEventListener("click", function (ev) {
-    var knop = ev.target.closest(".chip");
-    if (!knop) return;
-    alle(".chip", rij).forEach(function (c) { c.classList.toggle("actief", c === knop); });
-    doel[sleutel] = knop.dataset.waarde;
-    opnieuw();
-  });
-}
-chips("terrein-knoppen", filter, "terrein", pasToe);
-alle(".bron-knoppen").forEach(function (rij) {
-  rij.addEventListener("click", function (ev) {
-    var knop = ev.target.closest(".chip");
-    if (!knop) return;
-    alle(".chip", rij).forEach(function (c) { c.classList.toggle("actief", c === knop); });
-    filter.bron = knop.dataset.waarde;
-    pasToe();
-  });
-});
-// bij wisselen tussen media en officieel: bronfilter terug op 'Alles'
-alle("#kanaal-schakel button").forEach(function (b) {
-  b.addEventListener("click", function () {
-    filter.bron = "";
-    alle(".bron-knoppen .chip").forEach(function (c) { c.classList.toggle("actief", c.dataset.waarde === ""); });
-    pasToe();
-  });
-});
 document.getElementById("zoek").addEventListener("input", function (ev) {
   clearTimeout(nieuwsWacht);
-  nieuwsWacht = setTimeout(function () { filter.zoek = ev.target.value.trim(); pasToe(); }, 150);
+  nieuwsWacht = setTimeout(function () { nieuwsZoek = ev.target.value.trim(); pasToe(); }, 150);
 });
-
-
-// instellingen: uitgezette bronnen ook uit de knoppenrij, en het standaard deel kiezen
-function nieuwsInst() {
-  alle(".bron-knoppen .chip").forEach(function (c) { c.classList.toggle("verborgen", !!c.dataset.waarde && INST.bronnenUit.indexOf(c.dataset.waarde) >= 0); });
-  pasToe();
-}
-nieuwsInst();
+document.addEventListener("eu-segment", function (ev) { if (/^kanaal-/.test(ev.detail)) pasToe(); });
+function nieuwsInst() { pasToe(); }
+pasToe();
 if (INST.nieuwsDeel === "kanaal-officieel") toonSegment("kanaal-officieel");

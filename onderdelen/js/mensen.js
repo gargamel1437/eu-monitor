@@ -35,18 +35,28 @@ function gestemd(p) { return p.stemmen.filter(function (x) { return x[1] !== "DI
 var DKORT = {};
 function lopend(l) { return l.filter(function (x) { return !x[2]; }).length; }
 
+function actiefLamp() { return '<span class="lamp" aria-label="actief" title="Loopt nog"></span>'; }
+function contactIconen(id) {
+  var c = CONTACTEN && CONTACTEN[id];
+  if (!c) return "";
+  var h = "";
+  if (c.mail) h += '<a class="ic" href="mailto:' + esc(c.mail) + '" aria-label="Mail ' + esc(c.mail) + '"><svg viewBox="0 0 24 24"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M4 7l8 6 8-6"/></svg></a>';
+  var t = (c.tel || []).filter(function (x) { return x.plaats === "Brussel"; })[0] || (c.tel || [])[0];
+  if (t) h += '<a class="ic" href="tel:' + esc(t.nummer.replace(/[^+\d]/g, "")) + '" aria-label="Bel ' + esc(t.nummer) + '"><svg viewBox="0 0 24 24"><path d="M6.5 3.5h3l1.5 4.5-2 1.5a11 11 0 0 0 5.5 5.5l1.5-2 4.5 1.5v3a2 2 0 0 1-2 2A16.5 16.5 0 0 1 4.5 5.5a2 2 0 0 1 2-2z"/></svg></a>';
+  return h ? '<span class="iconen">' + h + "</span>" : "";
+}
 function persoonKaart(p) {
-  var feiten = [];
-  if (p.rap.length) feiten.push("rapporteur: " + lopend(p.rap) + " lopend");
-  if (p.schaduw.length) feiten.push("schaduw: " + lopend(p.schaduw) + " lopend");
+  var feiten = [], act = lopend(p.rap) + lopend(p.schaduw);
+  if (p.rap.length) feiten.push("rapporteur " + p.rap.length + (lopend(p.rap) ? " (" + lopend(p.rap) + " actief)" : ""));
+  if (p.schaduw.length) feiten.push("schaduw " + p.schaduw.length + (lopend(p.schaduw) ? " (" + lopend(p.schaduw) + " actief)" : ""));
   if (p.debatten.length) feiten.push(p.debatten.length + " debatten");
-  if (p.stemmen.length) feiten.push("stemde in " + gestemd(p) + "/" + p.stemmen.length);
   return '<div class="kaart compact mkaart" data-id="' + esc(p.id) + '" role="button" tabindex="0">'
-    + '<div class="kaartkop"><h3>' + esc(p.naam) + "</h3></div>"
+    + '<div class="kaartkop"><h3>' + esc(p.naam) + (act ? " " + actiefLamp() : "") + "</h3>" + contactIconen(p.id) + "</div>"
     + '<div class="klein">' + (p.partij ? esc(p.partij) + " · " : "") + fr(p.fractie) + (p.land ? " · " + esc(landNaam(p.land)) : "") + "</div>"
     + (feiten.length ? '<div class="klein feitregel">' + feiten.join(" · ") + "</div>" : "")
     + '<span class="pijl" aria-hidden="true">›</span></div>';
 }
+
 // ---------- contact ----------
 var CONTACTEN = null, BESTUUR = null;
 function telLink(n) { return '<a href="tel:' + esc(String(n).replace(/[^+\d]/g, "")) + '">' + esc(n) + "</a>"; }
@@ -56,45 +66,58 @@ function contactRijen(rijen) {
   return rijen.length ? '<div class="contact">' + rijen.map(function (r) { return "<div><span>" + esc(r[0]) + "</span><b>" + r[1] + "</b></div>"; }).join("") + "</div>" : "";
 }
 function contactMep(p, c) {
-  if (!c) return '<p class="klein">Contactgegevens laden…</p>';
+  if (c === undefined) return '<p class="klein">Contactgegevens laden…</p>';
+  if (c === null) return '<p class="klein">Contactgegevens konden niet worden geladen. Controleer je verbinding en open de persoon opnieuw.</p>';
+  if (!c) return '<p class="klein">Het Parlement publiceert voor deze persoon geen contactgegevens (bijvoorbeeld een oud-lid). Kijk op het profiel bij het Parlement of bel de persdienst van de fractie.</p>';
   var rijen = [["E-mail", mailLink(c.mail)]];
   (c.tel || []).forEach(function (t) { rijen.push(["Telefoon" + (t.plaats ? " " + t.plaats : ""), telLink(t.nummer) + (t.kantoor ? ' <span class="klein">kantoor ' + esc(t.kantoor) + "</span>" : "")]); });
   if (c.web) rijen.push(["Website", a(c.web, c.web.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, ""))]);
   if ((c.sociaal || []).length) rijen.push(["Sociale media", c.sociaal.map(function (x) { return a(x.url, x.naam); }).join(" · ")]);
-  return contactRijen(rijen) || '<p class="klein">Geen contactgegevens bij het Parlement. Probeer de persdienst van de fractie.</p>';
+  return contactRijen(rijen) || '<p class="klein">Geen contactgegevens bij het Parlement.</p>';
 }
 function woordvoerderHtml(w) {
   return '<div class="wv"><b>' + esc(w.naam) + '</b><div class="klein">' + esc(w.functie) + (w.onderwerpen && w.onderwerpen.length ? " · " + esc(w.onderwerpen.join(", ")) : "") + "</div>"
     + contactRijen([["E-mail", mailLink(w.mail)]].concat((w.tel || []).map(function (t, i) { return [i ? "Mobiel" : "Telefoon", telLink(t)]; }))) + "</div>";
 }
-function contactenLaden() { return CONTACTEN ? Promise.resolve(CONTACTEN) : laden("contacten").then(function (d) { CONTACTEN = d; return d; }); }
+var _contactenBezig = null;
+function contactenLaden() {
+  if (CONTACTEN) return Promise.resolve(CONTACTEN);
+  _contactenBezig = _contactenBezig || laden("contacten").then(function (d) { CONTACTEN = d || {}; return CONTACTEN; }).catch(function (e) { _contactenBezig = null; throw e; });
+  return _contactenBezig;
+}
 function bestuurLaden() { return BESTUUR ? Promise.resolve(BESTUUR) : laden("bestuur").then(function (d) { BESTUUR = d; return d; }); }
 
 // ---------- detail van een europarlementariër ----------
 function sectie(titel, n, inhoud, open) {
   return '<details class="sectie"' + (open ? " open" : "") + "><summary>" + titel + (n != null ? ' <span class="teller-klein">' + n + "</span>" : "") + "</summary>" + inhoud + "</details>";
 }
+function rolTegel(naam, l) {
+  var act = lopend(l);
+  return '<div class="rol' + (act ? " heeft-actief" : "") + '"><span class="rol-naam">' + naam + "</span><b>" + l.length + "</b><span>totaal</span>"
+    + '<span class="rol-actief">' + (act ? actiefLamp() : "") + act + " actief</span></div>";
+}
 function persoonDetail(p) {
   var ap = p.stemmen.filter(function (x) { return x[2]; }).length, af = p.stemmen.filter(function (x) { return x[3]; }).length;
-  var rapL = lopend(p.rap), schL = lopend(p.schaduw);
   var h = '<div class="persoonkop"><img class="foto" loading="lazy" alt="" src="https://www.europarl.europa.eu/mepphoto/' + esc(p.id) + '.jpg" onerror="this.remove()">'
     + "<div><h2 class='paneel-kop'>" + esc(p.naam) + "</h2>"
     + '<div class="klein">Europarlementariër · ' + (p.partij ? esc(p.partij) + " · " : "") + fr(p.fractie) + (p.land ? " · " + esc(landNaam(p.land)) : "") + "</div></div></div>"
     + '<div class="knoprij">' + a("https://www.europarl.europa.eu/meps/nl/" + p.id, "Profiel bij het Parlement") + deelKnop(p.naam, "https://www.europarl.europa.eu/meps/nl/" + p.id) + "</div>"
-    + "<h4>Contact</h4><div id=\"m-contact\">" + contactMep(p, CONTACTEN && CONTACTEN[p.id]) + "</div>"
-    + "<h4>Activiteit</h4><div class=\"tegels\">"
-    + "<div><b>" + rapL + "</b><span>rapporteur<br>lopend</span></div>"
-    + "<div><b>" + schL + "</b><span>schaduw<br>lopend</span></div>"
-    + "<div><b>" + p.debatten.length + "</b><span>debatten<br>(3 zittingen)</span></div>"
-    + "<div><b>" + (p.stemmen.length ? gestemd(p) + "/" + p.stemmen.length : "–") + "</b><span>gestemd<br>(hoofdstemmingen)</span></div>"
-    + "<div><b>" + ap + "</b><span>anders dan<br>partij</span></div>"
-    + "<div><b>" + af + "</b><span>anders dan<br>fractie</span></div></div>";
+    + '<h3 class="sectiekop">Contact</h3><div class="m-contact" data-id="' + esc(p.id) + '">' + contactMep(p, CONTACTEN ? (CONTACTEN[p.id] || false) : undefined) + "</div>"
+    + '<h3 class="sectiekop">Activiteit</h3>'
+    + '<div class="rollen">' + rolTegel("Rapporteur", p.rap) + rolTegel("Schaduwrapporteur", p.schaduw) + "</div>"
+    + '<div class="tegels">'
+    + "<div><b>" + p.debatten.length + "</b><span>debatten in de laatste 3 zittingen</span></div>"
+    + "<div><b>" + (p.stemmen.length ? gestemd(p) + "/" + p.stemmen.length : "–") + "</b><span>keer gestemd bij hoofdstemmingen</span></div>"
+    + "<div><b>" + ap + "</b><span>keer anders dan de partij</span></div>"
+    + "<div><b>" + af + "</b><span>keer anders dan de fractie</span></div></div>";
   function dl(l) {
     var s2 = l.slice().sort(function (x, y) { return x[2] - y[2]; });
-    return "<ul class='punten'>" + s2.map(function (x) { return '<li><a href="#dossiers?open=' + encodeURIComponent(x[0]) + '">' + esc((DKORT[x[0]] || {}).titel || x[0]) + '</a> <span class="klein">' + esc(x[0]) + (x[1] ? " · " + esc(x[1]) : "") + (x[2] ? " · afgerond" : "") + "</span></li>"; }).join("") + "</ul>";
+    return "<ul class='rollijst'>" + s2.map(function (x) {
+      return '<li class="' + (x[2] ? "klaar" : "loopt") + '">' + (x[2] ? '<span class="lamp uit"></span>' : actiefLamp()) + '<div><a href="#dossiers?open=' + encodeURIComponent(x[0]) + '">' + esc((DKORT[x[0]] || {}).titel || x[0]) + '</a><div class="klein">' + esc(x[0]) + (x[1] ? " · " + esc(x[1]) : "") + (x[2] ? " · afgerond" : " · loopt nog") + "</div></div></li>";
+    }).join("") + "</ul>";
   }
   if (p.rap.length) h += sectie("Rapporteur", p.rap.length, dl(p.rap), true);
-  if (p.schaduw.length) h += sectie("Schaduwrapporteur", p.schaduw.length, dl(p.schaduw), false);
+  if (p.schaduw.length) h += sectie("Schaduwrapporteur", p.schaduw.length, dl(p.schaduw), !p.rap.length);
   if (p.debatten.length) h += sectie("Debatten (laatste drie zittingen)", p.debatten.length, "<ul class='punten'>" + p.debatten.map(function (i) {
     var x = DEBATTEN.debatten[i]; return x ? "<li>" + kort(x.datum) + ": " + esc(x.titel) + " · " + a(x.verslag, "verslag") + "</li>" : "";
   }).join("") + "</ul>", false);
@@ -106,45 +129,42 @@ function persoonDetail(p) {
   if (!p.rap.length && !p.schaduw.length && !p.debatten.length && !p.stemmen.length) h += '<p class="klein">Geen rollen, debatten of stemmen in de opgehaalde gegevens.</p>';
   return h + sectie("Mijn notities", null, notitie("m:" + p.id), !!NOTITIES["m:" + p.id]);
 }
-function openPersoon(id) {
+function openPersoon(id, dieper) {
   var p = MENSEN_INDEX[id];
   if (p) {
-    openPaneel(p.naam, persoonDetail(p));
-    if (!CONTACTEN) contactenLaden().then(function (c) { var el = document.getElementById("m-contact"); if (el) el.innerHTML = contactMep(p, c[p.id]); }).catch(function () {
-      var el = document.getElementById("m-contact"); if (el) el.innerHTML = '<p class="klein">Contactgegevens konden niet laden.</p>';
-    });
+    openPaneel(p.naam, persoonDetail(p), { dieper: dieper });
+    if (!CONTACTEN) contactenLaden().then(function (c) {
+      alle('.m-contact[data-id="' + id + '"]').forEach(function (el) { el.innerHTML = contactMep(p, c[p.id] || false); });
+    }).catch(function () { alle('.m-contact[data-id="' + id + '"]').forEach(function (el) { el.innerHTML = contactMep(p, null); }); });
     return;
   }
-  if (/^(c-|nl-)/.test(id)) bestuurLaden().then(function () { openBestuurder(id); });
+  if (/^(c-|nl-)/.test(id)) bestuurLaden().then(function () { openBestuurder(id, dieper); });
 }
 
-// ---------- Commissie en Raad ----------
-function bestuurders() {
-  if (!BESTUUR) return [];
-  return BESTUUR.commissie.leden.concat(BESTUUR.ministers);
-}
-function openBestuurder(id) {
+// ---------- Commissie, Raad en persdiensten ----------
+function bestuurders() { return BESTUUR ? BESTUUR.commissie.leden.concat(BESTUUR.ministers) : []; }
+function openBestuurder(id, dieper) {
   var p = bestuurders().filter(function (x) { return x.id === id; })[0];
   if (!p) return;
   var h = "<h2 class='paneel-kop'>" + esc(p.naam) + "</h2><div class='klein'>" + esc(p.functie) + (p.soort === "raad" ? " · Nederland" : " · Europese Commissie") + "</div>"
     + '<div class="knoprij">' + a(p.url, p.soort === "raad" ? "Profiel op rijksoverheid.nl" : "Profiel bij de Commissie") + deelKnop(p.naam, p.url) + "</div>";
   if (p.soort === "commissie") {
-    if ((p.portefeuille || []).length) h += "<h4>Portefeuille</h4><ul class='punten'>" + p.portefeuille.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul>";
-    h += "<h4>Woordvoerders</h4>" + ((p.woordvoerders || []).length ? '<p class="klein">Van de Spokesperson’s Service, gekoppeld op onderwerp. Controleer bij twijfel de volledige lijst.</p>' + p.woordvoerders.map(woordvoerderHtml).join("") : '<p class="klein">Geen woordvoerder op onderwerp gevonden.</p>')
+    if ((p.portefeuille || []).length) h += '<h3 class="sectiekop">Portefeuille</h3><ul class="punten">' + p.portefeuille.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul>";
+    h += '<h3 class="sectiekop">Contact: woordvoerders</h3>' + ((p.woordvoerders || []).length ? '<p class="klein">Van de Spokesperson’s Service, gekoppeld op onderwerp. Controleer bij twijfel de volledige lijst.</p>' + p.woordvoerders.map(woordvoerderHtml).join("") : '<p class="klein">Geen woordvoerder op onderwerp gevonden.</p>')
       + '<div class="knoprij">' + a(BESTUUR.commissie.bron, "Alle woordvoerders van de Commissie") + "</div>";
   } else {
-    h += "<h4>Vertegenwoordigt Nederland meestal in</h4>" + ((p.formaties || []).length ? "<ul class='punten'>" + p.formaties.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul><p class='klein'>Volgt uit de portefeuille; per vergadering kan iemand anders gaan.</p>" : "<p class='klein'>Geen vaste raadsformatie.</p>");
-    h += "<h4>Persvoorlichting</h4>";
+    h += '<h3 class="sectiekop">Vertegenwoordigt Nederland meestal in</h3>' + ((p.formaties || []).length ? "<ul class='punten'>" + p.formaties.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul><p class='klein'>Volgt uit de portefeuille; per vergadering kan iemand anders gaan.</p>" : "<p class='klein'>Geen vaste raadsformatie.</p>");
+    h += '<h3 class="sectiekop">Contact: persvoorlichting</h3>';
     var teams = (p.pers || {}).teams || [];
     if (teams.length) h += teams.map(function (t) {
       return (t.naam ? '<div class="klein"><b>' + esc(t.naam) + "</b></div>" : "") + t.mensen.map(function (m) {
         return '<div class="wv"><div>' + esc(m.tekst || "Persvoorlichting") + "</div>" + contactRijen([["Telefoon", (m.tel || []).map(telLink).join(", ")], ["E-mail", mailLink(m.mail)]]) + "</div>";
       }).join("");
     }).join("");
-    else h += '<p class="klein">Geen woordvoerders op de pagina gevonden.</p>';
+    else h += '<p class="klein">Geen woordvoerders op de pagina van het ministerie gevonden.</p>';
     if ((p.pers || {}).url) h += '<div class="knoprij">' + a(p.pers.url, "Persinformatie van het ministerie") + "</div>";
   }
-  openPaneel(p.naam, h + sectie("Mijn notities", null, notitie("m:" + p.id), !!NOTITIES["m:" + p.id]));
+  openPaneel(p.naam, h + sectie("Mijn notities", null, notitie("m:" + p.id), !!NOTITIES["m:" + p.id]), { dieper: dieper });
 }
 function bestuurKaart(p) {
   return '<div class="kaart compact bkaart" data-id="' + esc(p.id) + '" role="button" tabindex="0"><div class="kaartkop"><h3>' + esc(p.naam) + "</h3></div>"
@@ -153,95 +173,97 @@ function bestuurKaart(p) {
       : ((p.formaties || []).length ? '<div class="klein feitregel">' + esc(p.formaties.join(" · ")) + "</div>" : ""))
     + '<span class="pijl" aria-hidden="true">›</span></div>';
 }
+function contactpuntenHtml(l) {
+  return (l || []).map(function (c) { return '<div class="kaart compact"><h3>' + a(c.url, c.naam) + '</h3><div class="klein">' + esc(c.plaats) + " · " + esc(c.wat) + "</div></div>"; }).join("");
+}
 function bestuurTonen(soort) {
-  var doel = document.getElementById("m-lijst"), z = zoeker(mFilter.q);
+  var doel = document.getElementById("m-lijst"), z = zoeker(mZoek);
   bezig(doel);
   bestuurLaden().then(function (b) {
-    var h = "";
+    var h = "", uitleg = "";
     if (soort === "commissie") {
       var leden = z.ordenen(b.commissie.leden.filter(function (p) { return z.past(p.naam + " " + p.functie + " " + (p.portefeuille || []).join(" ") + " " + (p.woordvoerders || []).map(function (w) { return w.naam; }).join(" "), p); }));
       var wv = z.ordenen(b.commissie.woordvoerders.filter(function (w) { return !z.leeg && z.past(w.naam + " " + w.functie + " " + (w.onderwerpen || []).join(" "), w); }));
       h = leden.map(bestuurKaart).join("") + (wv.length ? "<h2>Woordvoerders</h2>" + wv.map(function (w) { return '<div class="kaart compact">' + woordvoerderHtml(w) + "</div>"; }).join("") : "");
       document.getElementById("m-aantal").textContent = leden.length + " leden van het College" + (wv.length ? " · " + wv.length + " woordvoerders" : "");
-      document.getElementById("m-uitleg").innerHTML = "Het College van commissarissen met portefeuilles en de woordvoerders per onderwerp, van " + a("https://commission.europa.eu/about/organisation/college-commissioners_en", "commission.europa.eu") + ". Zoek op een onderwerp (bijvoorbeeld ‘trade’) om de woordvoerders te vinden." + opgehaald("bestuur", "Commissie en ministers");
-    } else {
+      uitleg = "Het College van commissarissen met portefeuilles en de woordvoerders per onderwerp, van " + a("https://commission.europa.eu/about/organisation/college-commissioners_en", "commission.europa.eu") + ". Zoek op een onderwerp (bijvoorbeeld ‘trade’) om de woordvoerders te vinden.";
+    } else if (soort === "raad") {
       var vz = b.voorzitterschap || {};
       var ministers = z.ordenen(b.ministers.filter(function (p) { return z.past(p.naam + " " + p.functie + " " + (p.formaties || []).join(" "), p); }));
-      h = (vz.land ? '<div class="kaart"><h3>Voorzitter van de Raad: ' + esc(vz.land) + '</h3><p class="klein">Tot en met ' + esc(lang(plusDagenVan(vz.tot, -1))) + ". Het voorzitterschap leidt de vergaderingen van de Raad (de Raad Buitenlandse Zaken wordt geleid door de Hoge Vertegenwoordiger). " + a(vz.site, "Site van het voorzitterschap") + "</p></div>" : "")
+      h = (vz.land && z.leeg ? '<div class="kaart"><h3>Voorzitter van de Raad: ' + esc(vz.land) + '</h3><p class="klein">Tot en met ' + esc(lang(plusDagenVan(vz.tot, -1))) + ". Het voorzitterschap leidt de vergaderingen van de Raad (de Raad Buitenlandse Zaken wordt geleid door de Hoge Vertegenwoordiger). " + a(vz.site, "Site van het voorzitterschap") + "</p></div>" : "")
         + "<h2>Nederlandse bewindspersonen</h2>" + ministers.map(bestuurKaart).join("")
-        + '<p class="klein uitleg-onder">Ministers van andere lidstaten: zie per vergadering de deelnemerslijst op de ' + a("https://www.consilium.europa.eu/nl/meetings/calendar/", "agenda van de Raad") + ".</p>"
-        + "<h2>Contact in Brussel en Den Haag</h2>" + contactpuntenHtml(b.contactpunten);
+        + '<p class="klein uitleg-onder">Ministers van andere lidstaten: zie per vergadering de deelnemerslijst op de ' + a("https://www.consilium.europa.eu/nl/meetings/calendar/", "agenda van de Raad") + ".</p>";
       document.getElementById("m-aantal").textContent = ministers.length + " Nederlandse bewindspersonen";
-      document.getElementById("m-uitleg").innerHTML = "Bewindspersonen en woordvoerders per ministerie van " + a("https://www.rijksoverheid.nl/regering/bewindspersonen", "rijksoverheid.nl") + ". In welke raadsformatie iemand meestal zit, volgt uit de portefeuille." + opgehaald("bestuur", "Commissie en ministers");
+      uitleg = "Bewindspersonen en woordvoerders per ministerie van " + a("https://www.rijksoverheid.nl/regering/bewindspersonen", "rijksoverheid.nl") + ". In welke raadsformatie iemand meestal zit, volgt uit de portefeuille.";
+    } else {
+      var pd = (b.contactpunten || []).filter(function (c) { return z.past(c.naam + " " + c.plaats + " " + c.wat, c); });
+      h = contactpuntenHtml(pd);
+      document.getElementById("m-aantal").textContent = pd.length + " persdiensten";
+      uitleg = "De officiële persdiensten in Brussel en Den Haag. Telefoon en e-mail staan op hun eigen pagina.";
     }
+    document.getElementById("m-uitleg").innerHTML = uitleg + opgehaald("bestuur", "Commissie en ministers");
     bedoelJe("m-zoek", z);
     doel.innerHTML = h || '<p class="leeg">Niemand gevonden.</p>';
     document.getElementById("m-meer").classList.add("verborgen");
   }).catch(function () { laadFout(doel); });
 }
-function contactpuntenHtml(l) {
-  return (l || []).map(function (c) { return '<div class="kaart compact"><h3>' + a(c.url, c.naam) + '</h3><div class="klein">' + esc(c.plaats) + " · " + esc(c.wat) + "</div></div>"; }).join("");
-}
-function plusDagenVan(isoDatum, n) { var d = dt(isoDatum); d.setDate(d.getDate() + n); return iso(d); }
 
-var mFilter = { q: "", land: "", fractie: "", rol: false, n: 60, soort: "parlement" };
+// ---------- lijst en filters ----------
+var mZoek = "", mN = 60, MOPT = {};
+function alleenParlement() { return MF.w("wie") === "parlement"; }
+var MF = maakFilter("m", [
+  { id: "wie", naam: "Wie", meer: false, standaard: "parlement", opties: [["parlement", "Europarlementariërs"], ["commissie", "Europese Commissie"], ["raad", "Raad en ministers"], ["persdiensten", "Persdiensten"]] },
+  { id: "land", naam: "Land", meer: true, standaard: [], opties: function () { return MOPT.land || []; }, toon: alleenParlement },
+  { id: "fractie", naam: "Fractie", meer: true, standaard: [], opties: function () { return MOPT.fractie || []; }, toon: alleenParlement },
+  { id: "rol", naam: "Rol", meer: true, standaard: [], opties: [["lopend", "(Schaduw)rapporteur in een lopend dossier"]], toon: alleenParlement }
+], function () { mN = 60; if (MENSEN && mensenOpgezet) mensenTonen(); });
 function mensenTonen() {
-  document.getElementById("m-filterknop").classList.toggle("verborgen", mFilter.soort !== "parlement");
-  document.getElementById("m-zoek").placeholder = mFilter.soort === "parlement" ? "Naam, partij of land" : mFilter.soort === "commissie" ? "Naam, portefeuille of onderwerp" : "Naam, ministerie of raad";
-  if (mFilter.soort !== "parlement") return bestuurTonen(mFilter.soort);
+  var wie = MF.w("wie");
+  document.getElementById("m-zoek").placeholder = { parlement: "Naam, partij of land", commissie: "Naam, portefeuille of onderwerp", raad: "Naam, ministerie of raad", persdiensten: "Zoek een persdienst" }[wie];
+  if (wie !== "parlement") return bestuurTonen(wie);
   document.getElementById("m-uitleg").textContent = "Alle 720 europarlementariërs, plus oud-leden die nog een rol in een dossier hebben. Stemgedrag gaat over de hoofdstemmingen van de laatste twee zittingen. Contactgegevens komen van het Parlement.";
-  var z = zoeker(mFilter.q);
+  var z = zoeker(mZoek);
   var uit = MENSEN.filter(function (p) {
-    if (mFilter.land && p.land !== mFilter.land) return false;
-    if (mFilter.fractie && p.fractie !== mFilter.fractie) return false;
-    if (mFilter.rol && !p.rap.concat(p.schaduw).some(function (x) { return !x[2]; })) return false;
-    if (!z.past(p.naam + " " + p.partij + " " + p.fractie + " " + landNaam(p.land) + " " + (p.land || ""), p)) return false;
-    return true;
+    if (!MF.past("land", p.land) || !MF.past("fractie", p.fractie)) return false;
+    if (MF.aan("rol", "lopend") && !p.rap.concat(p.schaduw).some(function (x) { return !x[2]; })) return false;
+    return z.past(p.naam + " " + p.partij + " " + p.fractie + " " + landNaam(p.land) + " " + (p.land || ""), p);
   }).sort(function (x, y) { return (x.land === "NL" ? 0 : 1) - (y.land === "NL" ? 0 : 1) || landNaam(x.land).localeCompare(landNaam(y.land)) || (x.fractie || "").localeCompare(y.fractie || "") || (x.partij || "").localeCompare(y.partij || "") || x.naam.localeCompare(y.naam); });
   uit = z.ordenen(uit);
   bedoelJe("m-zoek", z);
   document.getElementById("m-aantal").textContent = uit.length + " personen";
   var doel = document.getElementById("m-lijst");
-  doel.innerHTML = uit.slice(0, mFilter.n).map(persoonKaart).join("") || '<p class="leeg">Niemand gevonden.</p>';
-  document.getElementById("m-meer").classList.toggle("verborgen", uit.length <= mFilter.n);
-  filterTeller("m-filterknop", (mFilter.land ? 1 : 0) + (mFilter.fractie ? 1 : 0) + (mFilter.rol ? 1 : 0));
+  doel.innerHTML = uit.slice(0, mN).map(persoonKaart).join("") || '<p class="leeg">Niemand gevonden.</p>';
+  document.getElementById("m-meer").classList.toggle("verborgen", uit.length <= mN);
 }
 function mensenOpzetten() {
-  var wacht = null;
   var landen = {}, fracties = {};
   MENSEN.forEach(function (p) { if (p.land) landen[p.land] = 1; if (p.fractie) fracties[p.fractie] = 1; });
-  document.getElementById("m-land").innerHTML = '<option value="">Alle landen</option>' + Object.keys(landen).sort(function (x, y) { return landNaam(x).localeCompare(landNaam(y)); })
-    .map(function (c) { return '<option value="' + esc(c) + '">' + esc(landNaam(c)) + "</option>"; }).join("");
-  document.getElementById("m-fractie").innerHTML = '<option value="">Alle fracties</option>' + Object.keys(fracties).sort().map(function (f) { return "<option>" + esc(f) + "</option>"; }).join("");
-  document.getElementById("m-zoek").addEventListener("input", function (ev) { clearTimeout(wacht); wacht = setTimeout(function () { mFilter.q = ev.target.value.trim(); mFilter.n = 60; mensenTonen(); }, 200); });
-  document.getElementById("m-land").addEventListener("change", function (ev) { mFilter.land = ev.target.value; mFilter.n = 60; mensenTonen(); });
-  document.getElementById("m-fractie").addEventListener("change", function (ev) { mFilter.fractie = ev.target.value; mFilter.n = 60; mensenTonen(); });
-  document.getElementById("m-meer").addEventListener("click", function () { mFilter.n += 60; mensenTonen(); });
-  document.getElementById("m-rol").addEventListener("change", function (ev) { mFilter.rol = ev.target.checked; mensenTonen(); });
-  document.getElementById("m-wis").addEventListener("click", function () {
-    mFilter.land = mFilter.fractie = ""; mFilter.rol = false; mFilter.n = 60;
-    document.getElementById("m-land").value = document.getElementById("m-fractie").value = ""; document.getElementById("m-rol").checked = false;
-    mensenTonen();
-  });
+  MOPT.land = Object.keys(landen).sort(function (x, y) { return landNaam(x).localeCompare(landNaam(y)); }).map(function (c) { return [c, landNaam(c)]; });
+  MOPT.fractie = Object.keys(fracties).sort().map(function (f) { return [f, f]; });
+  var wacht = null;
+  document.getElementById("m-zoek").addEventListener("input", function (ev) { clearTimeout(wacht); wacht = setTimeout(function () { mZoek = ev.target.value.trim(); mN = 60; mensenTonen(); }, 200); });
+  document.getElementById("m-meer").addEventListener("click", function () { mN += 60; mensenTonen(); });
   bijKaartTik(document.getElementById("m-lijst"), ".mkaart", function (k) { openPersoon(k.dataset.id); });
   bijKaartTik(document.getElementById("m-lijst"), ".bkaart", function (k) { openBestuurder(k.dataset.id); });
-  document.getElementById("m-soort").addEventListener("click", function (ev) {
-    var c = ev.target.closest(".chip");
-    if (!c) return;
-    alle("#m-soort .chip").forEach(function (x) { x.classList.toggle("actief", x === c); });
-    mFilter.soort = c.dataset.m; mensenTonen();
-  });
 }
 var mensenOpgezet = false;
+// alle gegevens die het detail van een persoon nodig heeft
+function mensenKlaar() {
+  return Promise.all([mensenLaden(), laden("debatten"), laden("stemmen"), laden("dossiers-kort")]).then(function (r) {
+    if (!Object.keys(DKORT).length) r[3].forEach(function (d) { DKORT[d.ref] = d; });
+    if (!DEBATTEN) DEBATTEN = r[1];
+    if (!STEMMEN) STEMMEN = r[2];
+    if (!Object.keys(STEM_INDEX).length) STEMMEN.stemmen.forEach(function (s) { STEM_INDEX[s.id] = s; });
+  });
+}
 function mensenTab(q) {
   var doel = document.getElementById("m-lijst");
   bezig(doel);
-  Promise.all([mensenLaden(), laden("debatten"), laden("stemmen"), laden("dossiers-kort")]).then(function (r) {
-    if (!Object.keys(DKORT).length) r[3].forEach(function (d) { DKORT[d.ref] = d; });
-    if (!DEBATTEN) DEBATTEN = r[1];
-    if (!STEMMEN) { STEMMEN = r[2]; STEMMEN.stemmen.forEach(function (s) { STEM_INDEX[s.id] = s; }); }
+  mensenKlaar().then(function () {
     if (!mensenOpgezet) { mensenOpgezet = true; mensenOpzetten(); }
     mensenTonen();
-    if (q.id) openPersoon(q.id);
+    // contactgegevens op de achtergrond, daarna de iconen in de lijst
+    if (!CONTACTEN) contactenLaden().then(function () { if (MF.w("wie") === "parlement") mensenTonen(); }).catch(function () {});
+    if (q && q.id) openPersoon(q.id);
   }).catch(function () { laadFout(doel); });
 }

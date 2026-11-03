@@ -77,25 +77,33 @@ function stemDetail(s) {
   }).join("") + "</ul>";
   return h + notitie("s:" + s.id);
 }
-function openStem(id) { var s = STEM_INDEX[id]; if (s) openPaneel("Stemming", stemDetail(s)); }
+function openStem(id, dieper) { var s = STEM_INDEX[id]; if (s) openPaneel("Stemming", stemDetail(s), { dieper: dieper }); }
+function stemmenLaden() { return laden("stemmen").then(function (d) { if (!STEMMEN) STEMMEN = d; stemIndex(); return STEMMEN; }); }
 
-var sFilter = { q: "", terrein: "", zitting: "", uitslag: "", verdeeld: false, afwijk: false, sort: "datum" };
+var sZoek = "", SOPT = {};
+var SF = maakFilter("s", [
+  { id: "sort", naam: "Sorteren", meer: false, standaard: "datum", opties: [["datum", "Nieuwste eerst"], ["oud", "Oudste eerst"], ["verschil", "Kleinste verschil voor/tegen"], ["onthouden", "Meeste onthoudingen"]] },
+  { id: "terrein", naam: "Onderwerp", meer: true, standaard: [], opties: function () { return SOPT.terrein || []; } },
+  { id: "zitting", naam: "Zitting", meer: true, standaard: [], opties: function () { return SOPT.zitting || []; } },
+  { id: "uitslag", naam: "Uitslag", meer: true, standaard: [], opties: [["ADOPTED", "Aangenomen"], ["REJECTED", "Verworpen"]] },
+  { id: "nl", naam: "Nederlandse partijen", meer: true, standaard: [], opties: [["verdeeld", "Stemden verschillend"], ["afwijk", "Een partij stemde anders dan haar fractie"]] }
+], function () { if (STEMMEN && stemmenOpgezet) stemmenTonen(); });
 function stemmenTonen() {
-  var zk = zoeker(sFilter.q);
+  var zk = zoeker(sZoek);
   var uit = STEMMEN.stemmen.filter(function (s) {
-    if (sFilter.terrein && (s.terreinen || []).indexOf(sFilter.terrein) < 0) return false;
-    if (sFilter.zitting) { var z = sFilter.zitting.split("|"), d = s.moment.slice(0, 10); if (d < z[0] || d > z[1]) return false; }
-    if (sFilter.uitslag && s.uitslag !== sFilter.uitslag) return false;
-    if (sFilter.verdeeld && !s.nl_verdeeld) return false;
-    if (sFilter.afwijk && !(s.afwijkers || []).length) return false;
-    if (!zk.past(s.titel + " " + (s.procedure || "") + " " + (s.procedure_titel || ""), s)) return false;
-    return true;
+    if (!SF.past("terrein", s.terreinen || []) || !SF.past("uitslag", s.uitslag)) return false;
+    var d = s.moment.slice(0, 10);
+    if (!SF.past("zitting", (STEMMEN.zittingen || []).filter(function (z) { return d >= z.begin && d <= z.eind; }).map(function (z) { return z.begin; }))) return false;
+    if (SF.aan("nl", "verdeeld") && !s.nl_verdeeld) return false;
+    if (SF.aan("nl", "afwijk") && !(s.afwijkers || []).length) return false;
+    return zk.past(s.titel + " " + (s.procedure || "") + " " + (s.procedure_titel || ""), s);
   });
+  var srt = SF.w("sort");
   uit.sort(function (x, y) {
     function verschil(s) { return Math.abs((s.totaal.FOR || 0) - (s.totaal.AGAINST || 0)); }
-    if (sFilter.sort === "verschil") return verschil(x) - verschil(y);
-    if (sFilter.sort === "onthouden") return (y.totaal.ABSTENTION || 0) - (x.totaal.ABSTENTION || 0);
-    if (sFilter.sort === "oud") return x.moment.localeCompare(y.moment);
+    if (srt === "verschil") return verschil(x) - verschil(y);
+    if (srt === "onthouden") return (y.totaal.ABSTENTION || 0) - (x.totaal.ABSTENTION || 0);
+    if (srt === "oud") return x.moment.localeCompare(y.moment);
     return y.moment.localeCompare(x.moment);
   });
   uit = zk.ordenen(uit);
@@ -103,28 +111,17 @@ function stemmenTonen() {
   document.getElementById("s-aantal").textContent = uit.length + " hoofdstemmingen";
   var doel = document.getElementById("s-lijst");
   doel.innerHTML = uit.map(stemKaart).join("") || '<p class="leeg">Geen stemmingen met deze filters.</p>';
-  filterTeller("s-filterknop", ["terrein", "zitting", "uitslag", "verdeeld", "afwijk"].filter(function (k) { return sFilter[k]; }).length + (sFilter.sort !== "datum" ? 1 : 0));
   window.euMarkeer(doel);
 }
+function stemIndex() { STEMMEN.stemmen.forEach(function (s) { STEM_INDEX[s.id] = s; }); }
 function stemmenOpzetten() {
   var ter = {};
-  STEMMEN.stemmen.forEach(function (s) { STEM_INDEX[s.id] = s; (s.terreinen || []).forEach(function (t) { ter[t] = 1; }); });
-  document.getElementById("s-terrein").innerHTML = '<option value="">Alle onderwerpen</option>' + Object.keys(ter).sort().map(function (t) { return "<option>" + esc(t) + "</option>"; }).join("");
-  document.getElementById("s-zitting").innerHTML = '<option value="">Beide zittingen</option>' + (STEMMEN.zittingen || []).map(function (z) { return '<option value="' + z.begin + "|" + z.eind + '">Zitting ' + kort(z.begin) + " – " + kort(z.eind) + "</option>"; }).join("");
-  [["s-terrein", "terrein"], ["s-zitting", "zitting"], ["s-uitslag", "uitslag"], ["s-sort", "sort"]].forEach(function (x) {
-    document.getElementById(x[0]).addEventListener("change", function (ev) { sFilter[x[1]] = ev.target.value; stemmenTonen(); });
-  });
-  [["s-verdeeld", "verdeeld"], ["s-afwijk", "afwijk"]].forEach(function (x) {
-    document.getElementById(x[0]).addEventListener("change", function (ev) { sFilter[x[1]] = ev.target.checked; stemmenTonen(); });
-  });
-  document.getElementById("s-wis").addEventListener("click", function () {
-    ["terrein", "zitting", "uitslag"].forEach(function (k) { sFilter[k] = ""; document.getElementById("s-" + k).value = ""; });
-    ["verdeeld", "afwijk"].forEach(function (k) { sFilter[k] = false; document.getElementById("s-" + k).checked = false; });
-    sFilter.sort = "datum"; document.getElementById("s-sort").value = "datum";
-    stemmenTonen();
-  });
+  stemIndex();
+  STEMMEN.stemmen.forEach(function (s) { (s.terreinen || []).forEach(function (t) { ter[t] = 1; }); });
+  SOPT.terrein = Object.keys(ter).sort().map(function (t) { return [t, t]; });
+  SOPT.zitting = (STEMMEN.zittingen || []).map(function (z) { return [z.begin, "Zitting " + kort(z.begin) + " – " + kort(z.eind)]; });
   var wacht = null;
-  document.getElementById("s-zoek").addEventListener("input", function (ev) { clearTimeout(wacht); wacht = setTimeout(function () { sFilter.q = ev.target.value.trim(); stemmenTonen(); }, 200); });
+  document.getElementById("s-zoek").addEventListener("input", function (ev) { clearTimeout(wacht); wacht = setTimeout(function () { sZoek = ev.target.value.trim(); stemmenTonen(); }, 200); });
   bijKaartTik(document.getElementById("s-lijst"), ".skaart", function (k) { openStem(k.dataset.id); });
 }
 function stemmenTab(q) {

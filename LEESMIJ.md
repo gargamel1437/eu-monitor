@@ -45,31 +45,38 @@ Vijf tabbladen onderin: **Agenda** · **Nieuws** · **Overzicht** (in het midden
 **Dossiers** · **Stemmen** (stemmingen en europarlementariërs). De bronnen staan onder de
 tandwiel rechtsboven (Instellingen > Over). Licht of donker volgt de instelling van je iPhone of computer.
 
-- **Instellingen** (tandwiel): starttab, tekstgrootte, minder beweging, nieuwsbronnen aan/uit,
-  Engelstalige berichten, wat er onder "Alles" in de agenda staat, het Overzicht inrichten,
-  je notities (exporteren of wissen), persdiensten in Brussel en Den Haag, en Bronnen. Alles
-  wordt alleen in je eigen browser bewaard.
-- **Overzicht inrichten**: knop "Wijzig overzicht" onderaan het Overzicht. Blokken aan of uit,
-  volgorde slepen met ≡, aantal regels, en per blok een filter (agenda per soort, nieuws per
-  bron, dossiers met Nederlandse rapporteur).
+- **Filters**: overal hetzelfde. Naast elk zoekveld een knop Filters met een teller. Per filter
+  een rij; tik erop en vink één of meer dingen aan. Boven de lijst staat een regel met wat er aan
+  staat (met Wis). Keuzes worden bewaard. De code staat in `onderdelen/js/filters.js`.
+- **Agenda**: Week · Maand · Jaar (of knijpen met twee vingers). Week is een lijst met Deze week,
+  Volgende week en Later; Maand is een kalender met puntjes per instelling; Jaar toont twaalf
+  maanden. Filters: Wat (stemmingen en besluiten, debatten, ministersoverleg, toppen,
+  persmomenten, wetgevingsstappen), Wie (Parlement, Raad, Europese Raad, Commissie,
+  internationaal), Periode (komend of afgelopen debatten) en Ook tonen. De categorieën zet
+  `europa.py` op elk item (`categorieen()`). Tik op een item voor het programma met tijden, de
+  locatie, de livestream en **＋ Agenda** (zitting, dag of dagdeel). De planning van de Commissie
+  per kwartaal staat in een inklapbaar blok onderaan.
+- **Nieuws**: hetzelfde nieuws van meerdere media wordt één bericht met "Ook bij: …" (alleen als
+  de koppen in dezelfde taal duidelijk overeenkomen, binnen 24 uur; zie `samenvoegen()` in
+  `eu_nieuws.py`).
+- **Overzicht**: "Wijzig" linksboven. Rood min = weghalen, groen plus = toevoegen, ≡ = slepen.
+  Tik op een blok voor het aantal regels en een filter. Recente zoekopdrachten verschijnen in het
+  zoekveld (veeg naar links of Wis, met bevestiging).
+- **Instellingen** (tandwiel): eerst de categorieën (Algemeen, Nieuws, Agenda, Overzicht, Mijn
+  notities, Over), dan een niveau dieper. Terug of terugvegen gaat één niveau terug.
+- **Mensen**: in de filters kies je Wie (europarlementariërs, Commissie, Raad en ministers,
+  persdiensten). Bij een europarlementariër staan contact en activiteit (totaal en nu actief,
+  met een groen lampje voor wat nog loopt). Een link in een detail (bijvoorbeeld naar een
+  stemming) opent een scherm dieper; Terug brengt je terug.
+- **Vegen**: in Nieuws (Media | Persberichten) en Stemmen (Stemmingen | Mensen) veeg je naar
+  links of rechts. De schakelaar blijft op zijn plek; het andere deel begint bovenaan.
+- **Meldingen** (zoals "bron niet bereikbaar") klik je weg met het kruisje.
 - **Als web-app** (op het beginscherm) maakt de site geen eigen stappen in de geschiedenis.
   Zo kan alleen het eigen terugvegen van een paneel bewegen, en schuift de pagina erachter niet mee.
-
-- **Vegen**: in een tab met een schakelaar (Nieuws: Media | Persberichten; Stemmen)
-  veeg je naar links of rechts naar het volgende deel. Elk deel onthoudt waar je was.
 - **Zoeken** vergeeft tikfouten, accenten en hoofdletters, en kent afkortingen en
   Nederlands/Engels (AI = KI, EC = Commissie, Oekraïne = Ukraine). Treffers zonder tikfout
-  staan eerst; bij bijna-treffers staat er "Bedoel je …?". De lijst met synoniemen staat in
-  `onderdelen/js/basis.js` (`SYNONIEMEN`).
-- **Agenda**: één lijst met knoppen bovenaan (Alles · Parlement · Raad · EU-top · Commissie ·
-  Dossiers · Eerder), ingedeeld in kalenderweken. In de lijst staan alleen soort, titel, plaats
-  en datum. Tik op een item voor het programma met exacte tijden per dagdeel (open data van het
-  Parlement), de locatie (gebouw en zaal), de livestream, de verwachte dossiers en **＋ Agenda**
-  voor de hele zitting, één dag of één dagdeel (`.ics` met locatie, ook in de web-app). De Raad
-  en EU-toppen hebben alleen een datum: het voorzitterschap publiceert geen tijden. De midday
-  briefing en het College van de Commissie zijn gebruikelijke tijdstippen, geen bevestigde afspraken.
-- **Mensen**: Parlement (met contactgegevens), Commissie (commissarissen en woordvoerders) en
-  Raad (voorzitterschap, Nederlandse bewindspersonen met persvoorlichting, persdiensten).
+  staan eerst; bij bijna-treffers staat er "Bedoel je …?" (in de taal van wat je typte). De lijst
+  met synoniemen staat in `onderdelen/js/basis.js` (`SYNONIEMEN`).
 - **Stemmingen** tonen in welke vergadering ze waren, met links naar agenda, notulen en de
   hoofdelijke stemmingen.
 - **App-icoon**: de bron is `onderdelen/icoon-donker.html`. Na een nieuw icoon moet je de

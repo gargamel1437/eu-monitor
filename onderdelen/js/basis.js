@@ -118,7 +118,9 @@ function segBeginY(schakel) {
   var plak = parseFloat(getComputedStyle(rij).top) || 0;
   return Math.max(0, el.getBoundingClientRect().top + window.scrollY - plak - rij.offsetHeight - 8);
 }
-function segDoelY(id, schakel, y) { return segScroll[id] != null ? segScroll[id] : Math.min(y, segBeginY(schakel)); }
+// Wisselen van deel laat de schakelaar op zijn plek: ben je al voorbij het begin van de lijst,
+// dan begint het andere deel bovenaan, net onder de schakelaar. Anders blijft alles staan.
+function segDoelY(id, schakel, y) { return Math.min(y, segBeginY(schakel)); }
 function zetBel(schakel, van, naar, f) {
   var bel = schakel.querySelector(".schakel-bel");
   if (!bel || !van) return;
@@ -149,7 +151,7 @@ function kiesSegment(knop) {
 }
 function toonSegment(id) { var k = document.querySelector('.schakel button[data-toon="' + id + '"]'); if (k && !k.classList.contains("actief")) kiesSegment(k); }
 alle(".schakel").forEach(function (schakel) {
-  if (!schakel.querySelector("button[data-toon]")) return;
+  if (!schakel.querySelector("button")) return;
   var bel = document.createElement("span");
   bel.className = "schakel-bel"; bel.setAttribute("aria-hidden", "true");
   schakel.insertBefore(bel, schakel.firstChild);
@@ -540,15 +542,21 @@ function zoeker(q) {
     }
     if (t.length < 4 || /^\d+$/.test(t)) return 0;
     var max = t.length >= 8 ? 2 : 1;
+    // het woord met de kleinste afstand in deze tekst (zo komt "Bedoel je" uit dezelfde taal)
+    var beste = null, besteD = 99;
     for (var i = 0; i < z.woorden.length; i++) {
       var kandidaat = z.woorden[i];
       if (kandidaat.length < 3) continue;
-      // hele woord met een tikfout, of het begin van een langer woord met een tikfout
-      if (afstand(t, kandidaat, max) <= max || (kandidaat.length > t.length && t.length >= 5 && afstand(t, kandidaat.slice(0, t.length), max) <= max)) {
-        var b = bijnaWoorden[t] || (bijnaWoorden[t] = {});
-        b[kandidaat] = (b[kandidaat] || 0) + 1;
-        return 1;
-      }
+      var dHeel = afstand(t, kandidaat, max);
+      var dBegin = kandidaat.length > t.length && t.length >= 5 ? afstand(t, kandidaat.slice(0, t.length), max) + 0.5 : max + 1;
+      var d = Math.min(dHeel, dBegin);
+      if (d <= max + 0.5 && d < besteD) { beste = kandidaat; besteD = d; if (d <= 1) break; }
+    }
+    if (beste) {
+      var b = bijnaWoorden[t] || (bijnaWoorden[t] = {});
+      var x = b[beste] || (b[beste] = { n: 0, d: besteD });
+      x.n++; x.d = Math.min(x.d, besteD);
+      return 1;
     }
     return 0;
   }
@@ -578,7 +586,8 @@ function zoeker(q) {
       var uit = delen.map(function (t) {
         var b = bijnaWoorden[t];
         if (!b) return t;
-        return Object.keys(b).sort(function (x, y) { return b[y] - b[x]; })[0];
+        // het woord dat het dichtst bij je tikfout ligt (zo blijft het in jouw taal), daarna het vaakst gevonden
+        return Object.keys(b).sort(function (x, y) { return b[x].d - b[y].d || b[y].n - b[x].n; })[0];
       }).join(" ");
       return uit === delen.join(" ") ? "" : uit;
     }
@@ -705,7 +714,7 @@ document.addEventListener("click", function (ev) {
   }
   window.addEventListener("online", toon); window.addEventListener("offline", toon); toon();
   if ("serviceWorker" in navigator && location.protocol === "https:") {
-    window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function () {}); });
+    window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).catch(function () {}); });
   }
 })();
 
@@ -717,3 +726,34 @@ function onthoudZoek(q) {
   RECENT = [q].concat(RECENT.filter(function (x) { return normaal(x) !== normaal(q); })).slice(0, 12);
   bewaar("eu-recent", JSON.stringify(RECENT));
 }
+
+
+// ---------- meldingen wegklikken (blijven weg tot er een andere melding is) ----------
+(function () {
+  var weg = leesJSON("eu-meldingen-weg", []);
+  alle("#meldingen .melding").forEach(function (m) {
+    var sleutel = normaal(m.textContent).replace(/\d+/g, "#").slice(0, 120);
+    if (weg.indexOf(sleutel) >= 0) { m.remove(); return; }
+    var x = document.createElement("button");
+    x.type = "button"; x.className = "melding-weg"; x.setAttribute("aria-label", "Melding wegklikken"); x.textContent = "×";
+    x.addEventListener("click", function () {
+      weg = [sleutel].concat(weg.filter(function (k) { return k !== sleutel; })).slice(0, 20);
+      bewaar("eu-meldingen-weg", JSON.stringify(weg));
+      m.classList.add("weg"); setTimeout(function () { m.remove(); }, 200);
+    });
+    m.appendChild(x);
+  });
+})();
+
+// ---------- nieuwe versie: korte melding "Bijgewerkt" ----------
+(function () {
+  var vorige = lees("eu-versie");
+  if (META.bijgewerkt && vorige && vorige !== META.bijgewerkt) {
+    var t = document.createElement("div");
+    t.className = "toast"; t.setAttribute("role", "status"); t.textContent = "Bijgewerkt · " + META.bijgewerkt.slice(11) + " uur";
+    document.body.appendChild(t);
+    setTimeout(function () { t.classList.add("zichtbaar"); }, 300);
+    setTimeout(function () { t.classList.remove("zichtbaar"); setTimeout(function () { t.remove(); }, 400); }, 3200);
+  }
+  if (META.bijgewerkt) bewaar("eu-versie", META.bijgewerkt);
+})();

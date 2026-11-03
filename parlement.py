@@ -47,10 +47,16 @@ def vergaderdagen():
 
 def _vergaderdagen():
     vandaag = date.today()
-    jaren = {vandaag.year, (vandaag + timedelta(days=45)).year, (vandaag - timedelta(days=45)).year}
+    jaren = {vandaag.year, vandaag.year + 1, (vandaag - timedelta(days=45)).year}
     dagen = []
     for jaar in sorted(jaren):
-        for m in ophalen_json(f"{EP}/meetings?year={jaar}&{FMT}&limit=300", 120)["data"]:
+        try:
+            vergaderingen = ophalen_json(f"{EP}/meetings?year={jaar}&{FMT}&limit=300", 120)["data"]
+        except ValueError:
+            if jaar > vandaag.year:   # de kalender van volgend jaar staat er soms nog niet
+                continue
+            raise
+        for m in vergaderingen:
             plaats = (m.get("hasLocality") or "").rsplit("/", 1)[-1]
             dagen.append({"id": m["activity_id"], "datum": m["activity_date"],
                           "plaats": PLAATSEN.get(plaats, plaats or "?")})
@@ -208,4 +214,7 @@ def alles(leden, zittingen_terug=3, dagen_vooruit=28):
         "debatten": [d for dag in debat_dagen for d in dag],
         "agenda": agenda,
         "later": later,
+        # alle bekende zittingen vanaf vandaag (voor de maand- en jaarweergave van de agenda)
+        "kalender": [{"begin": g[0]["datum"], "eind": g[-1]["datum"], "plaats": g[0]["plaats"]}
+                     for g in groepen if g[-1]["datum"] >= vandaag.isoformat()],
     }

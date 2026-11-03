@@ -401,7 +401,8 @@ def bijwerken(max_per_run=MAX_PER_RUN, extra=()):
         except Exception as e:
             fouten.append(f"{ref}: {e}")
             return None
-    with ThreadPoolExecutor(4) as pool:
+    # rustig aan: OEIL weigert bij te veel verzoeken tegelijk (HTTP 429)
+    with ThreadPoolExecutor(2) as pool:
         list(pool.map(veilig, nodig))
     alles = [d for d in (lees(r) for r in refs) if d and not d.get("onbekend")]
     nog_te_doen = sum(1 for r in refs if lees(r) is None)

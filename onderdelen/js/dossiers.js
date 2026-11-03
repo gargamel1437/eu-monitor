@@ -103,23 +103,38 @@ function dossierDetail(d) {
   if ((d.onderwerpen || []).length) h += '<p class="klein">Onderwerpen (OEIL): ' + d.onderwerpen.map(function (o) { return esc(o[0] + " " + o[1]); }).join("; ") + "</p>";
   return h + notitie("d:" + d.ref);
 }
-function openDossier(ref) { var d = DOSSIER_INDEX[ref]; if (d) openPaneel(d.ref, dossierDetail(d)); }
-
-var dFilter = { fase: "", q: "", terrein: "", commissie: "", soort: "", jaar: "", nl: false, afgerond: false, sort: lees("eu-d-sort") || "laatst", n: 30 };
-function dossiersTonen() {
-  var q = dFilter.q, z = zoeker(q);
-  var uit = DOSSIERS.filter(function (d) {
-    if (!dFilter.afgerond && d.afgerond && !(d.eigen && d.eigen.titel) && z.leeg) return false;
-    if (dFilter.fase && (d.fase == null || FASEN[d.fase] !== dFilter.fase)) return false;
-    if (dFilter.terrein && (d.terreinen || []).indexOf(dFilter.terrein) < 0) return false;
-    if (dFilter.commissie && !verantwoordelijk(d).some(function (c) { return c.code === dFilter.commissie; })) return false;
-    if (dFilter.soort && d.soort !== dFilter.soort) return false;
-    if (dFilter.jaar && d.ref.slice(0, 4) !== dFilter.jaar) return false;
-    if (dFilter.nl && !heeftNL(d)) return false;
-    if (!z.past(d.ref + " " + d.titel + " " + ((d.eigen || {}).titel || "") + " " + rapporteursVan(d).map(function (p) { return p.naam; }).join(" ") + " " + (d.commissaris || ""), d)) return false;
-    return true;
+function openDossier(ref, dieper) { var d = DOSSIER_INDEX[ref]; if (d) openPaneel(d.ref, dossierDetail(d), { dieper: dieper }); }
+// alleen de gegevens klaarzetten (ook als je een dossier vanuit een ander scherm opent)
+function dossiersLaden() {
+  return Promise.all([laden("dossiers"), mensenLaden()]).then(function (r) {
+    if (!DOSSIERS) { DOSSIERS = r[0]; dossiersOpzetten(); }
+    return DOSSIERS;
   });
-  var s = dFilter.sort;
+}
+
+var dZoek = "", dN = 30, DOPT = {};
+var DF = maakFilter("d", [
+  { id: "sort", naam: "Sorteren", meer: false, standaard: "laatst", opties: [["laatst", "Laatst bijgewerkt"], ["nieuw", "Nieuwste eerst"], ["gepland", "Eerstvolgende geplande stap"], ["naam", "Op naam"]] },
+  { id: "fase", naam: "Fase", meer: true, standaard: [], opties: FASEN.map(function (f) { return [f, f]; }) },
+  { id: "terrein", naam: "Onderwerp", meer: true, standaard: [], opties: function () { return DOPT.terrein || []; } },
+  { id: "commissie", naam: "Parlementscommissie", meer: true, standaard: [], opties: function () { return DOPT.commissie || []; } },
+  { id: "soort", naam: "Soort procedure", meer: true, standaard: [], opties: function () { return DOPT.soort || []; } },
+  { id: "jaar", naam: "Jaar", meer: true, standaard: [], opties: function () { return DOPT.jaar || []; } },
+  { id: "rapporteur", naam: "Rapporteur", meer: true, standaard: [], opties: [["nl", "Nederlandse (schaduw)rapporteur"]] },
+  { id: "ook", naam: "Ook tonen", meer: true, alles: false, standaard: [], opties: [["afgerond", "Afgeronde dossiers (laatste 6 maanden)"]] }
+], function () { dN = 30; if (DOSSIERS) dossiersTonen(); });
+function dossiersTonen() {
+  var z = zoeker(dZoek);
+  var uit = DOSSIERS.filter(function (d) {
+    if (!DF.aan("ook", "afgerond") && d.afgerond && !(d.eigen && d.eigen.titel) && z.leeg) return false;
+    if (!DF.past("fase", d.fase == null ? "-" : FASEN[d.fase])) return false;
+    if (!DF.past("terrein", d.terreinen || [])) return false;
+    if (!DF.past("commissie", verantwoordelijk(d).map(function (c) { return c.code; }))) return false;
+    if (!DF.past("soort", d.soort) || !DF.past("jaar", d.ref.slice(0, 4))) return false;
+    if (DF.aan("rapporteur", "nl") && !heeftNL(d)) return false;
+    return z.past(d.ref + " " + d.titel + " " + ((d.eigen || {}).titel || "") + " " + rapporteursVan(d).map(function (p) { return p.naam; }).join(" ") + " " + (d.commissaris || ""), d);
+  });
+  var s = DF.w("sort");
   uit.sort(function (x, y) {
     if (s === "naam") return titelVan(x).localeCompare(titelVan(y));
     if (s === "nieuw") return (y.begin || "").localeCompare(x.begin || "") || y.ref.localeCompare(x.ref);
@@ -130,18 +145,13 @@ function dossiersTonen() {
   bedoelJe("d-zoek", z);
   var doel = document.getElementById("d-lijst");
   document.getElementById("d-aantal").textContent = uit.length + " dossiers";
-  doel.innerHTML = uit.slice(0, dFilter.n).map(dossierKaart).join("") || '<p class="leeg">Geen dossiers met deze filters.</p>';
-  document.getElementById("d-meer").classList.toggle("verborgen", uit.length <= dFilter.n);
-  var aan = ["fase", "terrein", "commissie", "soort", "jaar", "nl", "afgerond"].filter(function (k) { return dFilter[k]; }).length + (s !== "laatst" ? 1 : 0);
-  filterTeller("d-filterknop", aan);
+  doel.innerHTML = uit.slice(0, dN).map(dossierKaart).join("") || '<p class="leeg">Geen dossiers met deze filters.</p>';
+  document.getElementById("d-meer").classList.toggle("verborgen", uit.length <= dN);
   window.euMarkeer(doel);
   return uit;
 }
 
 function dossiersOpzetten() {
-  function opties(id, waarden, alles) {
-    document.getElementById(id).innerHTML = '<option value="">' + alles + "</option>" + waarden.map(function (w) { return '<option value="' + esc(w[0]) + '">' + esc(w[1]) + "</option>"; }).join("");
-  }
   var ter = {}, com = {}, soort = {}, jaar = {};
   DOSSIERS.forEach(function (d) {
     DOSSIER_INDEX[d.ref] = d;
@@ -149,36 +159,21 @@ function dossiersOpzetten() {
     verantwoordelijk(d).forEach(function (c) { com[c.code] = c.naam || c.code; });
     soort[d.soort] = d.soort_naam || d.soort; jaar[d.ref.slice(0, 4)] = 1;
   });
-  opties("d-terrein", Object.keys(ter).sort().map(function (t) { return [t, t]; }), "Alle onderwerpen");
-  opties("d-commissie", Object.keys(com).sort().map(function (c) { return [c, c + " – " + com[c]]; }), "Alle parlementscommissies");
-  opties("d-soort", Object.keys(soort).sort().map(function (s) { return [s, soort[s] + " (" + s + ")"]; }), "Alle soorten");
-  opties("d-jaar", Object.keys(jaar).sort().reverse().map(function (j) { return [j, j]; }), "Alle jaren");
-  opties("d-fase", FASEN.map(function (f) { return [f, f]; }), "Alle fasen (alleen wetgeving)");
-  document.getElementById("d-sort").value = dFilter.sort;
-  [["d-fase", "fase"], ["d-terrein", "terrein"], ["d-commissie", "commissie"], ["d-soort", "soort"], ["d-jaar", "jaar"], ["d-sort", "sort"]].forEach(function (x) {
-    document.getElementById(x[0]).addEventListener("change", function (ev) { dFilter[x[1]] = ev.target.value; dFilter.n = 30; if (x[1] === "sort") bewaar("eu-d-sort", ev.target.value); dossiersTonen(); });
-  });
-  [["d-nl", "nl"], ["d-afgerond", "afgerond"]].forEach(function (x) {
-    document.getElementById(x[0]).addEventListener("change", function (ev) { dFilter[x[1]] = ev.target.checked; dFilter.n = 30; dossiersTonen(); });
-  });
-  document.getElementById("d-wis").addEventListener("click", function () {
-    ["fase", "terrein", "commissie", "soort", "jaar"].forEach(function (k) { dFilter[k] = ""; document.getElementById("d-" + k).value = ""; });
-    ["nl", "afgerond"].forEach(function (k) { dFilter[k] = false; document.getElementById("d-" + k).checked = false; });
-    dFilter.sort = "laatst"; document.getElementById("d-sort").value = "laatst"; bewaar("eu-d-sort", "laatst");
-    dossiersTonen();
-  });
+  DOPT.terrein = Object.keys(ter).sort().map(function (t) { return [t, t]; });
+  DOPT.commissie = Object.keys(com).sort().map(function (c) { return [c, c + " – " + com[c]]; });
+  DOPT.soort = Object.keys(soort).sort().map(function (s) { return [s, soort[s] + " (" + s + ")"]; });
+  DOPT.jaar = Object.keys(jaar).sort().reverse().map(function (j) { return [j, j]; });
   var wacht = null;
-  document.getElementById("d-zoek").addEventListener("input", function (ev) { clearTimeout(wacht); wacht = setTimeout(function () { dFilter.q = ev.target.value.trim(); dFilter.n = 30; dossiersTonen(); }, 200); });
-  document.getElementById("d-meer").addEventListener("click", function () { dFilter.n += 30; dossiersTonen(); });
+  document.getElementById("d-zoek").addEventListener("input", function (ev) { clearTimeout(wacht); wacht = setTimeout(function () { dZoek = ev.target.value.trim(); dN = 30; dossiersTonen(); }, 200); });
+  document.getElementById("d-meer").addEventListener("click", function () { dN += 30; dossiersTonen(); });
   bijKaartTik(document.getElementById("d-lijst"), ".dkaart", function (k) { openDossier(k.dataset.ref); });
 }
 
 function dossiersTab(q) {
   var doel = document.getElementById("d-lijst");
   bezig(doel);
-  Promise.all([laden("dossiers"), mensenLaden()]).then(function (r) {
-    if (!DOSSIERS) { DOSSIERS = r[0]; dossiersOpzetten(); }
-    if (q.q != null) { dFilter.q = q.q; document.getElementById("d-zoek").value = q.q; }
+  dossiersLaden().then(function () {
+    if (q.q != null) { dZoek = q.q; document.getElementById("d-zoek").value = q.q; }
     var uit = dossiersTonen();
     if (q.open && DOSSIER_INDEX[q.open]) openDossier(q.open);
     else if (q.q && uit.length === 1) openDossier(uit[0].ref);

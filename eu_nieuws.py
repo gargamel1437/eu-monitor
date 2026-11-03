@@ -183,7 +183,44 @@ def berichten():
                     "terreinen": terreinen_van(f"{titel} {tekst}", " ".join(categorie_lijst)),
                 })
     lijst.sort(key=lambda b: b["datum"], reverse=True)
-    return lijst, fouten
+    return samenvoegen(lijst), fouten
+
+
+STOP = {"with", "from", "that", "this", "what", "will", "have", "after", "over", "into", "about", "their", "they",
+        "voor", "met", "van", "naar", "over", "door", "deze", "niet", "zijn", "wordt", "worden", "nieuwe", "eerste",
+        "says", "said", "could", "would", "should", "amid", "against", "tegen", "onder", "meer", "news"}
+
+
+def kopwoorden(titel):
+    return {w for w in re.findall(r"[a-zà-ÿ0-9]{4,}", titel.lower()) if w not in STOP}
+
+
+def samenvoegen(lijst):
+    """Hetzelfde nieuws van meerdere media wordt één bericht met 'Ook bij: …'. Voorzichtig: alleen
+    als de koppen in dezelfde taal minstens 4 kenmerkende woorden delen, en dat minstens 60% van
+    de woorden van de kortste kop is, binnen 24 uur. Persberichten voegen we nooit samen."""
+    uit = []
+    for b in lijst:
+        b["ook"] = []
+        w = kopwoorden(b["titel"])
+        gevonden = None
+        if b["kanaal"] == "media" and len(w) >= 4:
+            for k in uit:
+                if k["kanaal"] != "media" or k["taal"] != b["taal"] or k["bron"] == b["bron"] or any(o["bron"] == b["bron"] for o in k["ook"]):
+                    continue
+                if abs((k["datum"] - b["datum"]).total_seconds()) > 86400:
+                    continue
+                kw = kopwoorden(k["titel"])
+                gedeeld = len(w & kw)
+                if gedeeld >= 4 and gedeeld >= 0.6 * min(len(w), len(kw)):
+                    gevonden = k
+                    break
+        if gevonden:
+            gevonden["ook"].append({"bron": b["bron"], "link": b["link"], "titel": b["titel"]})
+            gevonden["terreinen"] = list(dict.fromkeys(gevonden["terreinen"] + b["terreinen"]))[:2]
+        else:
+            uit.append(b)
+    return uit
 
 
 # ---------- HTML ----------
@@ -215,7 +252,8 @@ def bericht_html(b):
         extra += '<span class="label taal" title="Mogelijk achter een betaalmuur">Betaalmuur</span>'
     terreinen = "|".join(b["terreinen"])
     return (
-        f'<li class="bericht {e(b.get("kanaal", "media"))}" data-bron="{e(b["bron"])}" data-taal="{e(b["taal"])}" data-terrein="{e(terreinen)}"'
+        f'<li class="bericht {e(b.get("kanaal", "media"))}" data-bron="{e(b["bron"])}" data-bronnen="{e("|".join([b["bron"]] + [o["bron"] for o in b.get("ook", [])]))}"'
+        f' data-taal="{e(b["taal"])}" data-terrein="{e(terreinen)}"'
         f' data-tijd="{b["datum"].day} {MAANDEN[b["datum"].month - 1][:3]} {b["datum"]:%H:%M}">'
         f'<a href="{e(b["link"])}" target="_blank" rel="noopener">'
         f'<div class="meta"><span class="bron">{e(b["bron"])}</span>'
@@ -223,6 +261,8 @@ def bericht_html(b):
         f'<h3>{e(b["titel"])}</h3>'
         + (f'<p>{e(b["tekst"])}</p>' if b["tekst"] else "")
         + f'<div class="labels">{extra}{labels}</div></a>'
+        + ((f'<div class="ook">Ook bij: ' + ", ".join(f'<a href="{e(o["link"])}" target="_blank" rel="noopener" title="{e(o["titel"])}">{e(o["bron"])}</a>' for o in b["ook"])
+            + f' · {len(b["ook"]) + 1} bronnen</div>') if b.get("ook") else "")
         + f'<button class="deel-mini" aria-label="Delen" data-deel="{e(json.dumps({"t": b["titel"], "u": b["link"]}, ensure_ascii=False))}">'
         + '<svg viewBox="0 0 24 24"><path d="M12 15V3.5M8 7.5l4-4 4 4"/><path d="M6 11H5v9.5h14V11h-1"/></svg></button></li>'
     )

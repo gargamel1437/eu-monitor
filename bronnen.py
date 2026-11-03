@@ -8,6 +8,7 @@
 import json
 import re
 import time
+import urllib.error
 import urllib.request
 from datetime import datetime
 from pathlib import Path
@@ -27,15 +28,33 @@ DAGEN = ["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "
 
 
 def ophalen(url, timeout=45, pogingen=3):
+    """Haalt een adres op. Zegt een site 'te veel verzoeken' (HTTP 429), dan wachten we zo lang als
+    de site vraagt (Retry-After) of steeds wat langer, en proberen we het vaker opnieuw."""
     req = urllib.request.Request(url, headers={"User-Agent": AGENT, "Accept": "application/json, text/html, */*"})
-    for poging in range(pogingen):
+    poging, max_pogingen = 0, pogingen
+    while True:
         try:
             with urllib.request.urlopen(req, timeout=timeout) as r:
                 return r.read()
+        except urllib.error.HTTPError as e:
+            if e.code == 429:
+                max_pogingen = max(max_pogingen, 5)
+                if poging >= max_pogingen - 1:
+                    raise
+                try:
+                    wacht = int(e.headers.get("Retry-After") or 0)
+                except ValueError:
+                    wacht = 0
+                time.sleep(min(max(wacht, 10 * (poging + 1)), 60))
+            elif poging >= max_pogingen - 1:
+                raise
+            else:
+                time.sleep(2 * (poging + 1))
         except Exception:
-            if poging == pogingen - 1:
+            if poging >= max_pogingen - 1:
                 raise
             time.sleep(2 * (poging + 1))
+        poging += 1
 
 
 def ophalen_json(url, timeout=30):
