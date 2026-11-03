@@ -17,12 +17,13 @@ Wat er gebeurt:
 Gratis, zonder AI. Staat volledig los van ~/nieuws. Zie LEESMIJ.md."""
 
 import html
+import hashlib
 import json
 import os
 import re
 import shutil
 from collections import Counter
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 import commissie
 import dossiers
@@ -117,17 +118,56 @@ def dossiers_kort(lijst):
     return uit
 
 
+def ics_maken(titel, datum, begin="", eind="", eind_datum="", uitleg="", url=""):
+    """Schrijft een agenda-afspraak naar site/ics/<code>.ics en geeft het pad terug.
+    Een gewone link naar zo'n bestand opent op de iPhone meteen 'Zet in agenda', ook in de web-app.
+    Met tijden (uit de bron) een afspraak met begin en eind, anders een hele dag."""
+    code = hashlib.sha1(f"{titel}|{datum}|{begin}".encode()).hexdigest()[:12]
+
+    def v(t):
+        return str(t).replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\n", "\\n")
+
+    def utc(t):
+        return datetime.fromisoformat(t).astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+    if begin:
+        tot = eind or (datetime.fromisoformat(begin) + timedelta(hours=1)).isoformat()
+        tijd = ["DTSTART:" + utc(begin), "DTEND:" + utc(tot)]
+    else:
+        einde = date.fromisoformat(eind_datum or datum) + timedelta(days=1)
+        tijd = ["DTSTART;VALUE=DATE:" + datum.replace("-", ""), "DTEND;VALUE=DATE:" + einde.strftime("%Y%m%d")]
+    regels = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//EU-monitor//NL", "CALSCALE:GREGORIAN", "BEGIN:VEVENT",
+              f"UID:{code}@eu-monitor", "DTSTAMP:" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ"), *tijd,
+              "SUMMARY:" + v(titel), "DESCRIPTION:" + v((uitleg + "\n" if uitleg else "") + (url or ""))]
+    if url:
+        regels.append("URL:" + url)
+    regels += ["END:VEVENT", "END:VCALENDAR"]
+
+    def vouw(r):   # regels van hoogstens 75 tekens, zoals de standaard vraagt
+        stukken = [r[:73]] + [" " + r[i:i + 72] for i in range(73, len(r), 72)]
+        return "\r\n".join(stukken)
+    (SITE / "ics").mkdir(exist_ok=True)
+    (SITE / "ics" / f"{code}.ics").write_text("\r\n".join(vouw(r) for r in regels) + "\r\n", encoding="utf-8")
+    return f"ics/{code}.ics"
+
+
 def agenda_items(p, lijst, vergaderingen):
     """Komende 4 weken: plenaire vergaderingen, vergaderingen van de Raad, EU-toppen en geplande
     dossierstappen uit OEIL. Een dossier dat volgens OEIL in een Raadsvergadering wordt besproken,
-    komt bij die vergadering te staan (en niet nog eens apart)."""
+    komt bij die vergadering te staan (en niet nog eens apart); een dossier dat OEIL in een
+    plenaire zitting verwacht, staat bij die zitting. Elk item krijgt een .ics-bestand."""
     nu = date.today().isoformat()
     grens = (date.today() + timedelta(days=28)).isoformat()
     uit = []
+    plenair = []
     for dag in p.get("agenda", []):
-        uit.append({"datum": dag["datum"], "soort": "Plenaire vergadering", "titel": f"Plenaire vergadering in {dag['plaats']}",
-                    "punten": dag["debatten"], "extra": ("Stemmingen om " + ", ".join(dag["stemmingen"])) if dag["stemmingen"] else "",
-                    "url": dag["agenda_url"]})
+        blokken = dag.get("blokken", [])
+        item = {"datum": dag["datum"], "soort": "Plenaire vergadering", "titel": f"Plenaire vergadering in {dag['plaats']}",
+                "punten": dag["debatten"], "blokken": blokken, "begin": dag.get("begin", ""), "eind": dag.get("eind", ""),
+                "extra": ("Stemmingen om " + ", ".join(dag["stemmingen"])) if dag["stemmingen"] and not blokken else "",
+                "url": dag["agenda_url"]}
+        uit.append(item)
+        plenair.append(item)
     raad_items = []
     for v in vergaderingen:
         eind = v.get("eind", v["datum"])
@@ -136,14 +176,27 @@ def agenda_items(p, lijst, vergaderingen):
         item = {"datum": max(v["datum"], nu) if eind >= nu > v["datum"] else v["datum"], "soort": v["soort"], "titel": v["titel"],
                 "punten": [], "extra": " · ".join(x for x in [v.get("plaats", ""), ("tot en met " + datum_nl(eind)) if v.get("eind") else "",
                                                               "informeel, er worden geen besluiten genomen" if v.get("informeel") else ""] if x),
-                "url": v["url"], "en": v.get("titel_en", "")}
+                "url": v["url"], "en": v.get("titel_en", ""), "eind_datum": v.get("eind", "")}
         uit.append(item)
         if v["soort"] == "Raad":
             raad_items.append(item)
+
+    def zitting_bij(datum):
+        """De plenaire vergaderdag waar een verwachte behandeling bij hoort: dezelfde dag, of anders
+        de eerste dag van de zitting die rond die datum valt (OEIL noemt vaak de maandag)."""
+        d = date.fromisoformat(datum)
+        kandidaten = [i for i in plenair if -1 <= (date.fromisoformat(i["datum"]) - d).days <= 4]
+        return next((i for i in kandidaten if i["datum"] == datum), kandidaten[0] if kandidaten else None)
+
     for d in lijst:
         titel = (d.get("eigen") or {}).get("titel") or d["titel"]
         for v in d.get("vooruit", []):
             if nu <= v["datum"] <= grens:
+                zitting = zitting_bij(v["datum"]) if v["wat"] == "Verwachte plenaire behandeling" else None
+                if zitting is not None:
+                    if d["ref"] not in {x["ref"] for x in zitting.setdefault("dossiers", [])}:
+                        zitting["dossiers"].append({"ref": d["ref"], "titel": titel})
+                    continue
                 soort = "Parlementscommissie" if "commissie" in v["wat"].lower() else "Dossierstap"
                 uit.append({"datum": v["datum"], "soort": soort, "titel": f"{v['wat']}: {titel}", "ref": d["ref"], "url": d["url"]})
         for r in d.get("raad", []):
@@ -156,11 +209,28 @@ def agenda_items(p, lijst, vergaderingen):
                     uit.append({"datum": r["datum"], "soort": "Raad", "titel": f"Raad ({r['configuratie']}): {titel}", "ref": d["ref"], "url": d["url"]})
     for i in uit:
         i.pop("en", None)
+        i.setdefault("dossiers", [])
+        i["dossiers"].sort(key=lambda x: x["titel"])
+        uitleg = "\n".join(i.get("punten", []) + [x["titel"] + " (" + x["ref"] + ")" for x in i["dossiers"]])
+        i["ics"] = ics_maken(i["titel"], i["datum"], i.get("begin", ""), i.get("eind", ""), i.pop("eind_datum", ""), uitleg, i.get("url", ""))
+        for k in ("dossiers", "blokken", "begin", "eind"):
+            if not i.get(k):
+                i.pop(k, None)
     volgorde = {"EU-top": 0, "Plenaire vergadering": 1, "Raad": 2, "Parlementscommissie": 3, "Dossierstap": 4}
-    uit.sort(key=lambda i: (i["datum"], volgorde[i["soort"]], i["titel"]))
+    uit.sort(key=lambda i: (i["datum"], volgorde[i["soort"]], i.get("begin", ""), i["titel"]))
     toppen = [{"datum": v["datum"], "eind": v.get("eind", ""), "titel": v["titel"], "plaats": v.get("plaats", ""), "url": v["url"]}
               for v in vergaderingen if v["soort"] == "EU-top" and v["datum"] > grens]
     return {"items": uit, "later": p.get("later", [])[:1], "toppen_later": toppen[:2]}
+
+
+def dossier_ics(lijst):
+    """Een .ics-bestand bij elke geplande stap van een dossier (knop ＋ Agenda in het dossier)."""
+    nu = date.today().isoformat()
+    for d in lijst:
+        titel = (d.get("eigen") or {}).get("titel") or d["titel"]
+        for v in d.get("vooruit", []):
+            if v["datum"] >= nu:
+                v["ics"] = ics_maken(f"{v['wat']}: {titel}", v["datum"], uitleg=d["ref"], url=d.get("url", ""))
 
 
 def datum_nl(s):
@@ -364,6 +434,7 @@ def main():
     (SITE / "data").mkdir(parents=True)
     for f in (MAP / "web").iterdir():
         shutil.copy(f, SITE / f.name)
+    dossier_ics(lijst)
     schrijf_json("dossiers", lijst)
     schrijf_json("dossiers-kort", dossiers_kort(lijst))
     schrijf_json("stemmen", {"zittingen": st["zittingen"], "stemmen": st["stemmen"]})

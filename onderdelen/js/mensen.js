@@ -42,7 +42,7 @@ function persoonKaart(p) {
   if (p.debatten.length) feiten.push(p.debatten.length + " debatten");
   if (p.stemmen.length) feiten.push("stemde in " + gestemd(p) + "/" + p.stemmen.length);
   return '<div class="kaart compact mkaart" data-id="' + esc(p.id) + '" role="button" tabindex="0">'
-    + '<div class="kaartkop"><h3>' + esc(p.naam) + (p.land === "NL" ? " 🇳🇱" : "") + "</h3></div>"
+    + '<div class="kaartkop"><h3>' + esc(p.naam) + "</h3></div>"
     + '<div class="klein">' + (p.partij ? esc(p.partij) + " · " : "") + fr(p.fractie) + (p.land ? " · " + esc(landNaam(p.land)) : "") + "</div>"
     + (feiten.length ? '<div class="klein feitregel">' + feiten.join(" · ") + "</div>" : "")
     + '<span class="pijl" aria-hidden="true">›</span></div>';
@@ -71,14 +71,16 @@ function openPersoon(id) { var p = MENSEN_INDEX[id]; if (p) openPaneel(p.naam, p
 
 var mFilter = { q: "", land: "", fractie: "", rol: false, n: 60 };
 function mensenTonen() {
-  var q = mFilter.q.toLowerCase();
+  var z = zoeker(mFilter.q);
   var uit = MENSEN.filter(function (p) {
     if (mFilter.land && p.land !== mFilter.land) return false;
     if (mFilter.fractie && p.fractie !== mFilter.fractie) return false;
     if (mFilter.rol && !p.rap.concat(p.schaduw).some(function (x) { return !x[2]; })) return false;
-    if (q && (p.naam + " " + p.partij + " " + p.fractie + " " + landNaam(p.land)).toLowerCase().indexOf(q) < 0) return false;
+    if (!z.past(p.naam + " " + p.partij + " " + p.fractie + " " + landNaam(p.land) + " " + (p.land || ""), p)) return false;
     return true;
   }).sort(function (x, y) { return (x.land === "NL" ? 0 : 1) - (y.land === "NL" ? 0 : 1) || landNaam(x.land).localeCompare(landNaam(y.land)) || (x.fractie || "").localeCompare(y.fractie || "") || (x.partij || "").localeCompare(y.partij || "") || x.naam.localeCompare(y.naam); });
+  uit = z.ordenen(uit);
+  bedoelJe("m-zoek", z);
   document.getElementById("m-aantal").textContent = uit.length + " personen";
   var doel = document.getElementById("m-lijst");
   doel.innerHTML = uit.slice(0, mFilter.n).map(persoonKaart).join("") || '<p class="leeg">Niemand gevonden.</p>';

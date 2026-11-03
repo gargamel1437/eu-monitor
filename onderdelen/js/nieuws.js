@@ -1,11 +1,11 @@
 // ---------- Nieuws: filters op onderwerp, bron en zoekterm (de berichten zelf staan al in de pagina) ----------
-var filter = { terrein: "", bron: "", zoek: "" };
+var filter = { terrein: "", bron: "", zoek: "" }, nieuwsWacht = null;
 function pasToe() {
-  var zichtbaar = 0;
+  var zichtbaar = 0, z = zoeker(filter.zoek);
   alle("li.bericht").forEach(function (li) {
     var ok = (!filter.terrein || li.dataset.terrein.split("|").indexOf(filter.terrein) >= 0)
       && (!filter.bron || li.dataset.bron === filter.bron)
-      && (!filter.zoek || li.textContent.toLowerCase().indexOf(filter.zoek) >= 0);
+      && z.past(li.textContent + " " + (li.dataset.bron || ""), li);
     li.classList.toggle("verborgen", !ok);
     if (ok) zichtbaar++;
   });
@@ -17,6 +17,7 @@ function pasToe() {
     ul.previousElementSibling.classList.toggle("verborgen", leeg);
   });
   document.getElementById("niets").classList.toggle("verborgen", zichtbaar > 0);
+  bedoelJe("zoek", z);
 }
 function chips(id, doel, sleutel, opnieuw) {
   var rij = document.getElementById(id);
@@ -48,7 +49,7 @@ alle("#kanaal-schakel button").forEach(function (b) {
   });
 });
 document.getElementById("zoek").addEventListener("input", function (ev) {
-  filter.zoek = ev.target.value.trim().toLowerCase();
-  pasToe();
+  clearTimeout(nieuwsWacht);
+  nieuwsWacht = setTimeout(function () { filter.zoek = ev.target.value.trim(); pasToe(); }, 150);
 });
 

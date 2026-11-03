@@ -17,7 +17,7 @@ function overzichtTonen(kort_d, agenda, stemmen) {
   // agenda: de eerstvolgende 3 items
   h += ovBlok("Agenda", "#agenda", agenda.items.slice(0, 3).map(function (i) {
     return lijstRegel(i.ref ? "#dossiers?open=" + encodeURIComponent(i.ref) : "#agenda", esc(i.titel),
-      "<span>" + esc(lang(i.datum)) + "</span>" + soortLabel(i.soort) + ((i.punten || []).length ? "<span>" + i.punten.length + (i.soort === "Plenaire vergadering" ? " debatten" : " dossiers") + "</span>" : ""));
+      "<span>" + esc(lang(i.datum)) + (tijdTekst(i) ? " · " + tijdTekst(i) : "") + "</span>" + soortLabel(i.soort) + ((i.punten || []).length ? "<span>" + i.punten.length + (i.soort === "Plenaire vergadering" ? " debatten" : " dossiers") + "</span>" : ""));
   }), "Niets gepland in de komende 4 weken.");
   // nieuws: de 3 nieuwste berichten uit de media (staan al in de pagina)
   h += ovBlok("Nieuws", "#nieuws", alle("#kanaal-media li.bericht").slice(0, 3).map(function (li) {
@@ -48,34 +48,36 @@ function overzichtTab() {
 // ---------- zoeken over alles ----------
 function zoekAlles(q) {
   var doel = document.getElementById("ov-resultaten"), blokken = document.getElementById("ov-data");
-  q = q.trim().toLowerCase();
-  if (q.length < 2) { doel.innerHTML = ""; doel.classList.add("verborgen"); blokken.classList.remove("verborgen"); return; }
+  q = q.trim();
+  if (normaal(q).length < 2) { bedoelJe("ov-zoek", null); doel.innerHTML = ""; doel.classList.add("verborgen"); blokken.classList.remove("verborgen"); return; }
   blokken.classList.add("verborgen");
   Promise.all([laden("agenda"), laden("dossiers-kort"), laden("stemmen"), laden("debatten"), mensenLaden(), laden("commissie")]).then(function (r) {
     function blok(titel, items, link) {
       return items.length ? '<div class="kop-met-link"><h2>' + titel + ' <small>' + items.length + "</small></h2>" + (link ? '<a href="' + link + '">Alles ›</a>' : "") + '</div><div class="kaart"><ul class="lijst">' + items.slice(0, 5).join("") + "</ul></div>" : "";
     }
-    function past(t) { return (t || "").toLowerCase().indexOf(q) >= 0; }
+    var z = zoeker(q);
+    function zoek(lijst, tekst) { return z.ordenen(lijst.filter(function (x) { return z.past(tekst(x), x); })); }
     function nieuws(sel) {
-      return alle(sel + " li.bericht").filter(function (li) { return past(li.textContent); })
+      return zoek(alle(sel + " li.bericht"), function (li) { return li.textContent + " " + (li.dataset.bron || ""); })
         .map(function (li) { return lijstRegel(li.querySelector("a").href, esc(li.querySelector("h3").textContent), "<span>" + esc(li.dataset.bron) + "</span><span>" + esc(li.dataset.tijd || "") + "</span>", true); });
     }
-    var ag = r[0].items.filter(function (i) { return past(i.titel + " " + (i.punten || []).join(" ")); })
-      .map(function (i) { return lijstRegel(i.ref ? "#dossiers?open=" + encodeURIComponent(i.ref) : "#agenda", esc(i.titel), "<span>" + esc(lang(i.datum)) + "</span>" + soortLabel(i.soort)); });
-    var db = r[3].debatten.filter(function (x) { return past(x.titel); })
+    var ag = zoek(r[0].items, agendaTekst)
+      .map(function (i) { return lijstRegel(i.ref ? "#dossiers?open=" + encodeURIComponent(i.ref) : "#agenda", esc(i.titel), "<span>" + esc(lang(i.datum)) + (tijdTekst(i) ? " · " + tijdTekst(i) : "") + "</span>" + soortLabel(i.soort)); });
+    var db = zoek(r[3].debatten, function (x) { return x.titel; })
       .map(function (x) { return lijstRegel(x.verslag, esc(x.titel), "<span>debat " + kort(x.datum) + "</span>", true); });
-    var d = r[1].filter(function (x) { return past(x.ref + " " + x.titel + " " + x.zoek); })
+    var d = zoek(r[1], function (x) { return x.ref + " " + x.titel + " " + x.zoek; })
       .map(function (x) { return lijstRegel("#dossiers?open=" + encodeURIComponent(x.ref), esc(x.titel), "<span>" + esc(x.ref) + "</span><span>" + esc(x.status) + "</span>"); });
-    var s = r[2].stemmen.filter(function (x) { return past(x.titel + " " + (x.procedure || "")); })
+    var s = zoek(r[2].stemmen, function (x) { return x.titel + " " + (x.procedure || ""); })
       .map(function (x) { return lijstRegel("#stemmingen?id=" + x.id, esc(x.titel), uitslag(x.uitslag) + "<span>" + kort(x.moment) + "</span>"); });
-    var m = r[4].filter(function (p) { return past(p.naam + " " + p.partij); })
-      .map(function (p) { return lijstRegel("#mensen?id=" + p.id, esc(p.naam) + (p.land === "NL" ? " 🇳🇱" : ""), "<span>" + esc(p.partij || "") + "</span><span>" + esc(p.fractie || "") + "</span>"); });
-    var cp = r[5].items.filter(function (x) { return past(x.titel + " " + x.titel_en + " " + x.dg); })
+    var m = zoek(r[4], function (p) { return p.naam + " " + p.partij + " " + landNaam(p.land); })
+      .map(function (p) { return lijstRegel("#mensen?id=" + p.id, esc(p.naam), "<span>" + esc(p.partij || "") + "</span><span>" + esc(p.fractie || "") + "</span>"); });
+    var cp = zoek(r[5].items, function (x) { return x.titel + " " + x.titel_en + " " + x.dg; })
       .map(function (x) { return lijstRegel(x.url, esc(x.titel), '<span class="label soort-commissie">' + esc(x.soort_naam) + "</span><span>" + KW[x.kwartaal] + " kwartaal " + x.jaar + "</span>", true); });
     var h = blok("Agenda", ag, "#agenda") + blok("Planning van de Commissie", cp, "#agenda") + blok("Debatten", db, "#agenda") + blok("Nieuws uit de media", nieuws("#kanaal-media"), "#nieuws")
       + blok("Uit Brussel zelf", nieuws("#kanaal-officieel"), "#nieuws") + blok("Dossiers", d, "#dossiers?q=" + encodeURIComponent(q))
       + blok("Stemmingen", s, "#stemmingen") + blok("Mensen", m, "#mensen");
-    doel.innerHTML = h || '<p class="leeg">Niets gevonden voor “' + esc(q) + "”.</p>";
+    doel.innerHTML = h || '<p class="leeg">Niets gevonden voor “' + esc(q) + "”. Probeer minder woorden, of een Engels woord: veel titels van dossiers zijn Engels.</p>";
+    bedoelJe("ov-zoek", z);
     doel.classList.remove("verborgen");
   }).catch(function () { laadFout(doel); doel.classList.remove("verborgen"); });
 }

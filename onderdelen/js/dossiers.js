@@ -15,7 +15,7 @@ function verantwoordelijk(d) { return (d.commissies || []).filter(function (c) {
 function isNLid(id) { return MENSEN_INDEX[id] && MENSEN_INDEX[id].land === "NL"; }
 function heeftNL(d) { return rapporteursVan(d).concat(d.schaduw || []).some(function (p) { return isNLid(p.id); }); }
 function persoonLink(p, extra) {
-  return '<a href="#mensen?id=' + esc(p.id) + '" class="persoon">' + esc(p.naam) + "</a>" + (isNLid(p.id) ? " 🇳🇱" : "")
+  return '<a href="#mensen?id=' + esc(p.id) + '" class="persoon">' + esc(p.naam) + "</a>" + (isNLid(p.id) ? ' <span class="klein">(NL)</span>' : "")
     + " " + fr(FR_OEIL[p.fractie] || p.fractie) + (extra ? ' <span class="klein">' + esc(extra) + "</span>" : "");
 }
 function toekomstig(d) { return (d.vooruit || []).filter(function (v) { return v.datum >= vandaag(); }); }
@@ -51,7 +51,7 @@ function dossierKaart(d) {
   var rap = rapporteursVan(d).filter(function (p) { return /responsible/i.test(p.rol); })[0];
   var plan = toekomstig(d)[0];
   var feiten = [];
-  if (rap) feiten.push("Rapporteur " + esc(rap.naam) + (isNLid(rap.id) ? " 🇳🇱" : ""));
+  if (rap) feiten.push("Rapporteur " + esc(rap.naam) + (isNLid(rap.id) ? " (NL)" : ""));
   else if (verantwoordelijk(d)[0]) feiten.push(esc(verantwoordelijk(d)[0].code));
   if (plan) feiten.push("gepland " + kort(plan.datum));
   else if (d.laatst) feiten.push("laatste stap " + kort(d.laatst));
@@ -79,7 +79,7 @@ function dossierDetail(d) {
   if ((d.pers || []).length) h += '<h4>Uit Brussel zelf</h4><div class="officieel-koppel"><p class="klein">Persberichten van Commissie of Raad die automatisch aan dit dossier zijn gekoppeld. Het label zegt waarop: procedurenummer, COM-document, eigen bron of trefwoorden in de kop. Controleer zelf of ze echt over dit dossier gaan.</p><ul class="lijst officieel">'
     + d.pers.map(function (b) { return lijstRegel(b.link, esc(b.titel), "<span>" + esc(b.bron) + "</span><span>" + kort(b.datum) + "</span>" + (b.soort ? "<span>" + esc(b.soort) + "</span>" : "") + '<span class="label">' + esc(b.hoe) + "</span>", true); }).join("") + "</ul></div>";
   var plan = toekomstig(d);
-  if (plan.length) h += "<h4>Gepland</h4><ul class='punten'>" + plan.map(function (v) { return "<li><b>" + kort(v.datum) + "</b>: " + esc(v.wat) + " " + icsKnop(v.wat + ": " + titelVan(d), v.datum, d.ref, d.url) + "</li>"; }).join("") + "</ul>";
+  if (plan.length) h += "<h4>Gepland</h4><ul class='punten'>" + plan.map(function (v) { return "<li><b>" + kort(v.datum) + "</b>: " + esc(v.wat) + " " + icsKnop(v.wat + ": " + titelVan(d), v.datum, d.ref, d.url, v.ics) + "</li>"; }).join("") + "</ul>";
   h += "<h4>Wie is betrokken</h4>";
   (d.commissies || []).forEach(function (c) {
     var rol = c.rol.replace("Joint committee responsible", "samen verantwoordelijk").replace("Committee responsible", "verantwoordelijk")
@@ -107,16 +107,16 @@ function openDossier(ref) { var d = DOSSIER_INDEX[ref]; if (d) openPaneel(d.ref,
 
 var dFilter = { fase: "", q: "", terrein: "", commissie: "", soort: "", jaar: "", nl: false, afgerond: false, sort: lees("eu-d-sort") || "laatst", n: 30 };
 function dossiersTonen() {
-  var q = dFilter.q.toLowerCase();
+  var q = dFilter.q, z = zoeker(q);
   var uit = DOSSIERS.filter(function (d) {
-    if (!dFilter.afgerond && d.afgerond && !(d.eigen && d.eigen.titel) && !q) return false;
+    if (!dFilter.afgerond && d.afgerond && !(d.eigen && d.eigen.titel) && z.leeg) return false;
     if (dFilter.fase && (d.fase == null || FASEN[d.fase] !== dFilter.fase)) return false;
     if (dFilter.terrein && (d.terreinen || []).indexOf(dFilter.terrein) < 0) return false;
     if (dFilter.commissie && !verantwoordelijk(d).some(function (c) { return c.code === dFilter.commissie; })) return false;
     if (dFilter.soort && d.soort !== dFilter.soort) return false;
     if (dFilter.jaar && d.ref.slice(0, 4) !== dFilter.jaar) return false;
     if (dFilter.nl && !heeftNL(d)) return false;
-    if (q && (d.ref + " " + d.titel + " " + ((d.eigen || {}).titel || "") + " " + rapporteursVan(d).map(function (p) { return p.naam; }).join(" ") + " " + (d.commissaris || "")).toLowerCase().indexOf(q) < 0) return false;
+    if (!z.past(d.ref + " " + d.titel + " " + ((d.eigen || {}).titel || "") + " " + rapporteursVan(d).map(function (p) { return p.naam; }).join(" ") + " " + (d.commissaris || ""), d)) return false;
     return true;
   });
   var s = dFilter.sort;
@@ -126,6 +126,8 @@ function dossiersTonen() {
     if (s === "gepland") return ((toekomstig(x)[0] || {}).datum || "9999").localeCompare((toekomstig(y)[0] || {}).datum || "9999");
     return (y.laatst || "").localeCompare(x.laatst || "");
   });
+  uit = z.ordenen(uit);
+  bedoelJe("d-zoek", z);
   var doel = document.getElementById("d-lijst");
   document.getElementById("d-aantal").textContent = uit.length + " dossiers";
   doel.innerHTML = uit.slice(0, dFilter.n).map(dossierKaart).join("") || '<p class="leeg">Geen dossiers met deze filters.</p>';

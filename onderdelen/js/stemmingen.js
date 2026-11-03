@@ -73,14 +73,14 @@ function openStem(id) { var s = STEM_INDEX[id]; if (s) openPaneel("Stemming", st
 
 var sFilter = { q: "", terrein: "", zitting: "", uitslag: "", verdeeld: false, afwijk: false, sort: "datum" };
 function stemmenTonen() {
-  var q = sFilter.q.toLowerCase();
+  var zk = zoeker(sFilter.q);
   var uit = STEMMEN.stemmen.filter(function (s) {
     if (sFilter.terrein && (s.terreinen || []).indexOf(sFilter.terrein) < 0) return false;
     if (sFilter.zitting) { var z = sFilter.zitting.split("|"), d = s.moment.slice(0, 10); if (d < z[0] || d > z[1]) return false; }
     if (sFilter.uitslag && s.uitslag !== sFilter.uitslag) return false;
     if (sFilter.verdeeld && !s.nl_verdeeld) return false;
     if (sFilter.afwijk && !(s.afwijkers || []).length) return false;
-    if (q && (s.titel + " " + (s.procedure || "") + " " + (s.procedure_titel || "")).toLowerCase().indexOf(q) < 0) return false;
+    if (!zk.past(s.titel + " " + (s.procedure || "") + " " + (s.procedure_titel || ""), s)) return false;
     return true;
   });
   uit.sort(function (x, y) {
@@ -90,6 +90,8 @@ function stemmenTonen() {
     if (sFilter.sort === "oud") return x.moment.localeCompare(y.moment);
     return y.moment.localeCompare(x.moment);
   });
+  uit = zk.ordenen(uit);
+  bedoelJe("s-zoek", zk);
   document.getElementById("s-aantal").textContent = uit.length + " hoofdstemmingen";
   var doel = document.getElementById("s-lijst");
   doel.innerHTML = uit.map(stemKaart).join("") || '<p class="leeg">Geen stemmingen met deze filters.</p>';

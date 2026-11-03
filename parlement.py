@@ -19,7 +19,7 @@ PROCEDUREEL = re.compile(
     r"hervatting|redevoeringen van één minuut|opening van de|sluiting van de|notulen|agenda van de volgende|"
     r"samenstelling|stemverklaring|mededeling van de voorzitter|regeling van de werkzaamheden|ondertekening|"
     r"verificatie van geloofsbrieven|onderbreking|rectificatie|ingekomen stukken|kennisgeving|"
-    r"teksten waarover het debat is gesloten|^stemmingen$|stemmingen \(|vragenuur$", re.I)
+    r"teksten waarover het debat is gesloten|^stemmingen$|stemmingen \(|vragenuur$|urgentverklaring", re.I)
 
 
 def schoon_label(label):
@@ -70,20 +70,49 @@ def sessies(dagen):
 
 # ---------- agenda (komende zitting) ----------
 
+def tijdstip(waarde, kies):
+    """De API geeft een tijd soms als lijst (bijvoorbeeld twee eindtijden): neem de vroegste of laatste."""
+    if isinstance(waarde, list):
+        waarde = kies([w for w in waarde if isinstance(w, str)], default="")
+    return waarde if isinstance(waarde, str) else ""
+
+
 def agenda_dag(dag):
+    """Eén vergaderdag: de debatten, en het programma per dagdeel met begin- en eindtijd
+    (Brusselse tijd, zoals het Parlement ze publiceert). Zonder tijden in de bron: geen tijden."""
     data = ophalen_json(f"{EP}/meetings/{dag['id']}/foreseen-activities?{FMT}&limit=500", 60).get("data", [])
-    debatten, stemmen = [], []
-    for x in data:
+    per_id = {x.get("id"): x for x in data}
+
+    def tekst(x):
         label = (x.get("activity_label") or {})
-        tekst = label.get("nl") or label.get("en") or ""
+        return label.get("nl") or label.get("en") or ""
+
+    debatten, stemmen, blokken, begin, eind = [], [], [], [], []
+    for x in data:
         soort = x.get("had_activity_type", "")
-        if soort.endswith("PLENARY_DEBATE") and not PROCEDUREEL.search(tekst):
-            debatten.append(schoon_label(tekst))
-        elif soort.endswith("MEETING_PART") and "VOTE" in tekst.upper():
-            tijd = (x.get("activity_start_date") or "")[11:16]
-            if tijd:
-                stemmen.append(tijd)
+        if soort.endswith("PLENARY_DEBATE") and not PROCEDUREEL.search(tekst(x)):
+            debatten.append(schoon_label(tekst(x)))
+        elif soort.endswith("MEETING_PART"):
+            van, tot = tijdstip(x.get("activity_start_date"), min), tijdstip(x.get("activity_end_date"), max)
+            stemming = "VOTE" in ((x.get("activity_label") or {}).get("en") or tekst(x)).upper()
+            if van:
+                begin.append(van)
+                if stemming:
+                    stemmen.append(van[11:16])
+            if tot:
+                eind.append(tot)
+            punten = []
+            for c in x.get("consists_of", []):
+                y = per_id.get(c)
+                t = schoon_label(tekst(y)) if y else ""
+                if t and not PROCEDUREEL.search(t):
+                    punten.append(t)
+            if van:
+                blokken.append({"begin": van[11:16], "eind": tot[11:16] if tot else "",
+                                "soort": "Stemmingen" if stemming else "Debatten", "punten": list(dict.fromkeys(punten))})
+    blokken.sort(key=lambda b: b["begin"])
     return {**dag, "debatten": list(dict.fromkeys(debatten)), "stemmingen": sorted(set(stemmen)),
+            "blokken": blokken, "begin": min(begin) if begin else "", "eind": max(eind) if eind else "",
             "agenda_url": f"https://www.europarl.europa.eu/doceo/document/OJQ-10-{dag['datum']}_NL.html"}
 
 

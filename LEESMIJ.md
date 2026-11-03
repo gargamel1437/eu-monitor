@@ -43,6 +43,20 @@ Vijf tabbladen onderin: **Agenda** · **Nieuws** · **Overzicht** (in het midden
 **Dossiers** · **Stemmen** (stemmingen en europarlementariërs). De bronnen staan onder de
 i-knop rechtsboven. Licht of donker volgt de instelling van je iPhone of computer.
 
+- **Vegen**: in een tab met een schakelaar (Nieuws: Media | Uit Brussel zelf; Agenda; Stemmen)
+  veeg je naar links of rechts naar het volgende deel. Elk deel onthoudt waar je was.
+- **Zoeken** vergeeft tikfouten, accenten en hoofdletters, en kent afkortingen en
+  Nederlands/Engels (AI = KI, EC = Commissie, Oekraïne = Ukraine). Treffers zonder tikfout
+  staan eerst; bij bijna-treffers staat er "Bedoel je …?". De lijst met synoniemen staat in
+  `onderdelen/js/basis.js` (`SYNONIEMEN`).
+- **Agenda** is ingedeeld in kalenderweken (deze week, volgende week, later). Bij de plenaire
+  vergaderingen staan de exacte tijden per dagdeel (debatten en stemmingen), uit de open data
+  van het Parlement. De Raad en EU-toppen hebben alleen een datum: het voorzitterschap
+  publiceert geen tijden. Dossiers die OEIL in een zitting verwacht, staan bij die zitting.
+  **＋ Agenda** opent een `.ics`-bestand (`site/ics/`), ook in de web-app op de iPhone.
+- **App-icoon**: de bron is `onderdelen/icoon-donker.html`. Na een nieuw icoon moet je de
+  web-app op je beginscherm verwijderen en opnieuw toevoegen; iOS bewaart het oude.
+
 ## Iets aanpassen
 
 - **Nieuw EU-voorzitterschap** (elk halfjaar, 1 januari en 1 juli): controleer in `raad.py` of de

@@ -20,13 +20,27 @@ function huidigeTab() {
   var doel = hashNaam();
   return tabs.indexOf(doel) >= 0 ? doel : (extra[doel] || "overzicht");
 }
+// De volgorde van de tabs onderin: daarmee schuift een nieuwe tab zacht van links of rechts in.
+var TAB_VOLGORDE = ["agenda", "nieuws", "overzicht", "dossiers", "stemmingen"];
+var vorigeTab = null, geenTabAnimatieTot = 0;
 function toonTab() {
   var doel = hashNaam();
   var naam = huidigeTab();
-  alle("section.tab").forEach(function (s) { s.classList.toggle("actief", s.id === naam); });
+  var anders = naam !== vorigeTab;
+  alle("section.tab").forEach(function (s) {
+    s.classList.toggle("actief", s.id === naam);
+    s.classList.remove("in-r", "in-l");
+  });
+  if (anders && vorigeTab && performance.now() > geenTabAnimatieTot) {
+    var sectie = document.getElementById(naam);
+    sectie.offsetWidth;  // animatie opnieuw laten starten
+    sectie.classList.add(TAB_VOLGORDE.indexOf(naam) >= TAB_VOLGORDE.indexOf(vorigeTab) ? "in-r" : "in-l");
+  }
   alle("nav.tabs a").forEach(function (a) { a.classList.toggle("actief", a.dataset.tab === naam); });
   document.getElementById("kleine-titel").textContent = document.getElementById(naam).dataset.titel;
-  window.scrollTo(0, 0); requestAnimationFrame(function () { window.scrollTo(0, 0); kleineTitel(); });
+  // alleen bij een andere tab naar boven; een link binnen dezelfde tab laat de pagina staan
+  if (anders) { window.scrollTo(0, 0); requestAnimationFrame(function () { window.scrollTo(0, 0); kleineTitel(); }); }
+  vorigeTab = naam;
   kleineTitel();
   document.dispatchEvent(new CustomEvent("eu-tab", { detail: naam, adres: doel }));
 }
@@ -41,18 +55,168 @@ window.addEventListener("scroll", kleineTitel, { passive: true });
 toonTab();
 
 // ---- schakelaars (segmenten) ----
+// Elk deel onthoudt zijn eigen scrollpositie. Een glazen bel achter de gekozen knop loopt mee,
+// ook tijdens het vegen (zie hieronder).
+var MINDER_BEWEGING = !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
+var segScroll = {};
+// Waar de delen beginnen (net onder de vaste schakelaar): daar kom je in een deel dat je nog niet bekeek.
+function segBeginY(schakel) {
+  var rij = schakel.closest(".plakrij") || schakel, el = rij.nextElementSibling;
+  while (el && el.classList.contains("verborgen")) el = el.nextElementSibling;
+  if (!el) return 0;
+  var plak = parseFloat(getComputedStyle(rij).top) || 0;
+  return Math.max(0, el.getBoundingClientRect().top + window.scrollY - plak - rij.offsetHeight - 8);
+}
+function segDoelY(id, schakel, y) { return segScroll[id] != null ? segScroll[id] : Math.min(y, segBeginY(schakel)); }
+function zetBel(schakel, van, naar, f) {
+  var bel = schakel.querySelector(".schakel-bel");
+  if (!bel || !van) return;
+  var x = van.offsetLeft, w = van.offsetWidth;
+  if (naar) { x += (naar.offsetLeft - van.offsetLeft) * f; w += (naar.offsetWidth - van.offsetWidth) * f; }
+  bel.style.transform = "translateX(" + x + "px)";
+  bel.style.width = w + "px";
+}
+function belDirect(schakel) {
+  var bel = schakel.querySelector(".schakel-bel");
+  if (!bel) return;
+  bel.style.transition = "none";
+  zetBel(schakel, schakel.querySelector("button.actief"));
+  bel.offsetWidth; bel.style.transition = "";
+}
 function kiesSegment(knop) {
-  alle("button[data-toon]", knop.parentNode).forEach(function (b) {
+  var schakel = knop.parentNode, oud = schakel.querySelector("button[data-toon].actief");
+  var y = window.scrollY, doelY = null;
+  if (oud && oud !== knop) { segScroll[oud.dataset.toon] = y; doelY = segDoelY(knop.dataset.toon, schakel, y); }
+  alle("button[data-toon]", schakel).forEach(function (b) {
     b.classList.toggle("actief", b === knop);
     var doel = document.getElementById(b.dataset.toon);
     if (doel) doel.classList.toggle("verborgen", b !== knop);
   });
+  if (doelY != null) { window.scrollTo(0, doelY); kleineTitel(); }
+  zetBel(schakel, knop);
   knop.dispatchEvent(new CustomEvent("eu-segment", { bubbles: true, detail: knop.dataset.toon }));
 }
 function toonSegment(id) { var k = document.querySelector('.schakel button[data-toon="' + id + '"]'); if (k && !k.classList.contains("actief")) kiesSegment(k); }
-alle(".schakel button[data-toon]").forEach(function (knop) {
-  knop.addEventListener("click", function () { kiesSegment(knop); });
+alle(".schakel").forEach(function (schakel) {
+  if (!schakel.querySelector("button[data-toon]")) return;
+  var bel = document.createElement("span");
+  bel.className = "schakel-bel"; bel.setAttribute("aria-hidden", "true");
+  schakel.insertBefore(bel, schakel.firstChild);
 });
+alle(".schakel button[data-toon]").forEach(function (knop) {
+  knop.addEventListener("click", function () { if (!knop.classList.contains("actief")) kiesSegment(knop); });
+});
+function alleBellen() { alle("section.tab.actief .schakel").forEach(belDirect); }
+document.addEventListener("eu-tab", function () { requestAnimationFrame(alleBellen); });
+window.addEventListener("resize", alleBellen);
+window.addEventListener("load", alleBellen);
+
+// ---- vegen tussen de delen van een tab (Nieuws: Media | Uit Brussel zelf, enz.) ----
+// De inhoud schuift met je vinger mee en het volgende deel schuift ernaast in, zoals op iOS.
+// Verticaal scrollen blijft scrollen: pas na een duidelijk horizontale beweging pakt dit het vast.
+// Vlak aan de linker- of rechterrand doet het niets: daar zit het terugvegen van iOS.
+(function () {
+  var g = null, bezig = false, TUSSEN = 16;
+  function scrolltHorizontaal(el, tot) {
+    for (; el && el !== tot; el = el.parentElement) {
+      if (el.scrollWidth > el.clientWidth + 2) { var o = getComputedStyle(el).overflowX; if (o === "auto" || o === "scroll") return true; }
+    }
+    return false;
+  }
+  function opruimen(el) { if (el) { el.style.transform = el.style.transition = el.style.position = el.style.top = el.style.left = el.style.width = el.style.zIndex = ""; } }
+  document.addEventListener("touchstart", function (ev) {
+    g = null;
+    if (bezig || ev.touches.length !== 1 || (typeof paneelOpen !== "undefined" && paneelOpen) || (typeof openSheetId !== "undefined" && openSheetId)) return;
+    var t = ev.touches[0], el = ev.target;
+    if (t.clientX < 24 || t.clientX > window.innerWidth - 24 || !el.closest) return;
+    if (el.closest("input, textarea, select, .sheet, nav.tabs, #paneel, .chips, [data-geen-veeg]")) return;
+    var sectie = el.closest("section.tab.actief");
+    if (!sectie || scrolltHorizontaal(el, sectie)) return;
+    var schakel = sectie.querySelector(".schakel");
+    var knoppen = schakel ? alle("button[data-toon]", schakel) : [];
+    if (knoppen.length < 2) return;
+    var i = knoppen.findIndex(function (b) { return b.classList.contains("actief"); });
+    var huidig = document.getElementById(knoppen[i].dataset.toon);
+    if (!huidig) return;
+    g = { x: t.clientX, y: t.clientY, sectie: sectie, schakel: schakel, knoppen: knoppen, i: i, huidig: huidig, vast: false, d: 0, v: 0, t: performance.now() };
+  }, { passive: true });
+
+  function begin(richting) {
+    var j = g.i + richting;
+    g.richting = richting;
+    g.w = g.huidig.offsetWidth;
+    g.buurKnop = g.knoppen[j] || null;
+    g.buur = g.buurKnop ? document.getElementById(g.buurKnop.dataset.toon) : null;
+    g.huidig.style.transition = "none";
+    if (!g.buur) return;
+    // het buurdeel naast het huidige zetten, op de hoogte waar je straks uitkomt
+    var y = window.scrollY, doelY = segDoelY(g.buur.id, g.schakel, y);
+    g.doelY = doelY;
+    g.buur.classList.remove("verborgen");
+    var s = g.buur.style;
+    s.position = "absolute"; s.zIndex = "1"; s.transition = "none";
+    s.left = g.huidig.offsetLeft + "px"; s.width = g.w + "px";
+    s.top = (g.huidig.offsetTop + y - doelY) + "px";
+    s.transform = "translateX(" + richting * (g.w + TUSSEN) + "px)";
+    // gegevens van het buurdeel alvast laden (Mensen, planning van de Commissie)
+    g.buurKnop.dispatchEvent(new CustomEvent("eu-segment", { bubbles: true, detail: g.buurKnop.dataset.toon }));
+  }
+  function zet(d) {
+    if (!g.buur) d = d / (1 + Math.abs(d) / 60) ;   // geen buurdeel: rekt een beetje mee en veert terug
+    g.d = d;
+    g.huidig.style.transform = "translateX(" + d + "px)";
+    if (g.buur) {
+      g.buur.style.transform = "translateX(" + (g.richting * (g.w + TUSSEN) + d) + "px)";
+      zetBel(g.schakel, g.knoppen[g.i], g.buurKnop, Math.min(1, Math.abs(d) / g.w));
+    }
+  }
+  document.addEventListener("touchmove", function (ev) {
+    if (!g) return;
+    var t = ev.touches[0], dx = t.clientX - g.x, dy = t.clientY - g.y;
+    if (!g.vast) {
+      if (Math.abs(dx) < 12 && Math.abs(dy) < 12) return;
+      if (Math.abs(dx) < Math.abs(dy) * 1.3) { g = null; return; }
+      g.vast = true; g.basis = dx;
+      var bel = g.schakel.querySelector(".schakel-bel"); if (bel) bel.style.transition = "none";
+      begin(dx < 0 ? 1 : -1);
+    }
+    ev.preventDefault();
+    var nu = performance.now(), d = dx - g.basis;
+    // van richting wisselen tijdens het vegen: buurdeel aan de andere kant
+    if (g.buur && d * g.richting > 0) { opruimen(g.buur); g.buur.classList.add("verborgen"); begin(-g.richting); }
+    g.v = (d - g.d) / Math.max(nu - g.t, 1); g.t = nu;
+    zet(d);
+  }, { passive: false });
+
+  function klaar(ev) {
+    if (!g || !g.vast) { g = null; return; }
+    var x = g; g = null; bezig = true;
+    var naar = -x.richting, ga = !!x.buur && ev.type !== "touchcancel" && (naar * x.d > x.w * 0.3 || (naar * x.v > 0.35 && naar * x.d > 20));
+    var bel = x.schakel.querySelector(".schakel-bel");
+    var duur = MINDER_BEWEGING ? 0 : 320, curve = "transform " + duur + "ms cubic-bezier(.2,.9,.25,1)";
+    if (bel) bel.style.transition = "";
+    x.huidig.style.transition = curve;
+    if (x.buur) x.buur.style.transition = curve;
+    if (ga) {
+      x.huidig.style.transform = "translateX(" + (naar * (x.w + TUSSEN)) + "px)";
+      x.buur.style.transform = "translateX(0)";
+      zetBel(x.schakel, x.buurKnop);
+    } else {
+      x.huidig.style.transform = "translateX(0)";
+      if (x.buur) x.buur.style.transform = "translateX(" + x.richting * (x.w + TUSSEN) + "px)";
+      zetBel(x.schakel, x.knoppen[x.i]);
+    }
+    setTimeout(function () {
+      // in één keer omzetten, zonder tussenbeeld: het buurdeel staat al waar het moet staan
+      opruimen(x.huidig);
+      if (ga) { opruimen(x.buur); x.buurKnop.click(); }
+      else if (x.buur) { opruimen(x.buur); x.buur.classList.add("verborgen"); }
+      bezig = false;
+    }, duur + 20);
+  }
+  document.addEventListener("touchend", klaar, { passive: true });
+  document.addEventListener("touchcancel", klaar, { passive: true });
+})();
 
 
 // ---- glazen selectiebolletje: volgt de tab en is te verslepen ----
@@ -257,6 +421,139 @@ function opgehaald(sleutel, wat) {
 }
 function leesJSON(k, standaard) { try { return JSON.parse(lees(k) || "") || standaard; } catch (e) { return standaard; } }
 
+// ---------- zoeken dat tikfouten vergeeft (gebruikt door elk zoekveld) ----------
+// - hoofdletters en accenten tellen niet (é = e, ø = o);
+// - het begin van een woord is genoeg ("migr" vindt migratie), ook midden in een samenstelling
+//   ("handel" vindt wapenhandel) vanaf 4 letters; de volgorde van de woorden doet niet ter zake;
+// - kleine tikfouten mogen: 1 fout vanaf 4 letters, 2 vanaf 8 (omgedraaide letters tellen als 1);
+// - afkortingen en Nederlands/Engels: AI = KI, NL = Nederland, Commissie = EC, enz.
+// Treffers zonder tikfout komen eerst; daarna de bijna-treffers, met "Bedoel je …?".
+function normaal(t) {
+  return String(t == null ? "" : t).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/ø/g, "o").replace(/æ/g, "ae").replace(/œ/g, "oe").replace(/ß/g, "ss").replace(/ł/g, "l").replace(/đ/g, "d").replace(/ı/g, "i")
+    .replace(/[^a-z0-9]+/g, " ").trim();
+}
+var SYNONIEMEN = {};
+[["ai", "ki", "artificial", "kunstmatige"], ["nl", "nederland", "nederlands", "nederlandse", "netherlands", "dutch"],
+ ["commissie", "ec", "commission", "commissaris", "commissioner"], ["parlement", "ep", "parliament", "europarlement", "europarlementarier", "mep"],
+ ["raad", "council"], ["top", "summit", "eu-top"], ["klimaat", "climate"], ["landbouw", "agriculture", "agri", "boeren", "farmers"],
+ ["defensie", "defence", "defense"], ["handel", "trade"], ["energie", "energy"], ["begroting", "budget"], ["migratie", "migration"],
+ ["asiel", "asylum"], ["oekraine", "ukraine"], ["rusland", "russia"], ["sancties", "sanctions"], ["stemming", "vote", "stemmingen", "votes"],
+ ["debat", "debate", "debatten", "debates"], ["verkiezing", "verkiezingen", "election", "elections"], ["gezondheid", "health", "volksgezondheid"],
+ ["vervoer", "transport"], ["visserij", "fisheries"], ["milieu", "environment"], ["mededinging", "competition"],
+ ["rechtsstaat", "rechtsstatelijkheid"], ["uitbreiding", "enlargement"], ["veiligheid", "security"], ["digitaal", "digital"], ["kanker", "cancer"],
+ ["geneesmiddelen", "medicines", "medicinal"], ["belasting", "tax", "taxation", "btw", "vat"], ["visum", "visa"], ["grens", "border", "grenzen", "borders"],
+ ["voorstel", "proposal"], ["verordening", "regulation"], ["richtlijn", "directive"]
+].forEach(function (groep) { groep.forEach(function (w) { SYNONIEMEN[normaal(w)] = groep.map(normaal); }); });
+
+var _zoektekst = new Map();
+function zoektekst(t) {
+  var z = _zoektekst.get(t);
+  if (!z) {
+    var n = normaal(t), woorden = {};
+    n.split(" ").forEach(function (w) { if (w) woorden[w] = 1; });
+    z = { tekst: " " + n + " ", woorden: Object.keys(woorden) };
+    if (_zoektekst.size > 30000) _zoektekst.clear();
+    _zoektekst.set(t, z);
+  }
+  return z;
+}
+// Damerau-Levenshtein (met omgedraaide buren), stopt zodra het meer dan max wordt
+function afstand(a, b, max) {
+  if (Math.abs(a.length - b.length) > max) return max + 1;
+  var vv = [], v = [], i, j;
+  for (j = 0; j <= b.length; j++) v[j] = j;
+  for (i = 1; i <= a.length; i++) {
+    var n = [i], laagste = i;
+    for (j = 1; j <= b.length; j++) {
+      var k = a[i - 1] === b[j - 1] ? 0 : 1;
+      var x = Math.min(v[j] + 1, n[j - 1] + 1, v[j - 1] + k);
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) x = Math.min(x, vv[j - 2] + 1);
+      n[j] = x; if (x < laagste) laagste = x;
+    }
+    if (laagste > max) return max + 1;
+    vv = v; v = n;
+  }
+  return v[b.length];
+}
+function zoeker(q) {
+  var delen = normaal(q).split(" ").filter(Boolean);
+  var scores = new Map(), bijnaWoorden = {}, aantalBijna = 0;
+  function woord(t, z) {
+    var opties = SYNONIEMEN[t] || [t];
+    for (var o = 0; o < opties.length; o++) {
+      var w = opties[o];
+      // een korte afkorting (EC, EP, KI) moet een heel woord zijn; wat je zelf typt mag een begin zijn
+      if (w !== t && w.length <= 3) { if (z.tekst.indexOf(" " + w + " ") >= 0) return 2; continue; }
+      if (z.tekst.indexOf(" " + w) >= 0 || (w.length >= 4 && z.tekst.indexOf(w) >= 0)) return 2;
+    }
+    if (t.length < 4 || /^\d+$/.test(t)) return 0;
+    var max = t.length >= 8 ? 2 : 1;
+    for (var i = 0; i < z.woorden.length; i++) {
+      var kandidaat = z.woorden[i];
+      if (kandidaat.length < 3) continue;
+      // hele woord met een tikfout, of het begin van een langer woord met een tikfout
+      if (afstand(t, kandidaat, max) <= max || (kandidaat.length > t.length && t.length >= 5 && afstand(t, kandidaat.slice(0, t.length), max) <= max)) {
+        var b = bijnaWoorden[t] || (bijnaWoorden[t] = {});
+        b[kandidaat] = (b[kandidaat] || 0) + 1;
+        return 1;
+      }
+    }
+    return 0;
+  }
+  var z = {
+    leeg: !delen.length,
+    // past(tekst, item): true als alle zoekwoorden erin staan (of bijna)
+    past: function (tekst, item) {
+      if (z.leeg) return true;
+      var zt = zoektekst(tekst), s = 2;
+      for (var i = 0; i < delen.length; i++) {
+        var r = woord(delen[i], zt);
+        if (!r) return false;
+        if (r < s) s = r;
+      }
+      if (s === 1) aantalBijna++;
+      scores.set(item === undefined ? tekst : item, s);
+      return true;
+    },
+    // eerst de treffers zonder tikfout, daarna de bijna-treffers (verder in dezelfde volgorde)
+    ordenen: function (lijst) {
+      if (z.leeg || !aantalBijna) return lijst;
+      return lijst.filter(function (x) { return scores.get(x) !== 1; }).concat(lijst.filter(function (x) { return scores.get(x) === 1; }));
+    },
+    bijna: function () { return aantalBijna; },
+    voorstel: function () {
+      if (!aantalBijna) return "";
+      var uit = delen.map(function (t) {
+        var b = bijnaWoorden[t];
+        if (!b) return t;
+        return Object.keys(b).sort(function (x, y) { return b[y] - b[x]; })[0];
+      }).join(" ");
+      return uit === delen.join(" ") ? "" : uit;
+    }
+  };
+  return z;
+}
+// "Bedoel je …?" net onder het zoekveld; tik erop om dat te zoeken
+function bedoelJe(veldId, z) {
+  var veld = document.getElementById(veldId);
+  if (!veld) return;
+  var plek = veld.closest(".zoekrij, .zoekgroot") || veld;
+  var p = plek.nextElementSibling && plek.nextElementSibling.classList.contains("bedoel") ? plek.nextElementSibling : null;
+  var voorstel = z && !z.leeg ? z.voorstel() : "";
+  if (!voorstel) { if (p) p.remove(); return; }
+  if (!p) { p = document.createElement("p"); p.className = "bedoel"; plek.parentNode.insertBefore(p, plek.nextSibling); }
+  p.innerHTML = (z.bijna() === 1 ? "1 bijna-treffer" : z.bijna() + " bijna-treffers") + ' · Bedoel je: <button type="button" class="linkknop" data-voorstel="' + esc(voorstel) + '" data-veld="' + esc(veldId) + '">' + esc(voorstel) + "</button>?";
+}
+document.addEventListener("click", function (ev) {
+  var k = ev.target.closest && ev.target.closest("[data-voorstel]");
+  if (!k) return;
+  var veld = document.getElementById(k.dataset.veld);
+  if (!veld) return;
+  veld.value = k.dataset.voorstel;
+  veld.dispatchEvent(new Event("input", { bubbles: true }));
+});
+
 // ---------- gegevens per tabblad inladen ----------
 var _geladen = {};
 function laden(naam) {
@@ -297,7 +594,10 @@ function kopieer(tekst, knop) {
   function reserve() { var t = document.createElement("textarea"); t.value = tekst; document.body.appendChild(t); t.select(); try { document.execCommand("copy"); klaar(); } catch (e) {} t.remove(); }
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(tekst).then(klaar, reserve); else reserve();
 }
-function icsKnop(titel, datum, uitleg, url) {
+// Met een .ics-bestand op de site (gemaakt door europa.py) opent de iPhone meteen 'Zet in agenda',
+// ook als web-app op het beginscherm. Zonder bestand maakt de browser het zelf (werkt op de computer).
+function icsKnop(titel, datum, uitleg, url, bestand) {
+  if (bestand) return '<a class="mini" href="' + esc(bestand) + '">＋ Agenda</a>';
   return '<button class="mini" data-ics="' + esc(JSON.stringify({ t: titel, d: datum, u: uitleg || "", l: url || "" })) + '">＋ Agenda</button>';
 }
 function ics(x) {
