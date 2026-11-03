@@ -1,7 +1,9 @@
 /* =====================================================================
-   EU-monitor: stijl. Ontworpen vanaf de iPhone (393 punten breed), in de
+   EU-monitor: stijl. Ontworpen vanaf de iPhone 17 (402 punten breed; ook 17 Pro Max,
+   440 breed), in de
    Liquid Glass-stijl van iOS 26. Vervaging (blur) alleen op de lagen die over
    de inhoud zweven (tabbalk, titelbalk, sheets, paneel): dat houdt het snel.
+   Licht of donker volgt altijd de instelling van het systeem.
    ===================================================================== */
 
 /* ---------- kleuren ---------- */
@@ -17,7 +19,7 @@
   --voor: #12864a; --tegen: #c62f2f; --onth: #8a8f9c;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
+  :root {
     color-scheme: dark;
     --achter: #060914;
     --vlek1: #1b3fa8; --vlek2: #4a2c93; --vlek3: #0b5d77; --vlek4: #6b5a1a;
@@ -29,18 +31,6 @@
     --voor: #4cd38a; --tegen: #ff7a6e; --onth: #9aa0ad;
   }
 }
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --achter: #060914;
-  --vlek1: #1b3fa8; --vlek2: #4a2c93; --vlek3: #0b5d77; --vlek4: #6b5a1a;
-  --kaart: rgba(28,31,44,.78); --glas: rgba(30,33,46,.62); --glas-sterk: rgba(36,39,54,.88); --glas-zacht: rgba(255,255,255,.08);
-  --rand: rgba(255,255,255,.12); --rand-buiten: rgba(0,0,0,.4);
-  --glans: rgba(255,255,255,.16); --schaduw: 0 8px 26px rgba(0,0,0,.4);
-  --tekst: #f3f5fb; --zacht: #b6bdcf; --lijn: rgba(255,255,255,.10);
-  --eu: #8fb0ff; --eu-zacht: rgba(143,176,255,.15); --geel: #ffd60a;
-  --voor: #4cd38a; --tegen: #ff7a6e; --onth: #9aa0ad;
-}
-
 /* ---------- basis ---------- */
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html { -webkit-text-size-adjust: 100%; overflow-x: hidden; }
@@ -127,6 +117,11 @@ nav.tabs a {
 }
 nav.tabs a svg { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 nav.tabs a.actief, nav.tabs a.onder-lens { color: var(--eu); }
+/* de middelste knop (Overzicht) valt op: een glazen rondje om het icoon */
+nav.tabs a.midden svg { width: 34px; height: 34px; padding: 5px; margin-top: -4px; border-radius: 50%; stroke-width: 2.1;
+  background: var(--eu-zacht); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--eu) 22%, transparent); }
+nav.tabs a.midden.actief svg { background: var(--eu); stroke: #fff; box-shadow: 0 3px 10px color-mix(in srgb, var(--eu) 40%, transparent); }
+@media (prefers-color-scheme: dark) { nav.tabs a.midden.actief svg { stroke: #06112e; } }
 .lens {
   position: absolute; z-index: 1; top: 4px; bottom: 4px; left: 4px; width: 60px; border-radius: 999px;
   background: linear-gradient(180deg, rgba(255,255,255,.6), rgba(255,255,255,.2));
@@ -135,10 +130,10 @@ nav.tabs a.actief, nav.tabs a.onder-lens { color: var(--eu); }
   transition: left .45s cubic-bezier(.3,1.35,.5,1), width .45s cubic-bezier(.3,1.35,.5,1), transform .25s ease, box-shadow .25s ease;
   pointer-events: none; will-change: left, transform;
 }
+.lens.weg { opacity: 0; }
 .lens::after { content: ""; position: absolute; left: 14%; right: 14%; top: 2px; height: 38%; border-radius: 999px; background: linear-gradient(180deg, rgba(255,255,255,.75), rgba(255,255,255,0)); opacity: .55; }
 .lens.sleept { transition: transform .2s ease, box-shadow .2s ease; box-shadow: inset 0 1px 1px #fff, inset 0 -3px 10px rgba(255,255,255,.35), 0 10px 28px rgba(20,40,120,.28), 0 0 0 1px rgba(255,255,255,.5); }
-:root[data-theme="dark"] .lens { background: linear-gradient(180deg, rgba(255,255,255,.2), rgba(255,255,255,.05)); border-color: rgba(255,255,255,.22); box-shadow: inset 0 1px 1px rgba(255,255,255,.35), 0 2px 12px rgba(0,0,0,.4); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lens { background: linear-gradient(180deg, rgba(255,255,255,.2), rgba(255,255,255,.05)); border-color: rgba(255,255,255,.22); box-shadow: inset 0 1px 1px rgba(255,255,255,.35), 0 2px 12px rgba(0,0,0,.4); } }
+@media (prefers-color-scheme: dark) { .lens { background: linear-gradient(180deg, rgba(255,255,255,.2), rgba(255,255,255,.05)); border-color: rgba(255,255,255,.22); box-shadow: inset 0 1px 1px rgba(255,255,255,.35), 0 2px 12px rgba(0,0,0,.4); } }
 
 /* ---------- invoer en knoppen (min. 44 punten hoog; 16 px tekst zodat iOS niet inzoomt) ---------- */
 .zoek, select.kies, .notitie textarea { font: inherit; font-size: 16px; color: var(--tekst); }
@@ -155,7 +150,6 @@ select.kies { width: 100%; min-height: 44px; padding: 8px 12px; border-radius: 1
 }
 .filterknop svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
 .filterknop .teller:not(:empty) { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--eu); color: #fff; font-size: 12px; display: inline-grid; place-items: center; }
-:root[data-theme="dark"] .filterknop .teller:not(:empty) { color: #06112e; }
 .chips { display: flex; gap: 6px; overflow-x: auto; padding: 6px 2px 4px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .chips::-webkit-scrollbar { display: none; }
 .chip {
@@ -166,7 +160,7 @@ select.kies { width: 100%; min-height: 44px; padding: 8px 12px; border-radius: 1
 .chip.actief { background: var(--eu); border-color: transparent; color: #fff; }
 .chip.actief small { color: rgba(255,255,255,.85); }
 .schakel { display: inline-flex; background: var(--glas-zacht); border: 1px solid var(--rand); border-radius: 14px; padding: 3px; margin: 4px 0 12px; }
-.schakel.breed, #kanaal-schakel { display: flex; }
+.schakel.breed { display: flex; }
 .schakel button { flex: 1; min-height: 38px; font: inherit; font-size: 15px; border: 0; background: transparent; color: var(--tekst); padding: 6px 12px; border-radius: 11px; cursor: pointer; }
 .schakel button.actief { background: var(--glas-sterk); box-shadow: inset 0 1px 0 var(--glans), 0 1px 4px rgba(0,0,0,.1); font-weight: 650; }
 .schakel button small { color: var(--zacht); font-weight: 500; }
@@ -175,10 +169,7 @@ select.kies { width: 100%; min-height: 44px; padding: 8px 12px; border-radius: 1
 .knop.breed { display: block; width: 100%; margin: 12px 0; }
 .knoprij { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 12px 0; font-size: 15px; }
 .mini { font: inherit; font-size: 14px; min-height: 36px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--rand); background: var(--glas-zacht); color: var(--eu); cursor: pointer; white-space: nowrap; }
-.ster { font: inherit; font-size: 22px; line-height: 1; background: none; border: 0; color: var(--zacht); cursor: pointer; min-width: 44px; min-height: 44px; margin: -10px -12px -10px 0; }
-.ster.aan { color: #e0a800; }
-:root[data-theme="dark"] .knop:not(.tweede), :root[data-theme="dark"] .chip.actief, :root[data-theme="dark"] .chip.actief small { color: #06112e; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .knop:not(.tweede), :root:not([data-theme="light"]) .chip.actief, :root:not([data-theme="light"]) .chip.actief small, :root:not([data-theme="light"]) .filterknop .teller:not(:empty) { color: #06112e; } }
+@media (prefers-color-scheme: dark) { .knop:not(.tweede), .chip.actief, .chip.actief small, .filterknop .teller:not(:empty) { color: #06112e; } }
 .optie { display: flex; align-items: center; gap: 12px; min-height: 48px; font-size: 16px; padding: 4px 2px; border-bottom: 1px solid var(--lijn); }
 .optie input { width: 22px; height: 22px; accent-color: var(--eu); margin: 0; flex: none; }
 .veld { display: block; font-size: 13px; font-weight: 600; color: var(--zacht); margin: 0 0 12px; }
@@ -224,7 +215,6 @@ select.kies { width: 100%; min-height: 44px; padding: 8px 12px; border-radius: 1
 .label { font-size: 12px; padding: 2px 8px; border-radius: 7px; background: var(--eu-zacht); color: var(--eu); font-weight: 550; }
 .label.voorstel { background: var(--geel); color: #000; font-weight: 700; }
 .label.soort, .label.taal { background: transparent; border: 1px solid var(--lijn); color: var(--zacht); }
-.label.officieel { background: color-mix(in srgb, var(--geel) 30%, transparent); color: var(--tekst); border: 1px solid color-mix(in srgb, var(--geel) 70%, transparent); font-weight: 700; }
 .uitslag { font-size: 12.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; }
 .uitslag.ja { background: color-mix(in srgb, var(--voor) 18%, transparent); color: var(--voor); }
 .uitslag.nee { background: color-mix(in srgb, var(--tegen) 18%, transparent); color: var(--tegen); }
@@ -240,7 +230,6 @@ ul.lijst li:last-child { padding-bottom: 0; }
 ul.lijst a { text-decoration: none; color: inherit; display: block; }
 ul.lijst .regel { font-weight: 600; line-height: 1.35; }
 ul.lijst .meta2 { font-size: 13px; color: var(--zacht); margin-top: 3px; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
-ul.lijst.officieel li { border-left: 3px solid var(--geel); padding-left: 10px; }
 ul.punten { margin: 6px 0 0; padding-left: 18px; }
 ul.punten li { margin: 5px 0; }
 
@@ -249,7 +238,6 @@ ul.berichten { list-style: none; margin: 0; padding: 0; overflow: hidden; }
 li.bericht + li.bericht { border-top: 1px solid var(--lijn); }
 li.bericht a { display: block; padding: 12px 16px; color: inherit; text-decoration: none; }
 li.bericht a:active { background: var(--eu-zacht); }
-li.bericht.officieel a { border-left: 4px solid var(--geel); padding-left: 12px; }
 li.bericht h3 { margin: 2px 0 4px; font-size: 16.5px; line-height: 1.3; }
 li.bericht p { margin: 0; font-size: 14.5px; color: var(--zacht); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .meta { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--zacht); }
@@ -334,4 +322,55 @@ footer a { display: inline-block; padding: 10px 4px; }
 /* minder beweging gewenst */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* ---------- bronnenknop rechtsboven ---------- */
+.bronknop {
+  position: fixed; z-index: 25; top: calc(env(safe-area-inset-top) + 2px); right: max(10px, env(safe-area-inset-right));
+  width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; color: var(--eu);
+  background: var(--glas); border: 1px solid var(--rand); box-shadow: inset 0 1px 0 var(--glans), var(--schaduw);
+  -webkit-backdrop-filter: blur(20px) saturate(170%); backdrop-filter: blur(20px) saturate(170%);
+}
+.bronknop svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
+header.groot { padding-right: 48px; }
+
+/* ---------- groot zoekveld (Overzicht) ---------- */
+.zoekgroot { position: relative; margin: 6px 0 4px; }
+.zoekgroot svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; stroke: var(--zacht); fill: none; stroke-width: 2.2; stroke-linecap: round; pointer-events: none; }
+.zoekgroot .zoek { min-height: 50px; padding-left: 44px; border-radius: 999px; font-size: 17px; box-shadow: inset 0 1px 0 var(--glans), var(--schaduw); }
+#ov-resultaten h2 small { font-size: 15px; color: var(--zacht); font-weight: 500; }
+
+/* ---------- segmenten die blijven staan bij scrollen ---------- */
+.plakrij { position: sticky; top: calc(env(safe-area-inset-top) + 48px); z-index: 15; margin: 4px -6px 8px; padding: 0 6px; }
+.plakrij .schakel { margin: 0; background: var(--glas); -webkit-backdrop-filter: blur(22px) saturate(175%); backdrop-filter: blur(22px) saturate(175%); box-shadow: 0 4px 16px rgba(20,30,80,.08); }
+
+/* ---------- Uit Brussel zelf: eigen herkenbare vormgeving ---------- */
+.officieel-deel { --officieel: var(--eu); }
+.officieel-uitleg { display: flex; gap: 12px; align-items: flex-start; margin: 4px 0 10px; padding: 12px 14px; border-radius: 18px;
+  background: color-mix(in srgb, var(--eu) 9%, var(--kaart)); border: 1px solid color-mix(in srgb, var(--eu) 25%, transparent); }
+.officieel-uitleg p { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--zacht); }
+.officieel-uitleg b { color: var(--tekst); }
+.eu-merk { flex: none; width: 30px; height: 30px; border-radius: 9px; margin-top: 1px;
+  background: radial-gradient(circle, transparent 0 7px, transparent 7px), #003399; position: relative; box-shadow: 0 2px 6px rgba(0,51,153,.35); }
+.eu-merk::after { content: ""; position: absolute; inset: 5px; border-radius: 50%;
+  background: radial-gradient(circle at 50% 0, #ffcc00 1.5px, transparent 2px), radial-gradient(circle at 50% 100%, #ffcc00 1.5px, transparent 2px),
+    radial-gradient(circle at 0 50%, #ffcc00 1.5px, transparent 2px), radial-gradient(circle at 100% 50%, #ffcc00 1.5px, transparent 2px),
+    radial-gradient(circle at 15% 15%, #ffcc00 1.5px, transparent 2px), radial-gradient(circle at 85% 15%, #ffcc00 1.5px, transparent 2px),
+    radial-gradient(circle at 15% 85%, #ffcc00 1.5px, transparent 2px), radial-gradient(circle at 85% 85%, #ffcc00 1.5px, transparent 2px); }
+.officieel-deel ul.berichten { background: color-mix(in srgb, var(--eu) 5%, var(--kaart)); border-color: color-mix(in srgb, var(--eu) 22%, var(--rand)); }
+li.bericht.officieel a { border-left: 4px solid var(--eu); padding-left: 12px; }
+li.bericht.officieel .meta .bron { color: var(--tekst); }
+.label.officieel { background: var(--eu); color: #fff; border: 0; font-weight: 700; letter-spacing: .2px; }
+@media (prefers-color-scheme: dark) { .label.officieel { color: #06112e; } }
+ul.lijst.officieel li { border-left: 3px solid var(--eu); padding-left: 10px; }
+.officieel-koppel { padding: 10px 12px; border-radius: 16px; background: color-mix(in srgb, var(--eu) 7%, var(--kaart)); border: 1px solid color-mix(in srgb, var(--eu) 20%, transparent); }
+.officieel-koppel > .klein { margin: 0 0 8px; }
+
+/* ---------- soorten in de agenda ---------- */
+.label.soort-eu-top { background: #003399; color: #fff; font-weight: 700; }
+.label.soort-raad { background: color-mix(in srgb, #7a3db8 14%, transparent); color: #6a2fb0; }
+.label.soort-commissie { background: color-mix(in srgb, var(--geel) 28%, transparent); color: var(--tekst); }
+@media (prefers-color-scheme: dark) {
+  .label.soort-eu-top { background: #8fb0ff; color: #06112e; }
+  .label.soort-raad { color: #c9a6ff; background: rgba(201,166,255,.14); }
 }

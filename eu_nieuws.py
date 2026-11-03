@@ -120,6 +120,12 @@ def terreinen_van(tekst, categorieen=""):
     return ["Overig"]
 
 
+# Nummer van een bericht van de Commissie (zoals ip_26_2244), om het aan een dossier te koppelen.
+def persnummer(link):
+    m = re.search(r"/presscorner/detail/\w+/([a-z]+_\d+_\d+)", link or "", re.I)
+    return m.group(1).lower() if m else None
+
+
 def berichten():
     grens = datetime.now(timezone.utc) - timedelta(days=DAGEN_TERUG)
     gezien, lijst, fouten = set(), [], []
@@ -189,7 +195,8 @@ def bericht_html(b):
         extra += '<span class="label taal" title="Engelstalige bron">EN</span>'
     terreinen = "|".join(b["terreinen"])
     return (
-        f'<li class="bericht {e(b.get("kanaal", "media"))}" data-bron="{e(b["bron"])}" data-terrein="{e(terreinen)}">'
+        f'<li class="bericht {e(b.get("kanaal", "media"))}" data-bron="{e(b["bron"])}" data-terrein="{e(terreinen)}"'
+        f' data-tijd="{b["datum"].day} {MAANDEN[b["datum"].month - 1][:3]} {b["datum"]:%H:%M}">'
         f'<a href="{e(b["link"])}" target="_blank" rel="noopener">'
         f'<div class="meta"><span class="bron">{e(b["bron"])}</span>'
         f'<span class="tijd">{b["datum"]:%H:%M}</span></div>'

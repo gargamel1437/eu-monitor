@@ -14,6 +14,8 @@ from bronnen import CACHE, FRACTIES, naam_mooi, ophalen_json
 HTV = "https://howtheyvote.eu/api"
 MAP = CACHE / "stemmen"
 PARTIJ_NAMEN = {"Independent": "Onafhankelijk"}
+# hoe elk lid stemde, kort: v(oor), t(egen), o(nthouden), g (niet gestemd)
+POSITIE_KORT = {"FOR": "v", "AGAINST": "t", "ABSTENTION": "o", "DID_NOT_VOTE": "g"}
 
 
 def meerderheid(telling):
@@ -31,9 +33,11 @@ def zittingen(aantal=2):
 def detail(stem_id):
     pad = MAP / f"{stem_id}.json"
     if pad.exists():
-        return json.loads(pad.read_text(encoding="utf-8"))
+        oud = json.loads(pad.read_text(encoding="utf-8"))
+        if "posities" in oud:   # oudere bestanden hadden alleen de Nederlanders: opnieuw ophalen
+            return oud
     d = ophalen_json(f"{HTV}/votes/{stem_id}", 60)
-    leden, nl = {}, []
+    leden, nl, posities = {}, [], {}
     per_partij = {}
     for mv in d.get("member_votes", []):
         m = mv["member"]
@@ -43,6 +47,7 @@ def detail(stem_id):
         partij = PARTIJ_NAMEN.get(partij, partij)
         leden[str(m["id"])] = {"naam": naam_mooi(m["first_name"], m["last_name"]), "fractie": fractie,
                                "land": land, "partij": partij}
+        posities[str(m["id"])] = POSITIE_KORT.get(mv["position"], "g")
         if land == "NL":
             nl.append({"id": str(m["id"]), "naam": leden[str(m["id"])]["naam"], "partij": partij,
                        "fractie": fractie, "positie": mv["position"]})
@@ -82,7 +87,7 @@ def detail(stem_id):
         "commissies": [c.get("code") for c in d.get("responsible_committees") or []],
         "verwant": verwant, "url": f"https://howtheyvote.eu/votes/{d['id']}",
         "document": (d.get("document") or {}).get("url"), "referentie": d.get("reference"),
-        "leden": leden,
+        "leden": leden, "posities": posities,
     }
     MAP.mkdir(parents=True, exist_ok=True)
     pad.write_text(json.dumps(uit, ensure_ascii=False), encoding="utf-8")
@@ -112,8 +117,10 @@ def alles(aantal_zittingen=2):
     leden = {}
     for s in sorted(stemmen, key=lambda s: s["moment"]):
         leden.update(s.pop("leden", {}))
+    posities = {}
     for s in stemmen:
         s.pop("leden", None)
+        posities[s["id"]] = s.pop("posities", {})
     stemmen.sort(key=lambda s: s["moment"], reverse=True)
     return {"zittingen": [{"begin": z["start_date"], "eind": z["end_date"]} for z in zit],
-            "stemmen": stemmen, "leden": leden}
+            "stemmen": stemmen, "leden": leden, "posities": posities}

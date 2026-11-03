@@ -1,45 +1,38 @@
 // =====================================================================
-//  basis.js: opslag, thema, tabbladen, het glazen selectiebolletje, uitleg bij begrippen,
-//  en gedeelde hulpjes (datums, links, fracties, volglijst, notities, kopiëren, agenda).
+//  basis.js: opslag, tabbladen, het glazen selectiebolletje, uitleg bij begrippen,
+//  en gedeelde hulpjes (datums, links, fracties, notities, kopiëren, agenda).
+//  Licht of donker volgt altijd het systeem (prefers-color-scheme in stijl.css).
 //  Alle scripts worden bij het bouwen samengevoegd tot één script (zie europa.py).
 // =====================================================================
 function bewaar(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 function lees(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 function alle(sel, ouder) { return Array.prototype.slice.call((ouder || document).querySelectorAll(sel)); }
 
-// ---- thema ----
-var thema = lees("eu-thema");
-if (thema) document.documentElement.setAttribute("data-theme", thema);
-document.getElementById("thema").addEventListener("click", function (ev) {
-  ev.preventDefault();
-  var nu = document.documentElement.getAttribute("data-theme")
-    || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-  var nieuw = nu === "dark" ? "light" : "dark";
-  document.documentElement.setAttribute("data-theme", nieuw);
-  bewaar("eu-thema", nieuw);
-});
+// een vroeger handmatig gekozen thema opruimen: het systeem bepaalt nu
+try { localStorage.removeItem("eu-thema"); } catch (e) {}
 
 // ---- tabbladen ----
 var tabs = alle("section.tab").map(function (s) { return s.id; });
-var extra = {};
+// oude of extra adressen en het tabblad waar ze nu staan
+var extra = { mensen: "stemmingen", zoek: "overzicht", stemmen: "stemmingen" };
+function hashNaam() { return (location.hash || "#overzicht").slice(1).split("?")[0]; }
 function huidigeTab() {
-  var doel = (location.hash || "#overzicht").slice(1).split("?")[0];
+  var doel = hashNaam();
   return tabs.indexOf(doel) >= 0 ? doel : (extra[doel] || "overzicht");
 }
 function toonTab() {
-  var doel = (location.hash || "#overzicht").slice(1).split("?")[0];
-  var naam = tabs.indexOf(doel) >= 0 ? doel : (extra[doel] || "overzicht");
+  var doel = hashNaam();
+  var naam = huidigeTab();
   alle("section.tab").forEach(function (s) { s.classList.toggle("actief", s.id === naam); });
   alle("nav.tabs a").forEach(function (a) { a.classList.toggle("actief", a.dataset.tab === naam); });
   document.getElementById("kleine-titel").textContent = document.getElementById(naam).dataset.titel;
-  var anker = extra[doel] ? document.getElementById(doel) : null;
-  if (anker) anker.scrollIntoView(); else { window.scrollTo(0, 0); requestAnimationFrame(function () { window.scrollTo(0, 0); kleineTitel(); }); }
+  window.scrollTo(0, 0); requestAnimationFrame(function () { window.scrollTo(0, 0); kleineTitel(); });
   kleineTitel();
-  document.dispatchEvent(new CustomEvent("eu-tab", { detail: naam }));
+  document.dispatchEvent(new CustomEvent("eu-tab", { detail: naam, adres: doel }));
 }
 window.addEventListener("hashchange", toonTab);
 if ("scrollRestoration" in history) history.scrollRestoration = "manual";
-window.addEventListener("load", function () { if (!extra[(location.hash || "").slice(1)]) window.scrollTo(0, 0); kleineTitel(); });
+window.addEventListener("load", function () { window.scrollTo(0, 0); kleineTitel(); });
 
 // ---- grote titel wordt klein bij scrollen ----
 var balk = document.getElementById("topbalk");
@@ -48,17 +41,17 @@ window.addEventListener("scroll", kleineTitel, { passive: true });
 toonTab();
 
 // ---- schakelaars (segmenten) ----
-alle(".schakel").forEach(function (rij) {
-  var knoppen = alle("button[data-toon]", rij);
-  knoppen.forEach(function (knop) {
-    knop.addEventListener("click", function () {
-      knoppen.forEach(function (b) {
-        b.classList.toggle("actief", b === knop);
-        var doel = document.getElementById(b.dataset.toon);
-        if (doel) doel.classList.toggle("verborgen", b !== knop);
-      });
-    });
+function kiesSegment(knop) {
+  alle("button[data-toon]", knop.parentNode).forEach(function (b) {
+    b.classList.toggle("actief", b === knop);
+    var doel = document.getElementById(b.dataset.toon);
+    if (doel) doel.classList.toggle("verborgen", b !== knop);
   });
+  knop.dispatchEvent(new CustomEvent("eu-segment", { bubbles: true, detail: knop.dataset.toon }));
+}
+function toonSegment(id) { var k = document.querySelector('.schakel button[data-toon="' + id + '"]'); if (k && !k.classList.contains("actief")) kiesSegment(k); }
+alle(".schakel button[data-toon]").forEach(function (knop) {
+  knop.addEventListener("click", function () { kiesSegment(knop); });
 });
 
 
@@ -67,6 +60,7 @@ var pil = document.querySelector("nav.tabs .pil");
 var lens = document.getElementById("lens");
 var tabLinks = alle("nav.tabs a");
 function zetLens(a, direct) {
+  lens.classList.toggle("weg", !a);   // bijvoorbeeld op de pagina Bronnen
   if (!a) return;
   var p = pil.getBoundingClientRect(), r = a.getBoundingClientRect();
   if (direct) lens.style.transition = "none";
@@ -282,20 +276,10 @@ function laadFout(doel) {
 }
 function bezig(doel) { if (doel && !doel.children.length) doel.innerHTML = '<p class="laden">Laden…</p>'; }
 
-// ---------- volglijst, notities en bezoeken (alleen in deze browser) ----------
-var VOLG = leesJSON("eu-volg", { dossiers: [], mensen: [] });
+// ---------- notities (alleen in deze browser) ----------
 var NOTITIES = leesJSON("eu-notities", {});
-var STAND = leesJSON("eu-volg-stand", {});
-var BEZOEK = leesJSON("eu-bezoek", {});
-(function () {
-  var nu = vandaag();
-  if (BEZOEK.huidig !== nu) { BEZOEK.vorig = BEZOEK.huidig || ""; BEZOEK.huidig = nu; bewaar("eu-bezoek", JSON.stringify(BEZOEK)); }
-})();
-function volgt(soort, id) { return VOLG[soort].indexOf(id) >= 0; }
-function ster(soort, id, laatst) {
-  return '<button class="ster' + (volgt(soort, id) ? " aan" : "") + '" data-volg="' + soort + '" data-id="' + esc(id) + '"' + (laatst ? ' data-laatst="' + esc(laatst) + '"' : "")
-    + ' aria-label="Volgen">' + (volgt(soort, id) ? "★" : "☆") + "</button>";
-}
+// opslag van de vroegere volglijst en bezoeken opruimen
+["eu-volg", "eu-volg-stand", "eu-bezoek"].forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
 function notitie(sleutel) {
   return '<label class="notitie"><span>Mijn notities</span><textarea data-notitie="' + esc(sleutel) + '" placeholder="Alleen jij ziet dit (bewaard in deze browser)">' + esc(NOTITIES[sleutel] || "") + "</textarea></label>";
 }
@@ -328,20 +312,8 @@ function ics(x) {
   document.body.appendChild(link); link.click(); setTimeout(function () { URL.revokeObjectURL(link.href); link.remove(); }, 500);
 }
 
-// ---------- klikken: ster, kopiëren, agenda ----------
+// ---------- klikken: kopiëren, agenda ----------
 document.addEventListener("click", function (ev) {
-  var s = ev.target.closest && ev.target.closest("button.ster");
-  if (s) {
-    ev.preventDefault(); ev.stopPropagation();
-    var soort = s.dataset.volg, id = s.dataset.id, i = VOLG[soort].indexOf(id);
-    if (i >= 0) VOLG[soort].splice(i, 1); else VOLG[soort].push(id);
-    bewaar("eu-volg", JSON.stringify(VOLG));
-    if (soort === "dossiers" && s.dataset.laatst) { STAND[id] = s.dataset.laatst; bewaar("eu-volg-stand", JSON.stringify(STAND)); }
-    alle("button.ster").forEach(function (b) {
-      if (b.dataset.volg === soort && b.dataset.id === id) { b.classList.toggle("aan", i < 0); b.textContent = i < 0 ? "★" : "☆"; }
-    });
-    return;
-  }
   var k = ev.target.closest && ev.target.closest("[data-kopieer]");
   if (k) { ev.preventDefault(); ev.stopPropagation(); kopieer(KOPIEER[k.dataset.kopieer] ? KOPIEER[k.dataset.kopieer]() : "", k); return; }
   var ic = ev.target.closest && ev.target.closest("[data-ics]");

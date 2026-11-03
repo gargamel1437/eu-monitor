@@ -7,70 +7,82 @@
 <meta name="apple-mobile-web-app-title" content="EU-monitor">
 <meta name="format-detection" content="telephone=no">
 <title>EU-monitor</title>
-<meta name="theme-color" content="#dfe7ff" media="(prefers-color-scheme: light)">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#e4ebff" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#060914" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="robots" content="noindex, nofollow">
 <link rel="manifest" href="manifest.json">
+<!-- iOS kiest het beginschermicoon één keer, bij 'Zet op beginscherm', en wisselt het niet mee met
+     licht/donker. Daarom één icoon dat op beide achtergronden werkt; het tabblad-icoon wisselt wel. -->
 <link rel="apple-touch-icon" href="icoon.png">
 <link rel="icon" href="icoon.png" media="(prefers-color-scheme: light)">
 <link rel="icon" href="icoon-donker.png" media="(prefers-color-scheme: dark)">
-<meta name="apple-mobile-web-app-title" content="EU-monitor">
-<link rel="apple-touch-icon" href="icoon.png">
 <style>{{STIJL}}</style>
 </head>
 <body>
 <div class="topbalk" id="topbalk"><div id="kleine-titel">Overzicht</div></div>
+<a class="bronknop" href="#bronnen" aria-label="Bronnen en beperkingen"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg></a>
 
 <div class="wrap">
   <div id="meldingen">{{MELDINGEN}}</div>
 
-  <!-- ============ OVERZICHT ============ -->
+  <!-- ============ OVERZICHT (ook zoeken) ============ -->
   <section class="tab actief" id="overzicht" data-titel="Overzicht">
     <header class="groot"><h1>Overzicht</h1><p class="sub">Bijgewerkt {{BIJGEWERKT}} · <span id="volgende-update"></span></p></header>
-    <input class="zoek" id="ov-zoek" type="search" placeholder="Zoek in alles" aria-label="Zoek in alles">
-    <div id="ov-resultaten" class="verborgen" style="margin-top:10px"></div>
+    <div class="zoekgroot"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><input class="zoek" id="ov-zoek" type="search" placeholder="Zoek in alles" aria-label="Zoek in alles" autocomplete="off"></div>
+    <div id="ov-resultaten" class="verborgen"></div>
     <div id="ov-data"></div>
-{{OV_NIEUWS}}
   </section>
 
   <!-- ============ NIEUWS ============ -->
   <section class="tab" id="nieuws" data-titel="Nieuws">
     <header class="groot"><h1>Nieuws</h1><p class="sub">{{AANTAL}} berichten · afgelopen 5 dagen</p></header>
-    <input class="zoek" id="zoek" type="search" placeholder="Zoek in het EU-nieuws…" aria-label="Zoeken">
-    <div class="chips" id="terrein-knoppen" aria-label="Beleidsterrein">{{TERREIN_KNOPPEN}}</div>
-    <div class="schakel" id="kanaal-schakel">
-      <button class="actief" data-toon="kanaal-media">Nieuws uit de media <small>{{AANTAL_MEDIA}}</small></button>
+    <div class="plakrij"><div class="schakel breed" id="kanaal-schakel">
+      <button class="actief" data-toon="kanaal-media">Media <small>{{AANTAL_MEDIA}}</small></button>
       <button data-toon="kanaal-officieel">Uit Brussel zelf <small>{{AANTAL_OFFICIEEL}}</small></button>
-    </div>
+    </div></div>
+    <input class="zoek" id="zoek" type="search" placeholder="Zoek in het nieuws" aria-label="Zoek in het nieuws">
+    <div class="chips" id="terrein-knoppen" aria-label="Beleidsterrein">{{TERREIN_KNOPPEN}}</div>
     <div id="kanaal-media">
-      <p class="intro">Journalistiek nieuws over de EU van NOS (alleen berichten over de EU), Politico Europe en Euractiv. Politico en Euractiv zijn Engelstalig en hebben het label EN.</p>
       <div class="chips bron-knoppen" aria-label="Bron">{{BRON_KNOPPEN_MEDIA}}</div>
       <div class="nieuwslijst">
 {{NIEUWS_MEDIA}}
       </div>
+      <p class="klein uitleg-onder">Journalistiek nieuws over de EU van NOS (alleen berichten over de EU), Politico Europe en Euractiv. Berichten met <span class="label taal">EN</span> zijn Engelstalig. De samenvattingen zijn de eerste regels van het bericht zelf.</p>
     </div>
-    <div id="kanaal-officieel" class="verborgen">
-      <div class="melding officieel-uitleg"><b>Let op: dit is geen journalistiek.</b> Dit zijn persberichten, toespraken en verklaringen van de Europese Commissie en de Raad van de EU zelf. Ze laten zien wat Brussel wil uitdragen. Gebruik ze als primaire bron, maar zoek voor een artikel altijd een tweede bron en een reactie.</div>
+    <div id="kanaal-officieel" class="verborgen officieel-deel">
+      <div class="officieel-uitleg"><span class="eu-merk" aria-hidden="true"></span><p><b>Geen journalistiek.</b> Persberichten, toespraken en verklaringen van de Europese Commissie en de Raad van de EU zelf: wat Brussel wil uitdragen. Bruikbaar als primaire bron; zoek altijd een tweede bron en een reactie.</p></div>
       <div class="chips bron-knoppen" aria-label="Bron">{{BRON_KNOPPEN_OFFICIEEL}}</div>
       <div class="nieuwslijst">
 {{NIEUWS_OFFICIEEL}}
       </div>
+      <p class="klein uitleg-onder">Het label <span class="label voorstel">Voorstel</span> betekent dat de Commissie iets nieuws voorstelt (volgens de kop). Bij een dossier zie je de persberichten die er automatisch aan gekoppeld zijn.</p>
     </div>
     <p class="leeg verborgen" id="niets">Geen berichten met deze filters.</p>
-    <p class="klein" style="margin:14px 4px">De samenvattingen zijn de eerste regels van het bericht zelf; klik door voor het origineel. Het gele label <span class="label voorstel">Voorstel</span> betekent dat de Commissie iets nieuws voorstelt.</p>
   </section>
 
   <!-- ============ AGENDA ============ -->
   <section class="tab" id="agenda" data-titel="Agenda">
-    <header class="groot"><h1>Agenda</h1><p class="sub">Komende 4 weken en de debatten van de laatste drie zittingen</p></header>
-    <div class="schakel breed"><button class="actief" data-toon="a-komend">Komende 4 weken</button><button data-toon="a-afgelopen">Afgelopen debatten</button></div>
+    <header class="groot"><h1>Agenda</h1><p class="sub">Parlement, Raad, EU-toppen en de planning van de Commissie</p></header>
+    <div class="plakrij"><div class="schakel breed" id="agenda-schakel"><button class="actief" data-toon="a-komend">Komend</button><button data-toon="a-commissie">Commissie</button><button data-toon="a-afgelopen">Debatten</button></div></div>
     <div id="a-komend">
       <div class="zoekrij"><input class="zoek" id="a-zoek" type="search" placeholder="Zoek in de agenda"><button class="filterknop" id="a-filterknop" data-sheet="a-filters"><svg viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></svg>Filters<span class="teller"></span></button></div>
-      <div class="sheet" id="a-filters" role="dialog" aria-label="Filters"><div class="sheet-greep"></div><div class="sheet-kop"><b>Filters en sortering</b><button class="knop" data-sluit-sheet>Klaar</button></div><div class="sheet-lijf"><label class="veld">Soort<select class="kies" id="a-soort"><option value="">Alles</option><option>Plenaire vergadering</option><option>Parlementscommissie</option><option>Dossierstap</option><option>Raad</option></select></label></div></div>
+      <div class="sheet" id="a-filters" role="dialog" aria-label="Filters"><div class="sheet-greep"></div><div class="sheet-kop"><b>Filters en sortering</b><button class="knop" data-sluit-sheet>Klaar</button></div><div class="sheet-lijf"><label class="veld">Soort<select class="kies" id="a-soort"><option value="">Alles</option><option>EU-top</option><option>Plenaire vergadering</option><option>Raad</option><option>Parlementscommissie</option><option>Dossierstap</option></select></label>
+        <label class="optie"><input type="checkbox" id="a-informeel" checked> Ook informele ministersbijeenkomsten</label></div></div>
       <div id="a-lijst"></div>
-      <p class="klein uitleg-onder">Plenaire vergaderingen met hun debatten, en geplande stappen in dossiers volgens de Legislative Observatory. Met <b>＋ Agenda</b> zet je een item in je eigen agenda.</p>
+      <p class="klein uitleg-onder">Plenaire vergaderingen met hun debatten (Europees Parlement), vergaderingen van de Raad en EU-toppen (agenda van het EU-voorzitterschap), en geplande stappen in dossiers (Legislative Observatory). Met <b>＋ Agenda</b> zet je een item in je eigen agenda.</p>
+    </div>
+    <div id="a-commissie" class="verborgen">
+      <p class="intro">Wat de Commissie zelf zegt te willen voorstellen, per kwartaal. De Commissie noemt alleen het kwartaal, geen datum, en de planning schuift vaak.</p>
+      <div class="zoekrij"><input class="zoek" id="c-zoek" type="search" placeholder="Zoek in de planning"><button class="filterknop" id="c-filterknop" data-sheet="c-filters"><svg viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></svg>Filters<span class="teller"></span></button></div>
+      <div class="sheet" id="c-filters" role="dialog" aria-label="Filters"><div class="sheet-greep"></div><div class="sheet-kop"><b>Filters</b><button class="knop" data-sluit-sheet>Klaar</button></div><div class="sheet-lijf"><label class="veld">Soort<select class="kies" id="c-soort"></select></label>
+        <label class="veld">Onderwerp<select class="kies" id="c-onderwerp"></select></label>
+        <label class="optie"><input type="checkbox" id="c-achter" checked> Ook wat eerder gepland was en nog niet is aangenomen</label></div></div>
+      <p class="telling" id="c-aantal"></p>
+      <div id="c-lijst"></div>
+      <p class="klein uitleg-onder">Bron: <a href="https://ec.europa.eu/info/law/better-regulation/have-your-say_nl" target="_blank" rel="noopener">Geef uw mening</a> van de Europese Commissie: voorstellen voor wetgeving, mededelingen en aanbevelingen die nog niet zijn aangenomen. Uitvoerings- en gedelegeerde handelingen staan er niet in.</p>
     </div>
     <div id="a-afgelopen" class="verborgen">
       <div class="zoekrij"><input class="zoek" id="db-zoek" type="search" placeholder="Zoek een debat"><button class="filterknop" id="db-filterknop" data-sheet="db-filters"><svg viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></svg>Filters<span class="teller"></span></button></div>
@@ -91,16 +103,17 @@
       <label class="veld">Soort procedure<select class="kies" id="d-soort"></select></label>
       <label class="veld">Jaar<select class="kies" id="d-jaar"></select></label>
       <label class="optie"><input type="checkbox" id="d-nl"> Nederlandse (schaduw)rapporteur</label>
-      <label class="optie"><input type="checkbox" id="d-volg"> Alleen mijn volglijst</label>
       <label class="optie"><input type="checkbox" id="d-afgerond"> Ook afgerond (laatste 6 maanden)</label></div><button class="knop tweede breed" id="d-wis">Wis filters</button></div>
     <p class="telling" id="d-aantal"></p>
     <div id="d-lijst"></div>
     <button class="knop tweede breed verborgen" id="d-meer">Toon meer</button>
   </section>
 
-  <!-- ============ STEMMINGEN ============ -->
-  <section class="tab" id="stemmingen" data-titel="Stemmingen">
-    <header class="groot"><h1>Stemmingen</h1><p class="sub">Alle hoofdstemmingen van de laatste twee zittingen</p></header>
+  <!-- ============ STEMMEN (stemmingen en mensen) ============ -->
+  <section class="tab" id="stemmingen" data-titel="Stemmen">
+    <header class="groot"><h1>Stemmen</h1><p class="sub">Hoofdstemmingen van de laatste twee zittingen, en de europarlementariërs</p></header>
+    <div class="plakrij"><div class="schakel breed" id="stem-schakel"><button class="actief" data-toon="deel-stemmingen">Stemmingen</button><button data-toon="deel-mensen">Mensen</button></div></div>
+    <div id="deel-stemmingen">
     <div class="zoekrij"><input class="zoek" id="s-zoek" type="search" placeholder="Stemming of procedurenummer"><button class="filterknop" id="s-filterknop" data-sheet="s-filters"><svg viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></svg>Filters<span class="teller"></span></button></div>
     <div class="sheet" id="s-filters" role="dialog" aria-label="Filters"><div class="sheet-greep"></div><div class="sheet-kop"><b>Filters en sortering</b><button class="knop" data-sluit-sheet>Klaar</button></div><div class="sheet-lijf"><label class="veld">Sorteren<select class="kies" id="s-sort"><option value="datum">Nieuwste eerst</option><option value="oud">Oudste eerst</option><option value="verschil">Kleinste verschil voor/tegen</option><option value="onthouden">Meeste onthoudingen</option></select></label>
       <label class="veld">Onderwerp<select class="kies" id="s-terrein"></select></label>
@@ -110,18 +123,17 @@
       <label class="optie"><input type="checkbox" id="s-afwijk"> Een NL-partij stemde anders dan haar fractie</label></div><button class="knop tweede breed" id="s-wis">Wis filters</button></div>
     <p class="telling" id="s-aantal"></p>
     <div id="s-lijst"></div>
-  </section>
-
-  <!-- ============ MENSEN ============ -->
-  <section class="tab" id="mensen" data-titel="Mensen">
-    <header class="groot"><h1>Mensen</h1><p class="sub">Europarlementariërs: rollen, debatten en stemgedrag</p></header>
-    <div class="zoekrij"><input class="zoek" id="m-zoek" type="search" placeholder="Naam of partij"><button class="filterknop" id="m-filterknop" data-sheet="m-filters"><svg viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></svg>Filters<span class="teller"></span></button></div>
-    <div class="sheet" id="m-filters" role="dialog" aria-label="Filters"><div class="sheet-greep"></div><div class="sheet-kop"><b>Filters en sortering</b><button class="knop" data-sluit-sheet>Klaar</button></div><div class="sheet-lijf"><label class="veld">Wie<select class="kies" id="m-wie"><option value="NL">Nederlandse leden</option><option value="alle">Iedereen met een rol of debat</option></select></label>
-      <label class="optie"><input type="checkbox" id="m-volg"> Alleen mijn volglijst</label>
+    </div>
+    <div id="deel-mensen" class="verborgen">
+    <div class="zoekrij"><input class="zoek" id="m-zoek" type="search" placeholder="Naam, partij of land"><button class="filterknop" id="m-filterknop" data-sheet="m-filters"><svg viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></svg>Filters<span class="teller"></span></button></div>
+    <div class="sheet" id="m-filters" role="dialog" aria-label="Filters"><div class="sheet-greep"></div><div class="sheet-kop"><b>Filters en sortering</b><button class="knop" data-sluit-sheet>Klaar</button></div><div class="sheet-lijf"><label class="veld">Land<select class="kies" id="m-land"><option value="">Alle landen</option></select></label>
+      <label class="veld">Fractie<select class="kies" id="m-fractie"><option value="">Alle fracties</option></select></label>
       <label class="optie"><input type="checkbox" id="m-rol"> (Schaduw)rapporteur in een lopend dossier</label></div><button class="knop tweede breed" id="m-wis">Wis filters</button></div>
     <p class="telling" id="m-aantal"></p>
     <div id="m-lijst"></div>
-    <p class="klein uitleg-onder">Stemgedrag per persoon is er voor de Nederlandse leden.</p>
+    <button class="knop tweede breed verborgen" id="m-meer">Toon meer</button>
+    <p class="klein uitleg-onder">Alle 720 europarlementariërs, plus oud-leden die nog een rol in een dossier hebben. Stemgedrag gaat over de hoofdstemmingen van de laatste twee zittingen.</p>
+    </div>
   </section>
 
   <!-- ============ BRONNEN ============ -->
@@ -130,17 +142,16 @@
 {{BRONNEN}}
   </section>
 
-  <footer>EU-monitor · eigen overzicht · <a href="#bronnen">Bronnen en beperkingen</a> · <a href="#" id="thema">Donker/licht</a></footer>
+  <footer>EU-monitor · eigen overzicht · licht of donker volgt je iPhone</footer>
 </div>
 
 <nav class="tabs" aria-label="Onderdelen"><div class="pil">
   <span class="lens" id="lens" aria-hidden="true"></span>
-  <a href="#overzicht" data-tab="overzicht"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg>Overzicht</a>
-  <a href="#nieuws" data-tab="nieuws"><svg viewBox="0 0 24 24"><path d="M4 5h13v14H6a2 2 0 0 1-2-2z"/><path d="M17 9h3v8a2 2 0 0 1-2 2"/><path d="M8 9h5M8 13h5"/></svg>Nieuws</a>
   <a href="#agenda" data-tab="agenda"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Agenda</a>
+  <a href="#nieuws" data-tab="nieuws"><svg viewBox="0 0 24 24"><path d="M4 5h13v14H6a2 2 0 0 1-2-2z"/><path d="M17 9h3v8a2 2 0 0 1-2 2"/><path d="M8 9h5M8 13h5"/></svg>Nieuws</a>
+  <a href="#overzicht" data-tab="overzicht" class="midden"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>Overzicht</a>
   <a href="#dossiers" data-tab="dossiers"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h7M9 8h3"/></svg>Dossiers</a>
-  <a href="#stemmingen" data-tab="stemmingen"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg>Stemmen</a>
-  <a href="#mensen" data-tab="mensen"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Mensen</a>
+  <a href="#stemmingen" data-tab="stemmingen"><svg viewBox="0 0 24 24"><path d="M3 20h18"/><path d="M5 20a7 7 0 0 1 14 0"/><path d="M8.5 20a3.5 3.5 0 0 1 7 0"/></svg>Stemmen</a>
 </div></nav>
 
 <div id="laag-achter"></div>

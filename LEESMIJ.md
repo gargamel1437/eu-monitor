@@ -26,6 +26,8 @@ Online: https://gargamel1437.github.io/eu-monitor/
 | `dossiers.py` | alle procedures: lijst uit de open data van het Parlement, details uit OEIL |
 | `stemmingen.py` | hoofdstemmingen van de laatste twee zittingen (HowTheyVote.eu) |
 | `parlement.py` | agenda (komende 4 weken) en debatten (laatste drie zittingen) |
+| `raad.py` | vergaderingen van de Raad en EU-toppen, van de site van het EU-voorzitterschap |
+| `commissie.py` | planning van de Commissie (per kwartaal), van Geef uw mening |
 | `bronnen.py` | gedeelde hulpjes: ophalen, bewaren, fractienamen |
 | `wetgeving.json` | eigen samenvattingen bij enkele dossiers, met bron |
 | `onderdelen/sjabloon.html` | de opbouw van de pagina |
@@ -35,7 +37,16 @@ Online: https://gargamel1437.github.io/eu-monitor/
 | `onderdelen/bronnen.html` | de pagina "Bronnen en beperkingen" |
 | `web/` | icoon, manifest en robots.txt |
 
+## Indeling
+
+Vijf tabbladen onderin: **Agenda** · **Nieuws** · **Overzicht** (in het midden, met zoeken) ·
+**Dossiers** · **Stemmen** (stemmingen en europarlementariërs). De bronnen staan onder de
+i-knop rechtsboven. Licht of donker volgt de instelling van je iPhone of computer.
+
 ## Iets aanpassen
+
+- **Nieuw EU-voorzitterschap** (elk halfjaar, 1 januari en 1 juli): controleer in `raad.py` of de
+  site van het nieuwe voorzitterschap in `VOORZITTERSCHAPPEN` staat en klopt.
 
 - **Eigen samenvatting bij een dossier**: voeg in `wetgeving.json` een blok toe met
   `procedure` (bijv. `2026/0336(COD)`), `titel`, en eventueel `probleem`, `verandert` en `links`.

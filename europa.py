@@ -7,7 +7,9 @@ volgorde en selectie kies je zelf met filters en sortering.
 Wat er gebeurt:
 1. Gegevens ophalen (elk onderdeel heeft zijn eigen bestand):
    eu_nieuws.py (nieuws), stemmingen.py (HowTheyVote.eu), parlement.py (agenda en debatten),
-   dossiers.py (alle procedures, via de open data van het Parlement en OEIL).
+   dossiers.py (alle procedures, via de open data van het Parlement en OEIL),
+   raad.py (vergaderingen van de Raad en EU-toppen, via het EU-voorzitterschap) en
+   commissie.py (de planning van de Commissie, via Geef uw mening).
 2. Gegevens samenvoegen tot kleine JSON-bestanden in site/data/, die de pagina per tabblad
    pas inlaadt als je dat tabblad opent (sneller op de iPhone).
 3. De pagina zelf maken uit onderdelen/: sjabloon.html, stijl.css en de scripts in onderdelen/js/.
@@ -22,9 +24,11 @@ import shutil
 from collections import Counter
 from datetime import date, datetime, timedelta
 
+import commissie
 import dossiers
 import eu_nieuws
 import parlement
+import raad
 import stemmingen
 from bronnen import DAGEN, MAANDEN, MAP, met_cache
 
@@ -103,7 +107,7 @@ def pagina_dossiers(alle, eigen, stemmen):
 
 
 def dossiers_kort(lijst):
-    """Klein overzicht voor het tabblad Overzicht (volglijst, gewijzigd sinds vorig bezoek, zoeken)."""
+    """Klein overzicht voor het tabblad Overzicht (laatste stappen en zoeken)."""
     uit = []
     for d in lijst:
         g = (d.get("gebeurtenissen") or [{}])[-1]
@@ -113,8 +117,10 @@ def dossiers_kort(lijst):
     return uit
 
 
-def agenda_items(p, lijst):
-    """Komende 4 weken: plenaire vergaderingen plus geplande dossierstappen uit OEIL."""
+def agenda_items(p, lijst, vergaderingen):
+    """Komende 4 weken: plenaire vergaderingen, vergaderingen van de Raad, EU-toppen en geplande
+    dossierstappen uit OEIL. Een dossier dat volgens OEIL in een Raadsvergadering wordt besproken,
+    komt bij die vergadering te staan (en niet nog eens apart)."""
     nu = date.today().isoformat()
     grens = (date.today() + timedelta(days=28)).isoformat()
     uit = []
@@ -122,6 +128,18 @@ def agenda_items(p, lijst):
         uit.append({"datum": dag["datum"], "soort": "Plenaire vergadering", "titel": f"Plenaire vergadering in {dag['plaats']}",
                     "punten": dag["debatten"], "extra": ("Stemmingen om " + ", ".join(dag["stemmingen"])) if dag["stemmingen"] else "",
                     "url": dag["agenda_url"]})
+    raad_items = []
+    for v in vergaderingen:
+        eind = v.get("eind", v["datum"])
+        if eind < nu or v["datum"] > grens:
+            continue
+        item = {"datum": max(v["datum"], nu) if eind >= nu > v["datum"] else v["datum"], "soort": v["soort"], "titel": v["titel"],
+                "punten": [], "extra": " · ".join(x for x in [v.get("plaats", ""), ("tot en met " + datum_nl(eind)) if v.get("eind") else "",
+                                                              "informeel, er worden geen besluiten genomen" if v.get("informeel") else ""] if x),
+                "url": v["url"], "en": v.get("titel_en", "")}
+        uit.append(item)
+        if v["soort"] == "Raad":
+            raad_items.append(item)
     for d in lijst:
         titel = (d.get("eigen") or {}).get("titel") or d["titel"]
         for v in d.get("vooruit", []):
@@ -130,22 +148,39 @@ def agenda_items(p, lijst):
                 uit.append({"datum": v["datum"], "soort": soort, "titel": f"{v['wat']}: {titel}", "ref": d["ref"], "url": d["url"]})
         for r in d.get("raad", []):
             if nu <= r["datum"] <= grens:
-                uit.append({"datum": r["datum"], "soort": "Raad", "titel": f"Raad ({r['configuratie']}): {titel}", "ref": d["ref"], "url": d["url"]})
-    volgorde = {"Plenaire vergadering": 0, "Raad": 1, "Parlementscommissie": 2, "Dossierstap": 3}
+                sleutel = re.sub(r"\s*\(.*$|\s+ECOFIN$", "", r["configuratie"]).split(",")[0].strip().lower()
+                bij = [i for i in raad_items if i["datum"] == r["datum"] and sleutel and i["en"].lower().startswith(sleutel)]
+                if bij:
+                    bij[0]["punten"].append(f"{titel} ({d['ref']})")
+                else:
+                    uit.append({"datum": r["datum"], "soort": "Raad", "titel": f"Raad ({r['configuratie']}): {titel}", "ref": d["ref"], "url": d["url"]})
+    for i in uit:
+        i.pop("en", None)
+    volgorde = {"EU-top": 0, "Plenaire vergadering": 1, "Raad": 2, "Parlementscommissie": 3, "Dossierstap": 4}
     uit.sort(key=lambda i: (i["datum"], volgorde[i["soort"]], i["titel"]))
-    return {"items": uit, "later": p.get("later", [])[:1]}
+    toppen = [{"datum": v["datum"], "eind": v.get("eind", ""), "titel": v["titel"], "plaats": v.get("plaats", ""), "url": v["url"]}
+              for v in vergaderingen if v["soort"] == "EU-top" and v["datum"] > grens]
+    return {"items": uit, "later": p.get("later", [])[:1], "toppen_later": toppen[:2]}
 
 
-def mensen(leden, lijst, debatten, stemmen):
-    """Per europarlementariër: rollen in dossiers, debatten en (voor Nederlanders) stemgedrag."""
+def datum_nl(s):
+    d = date.fromisoformat(s)
+    return f"{DAGEN[d.weekday()]} {d.day} {MAANDEN[d.month - 1]}"
+
+
+def mensen(leden, lijst, debatten, stemmen, posities):
+    """Alle europarlementariërs: rollen in dossiers, debatten en hoe ze stemden.
+    Stemgedrag kort per persoon: één letter per stemming in de volgorde van 'stemvolgorde'
+    (v voor, t tegen, o onthouden, g niet gestemd, - nog geen lid), plus de nummers van de
+    stemmingen waarin iemand anders stemde dan zijn nationale partij (ap) of fractie (af)."""
     m = {pid: {"id": pid, "naam": l["naam"], "partij": l["partij"], "fractie": l["fractie"], "land": l["land"],
-               "rap": [], "schaduw": [], "debatten": [], "stemmen": []} for pid, l in leden.items()}
+               "rap": [], "schaduw": [], "debatten": []} for pid, l in leden.items()}
 
     def persoon(p):
         if p["id"] not in m:
             m[p["id"]] = {"id": p["id"], "naam": p["naam"], "partij": "", "land": "",
                           "fractie": dossiers.FRACTIE_OEIL.get(p["fractie"], p["fractie"]),
-                          "rap": [], "schaduw": [], "debatten": [], "stemmen": []}
+                          "rap": [], "schaduw": [], "debatten": []}
         return m[p["id"]]
 
     # Rollen als [procedurenummer, parlementscommissie, afgerond]; de titel staat in dossiers-kort.json.
@@ -155,17 +190,38 @@ def mensen(leden, lijst, debatten, stemmen):
                 persoon(r)["rap"].append([d["ref"], c["code"], int(d.get("afgerond", False))])
         for r in d.get("schaduw", []):
             persoon(r)["schaduw"].append([d["ref"], r.get("commissie", ""), int(d.get("afgerond", False))])
-    # Debatten en stemmingen als verwijzing (nummer in debatten.json, id in stemmen.json): dat houdt het bestand klein.
     for i, x in enumerate(debatten):
         for pid in x.get("sprekers", []):
             if pid in m:
                 m[pid]["debatten"].append(i)
-    for s in stemmen:
-        for l in s.get("nl_leden", []):
-            if l["id"] in m:
-                m[l["id"]]["stemmen"].append([s["id"], l["positie"], int(l["anders_dan_partij"]), int(l["anders_dan_fractie"])])
-    # Niet-Nederlanders zonder rol of debat laten we weg: dat scheelt veel en ze hebben hier geen gegevens.
-    return [p for p in m.values() if p["land"] == "NL" or p["rap"] or p["schaduw"] or p["debatten"]]
+    volgorde = [s["id"] for s in stemmen]
+    for p in m.values():
+        p["st"], p["ap"], p["af"] = "", [], []
+    for n, s in enumerate(stemmen):
+        pos = posities.get(str(s["id"])) or posities.get(s["id"]) or {}
+        # meerderheid per fractie (uit de cijfers van HowTheyVote) en per nationale partij
+        fm = {f: stemmingen.meerderheid(c) for f, c in (s.get("per_fractie") or {}).items()}
+        per_partij = {}
+        for pid, x in pos.items():
+            l = leden.get(pid)
+            if l and x != "g":
+                per_partij.setdefault((l["land"], l["partij"]), Counter())[x] += 1
+        pm = {k: c.most_common(1)[0][0] for k, c in per_partij.items() if c}
+        kort_naar = {"FOR": "v", "AGAINST": "t", "ABSTENTION": "o"}
+        for pid, p in m.items():
+            x = pos.get(pid)
+            p["st"] += x or "-"
+            if not x or x == "g" or pid not in leden:
+                continue
+            l = leden[pid]
+            if l["partij"] not in ("?", "Onafhankelijk") and pm.get((l["land"], l["partij"])) not in (None, x):
+                p["ap"].append(n)
+            if kort_naar.get(fm.get(l["fractie"])) not in (None, x):
+                p["af"].append(n)
+    for p in m.values():
+        if set(p["st"]) <= {"-"}:
+            p["st"] = ""
+    return {"stemvolgorde": volgorde, "mensen": list(m.values())}
 
 
 def begrippen(leden):
@@ -188,22 +244,64 @@ def begrippen(leden):
 
 # ---------- pagina ----------
 
-def nieuws_blokken(media, officieel):
-    def regel(b):
-        return (f'<li><a href="{e(b["link"])}" target="_blank" rel="noopener"><div class="regel">{e(b["titel"])}</div>'
-                f'<div class="meta2"><span>{e(b["bron"])}</span>' + (f'<span>{e(b["soort"])}</span>' if b.get("soort") else "")
-                + f'<span>{b["datum"]:%d-%m %H:%M}</span>'
-                + ('<span class="label voorstel">Voorstel</span>' if b["voorstel"] else "")
-                + ('<span class="label taal">EN</span>' if b["taal"] == "en" else "") + "</div></a></li>")
-    uit = []
-    if media:
-        uit.append('<div class="kop-met-link"><h2>Nieuws uit de media</h2><a href="#nieuws">Alles</a></div>'
-                   f'<div class="kaart"><ul class="lijst">{"".join(regel(b) for b in media[:5])}</ul></div>')
-    if officieel:
-        uit.append('<div class="kop-met-link"><h2>Uit Brussel zelf</h2><a href="#nieuws">Alles</a></div>'
-                   '<p class="intro"><span class="label officieel">Officieel</span> Persberichten van de Commissie en de Raad.</p>'
-                   f'<div class="kaart"><ul class="lijst officieel">{"".join(regel(b) for b in officieel[:4])}</ul></div>')
-    return "\n".join(uit)
+# ---------- persberichten koppelen aan dossiers ----------
+
+STOPWOORDEN = set("""about above after again against among amending regulation directive decision council european
+union parliament commission member states state proposal framework their there these those which would should
+under other between within through towards common rules measures certain union's amendment amendments
+following regarding concerning provisions establishing period programme""".split())
+PROC = re.compile(r"\b(\d{4})/(\d{4})\((COD|CNS|APP|NLE|INI|RSP|BUD|DEC|INL|ACI|AVC|DCE|IMM|REG|RPS|SYN|COS)\)")
+COM = re.compile(r"COM\s*\(\s*(\d{4})\s*\)\s*(\d{1,4})")
+
+
+def woorden(tekst):
+    return {w for w in re.findall(r"[a-z]{5,}", (tekst or "").lower()) if w not in STOPWOORDEN}
+
+
+def pers_koppelen(lijst, officieel):
+    """Zet bij elk dossier de officiële berichten die erover gaan, met hoe de koppeling gemaakt is:
+    - 'procedurenummer': het nummer (bijv. 2026/0336(COD)) staat in het bericht;
+    - 'COM-document': het nummer van het Commissievoorstel (bijv. COM(2026) 730) staat in het bericht;
+    - 'eigen bron': het bericht staat als bron in wetgeving.json;
+    - 'trefwoorden': kop en begin van het bericht delen minstens 3 kenmerkende woorden met de
+      dossiertitel, en dat is minstens de helft van de kenmerkende woorden in die titel."""
+    com_index, ref_index = {}, {d["ref"]: d for d in lijst}
+    for d in lijst:
+        for doc in d.get("documenten", []):
+            m = re.match(r"COM\((\d{4})\)0*(\d+)", doc.get("ref", ""))
+            if m:
+                com_index[(m.group(1), m.group(2))] = d
+    titelwoorden = [(d, woorden(d["titel"])) for d in lijst if not d.get("afgerond")]
+    titelwoorden = [(d, w) for d, w in titelwoorden if len(w) >= 3]
+    aantal = 0
+    for b in officieel:
+        tekst = f"{b['titel']} {b['tekst']}"
+        n = eu_nieuws.persnummer(b["link"])
+        gevonden = {}
+        for m in PROC.finditer(tekst):
+            d = ref_index.get(m.group(0))
+            if d:
+                gevonden[d["ref"]] = "procedurenummer"
+        for m in COM.finditer(tekst):
+            d = com_index.get((m.group(1), m.group(2).lstrip("0")))
+            if d:
+                gevonden.setdefault(d["ref"], "COM-document")
+        for d in lijst:
+            for _, url in (d.get("eigen") or {}).get("links", []):
+                if n and eu_nieuws.persnummer(url) == n:
+                    gevonden.setdefault(d["ref"], "eigen bron")
+        bw = woorden(tekst)
+        if bw:
+            for d, w in titelwoorden:
+                gedeeld = w & bw
+                if len(gedeeld) >= 3 and len(gedeeld) * 2 >= len(w):
+                    gevonden.setdefault(d["ref"], "trefwoorden")
+        for ref, hoe in gevonden.items():
+            ref_index[ref].setdefault("pers", []).append(
+                {"titel": b["titel"], "link": b["link"], "bron": b["bron"], "soort": b.get("soort") or "",
+                 "datum": b["datum"].date().isoformat(), "hoe": hoe})
+            aantal += 1
+    return aantal
 
 
 def script():
@@ -238,6 +336,16 @@ def main():
     if p_fout:
         meldingen.append("Agenda en debatten: ophalen lukte nu niet." + (f" Je ziet de versie van {moment(p_oud)}." if p_oud else ""))
 
+    vg, vg_fout, vg_oud = met_cache("raad", raad.vergaderingen)
+    meta["raad"] = {"moment": moment(vg_oud) if vg_fout else meta["bijgewerkt"], "oud": bool(vg_fout)}
+    if vg_fout:
+        meldingen.append("Raad en EU-toppen: ophalen lukte nu niet." + (f" Je ziet de versie van {moment(vg_oud)}." if vg_oud else ""))
+
+    cp, cp_fout, cp_oud = met_cache("commissie", commissie.planning)
+    meta["commissie"] = {"moment": moment(cp_oud) if cp_fout else meta["bijgewerkt"], "oud": bool(cp_fout)}
+    if cp_fout:
+        meldingen.append("Planning van de Commissie: ophalen lukte nu niet." + (f" Je ziet de versie van {moment(cp_oud)}." if cp_oud else ""))
+
     eigen = {w["procedure"]: w for w in json.loads((MAP / "wetgeving.json").read_text(encoding="utf-8"))}
     alle, d_fout, d_oud = dossiers_ophalen(list(eigen))
     meta["dossiers"] = {"moment": meta["bijgewerkt"], "oud": d_oud}
@@ -245,6 +353,7 @@ def main():
         meldingen.append("Dossiers: " + d_fout + ".")
 
     lijst = pagina_dossiers(alle, eigen, st["stemmen"])
+    gekoppeld = pers_koppelen(lijst, officieel)
     in_dossiers = {d["ref"] for d in lijst}
     for s in st["stemmen"]:
         s["in_dossiers"] = s.get("procedure") in in_dossiers
@@ -258,17 +367,17 @@ def main():
     schrijf_json("dossiers", lijst)
     schrijf_json("dossiers-kort", dossiers_kort(lijst))
     schrijf_json("stemmen", {"zittingen": st["zittingen"], "stemmen": st["stemmen"]})
-    schrijf_json("agenda", agenda_items(p, lijst))
+    schrijf_json("agenda", agenda_items(p, lijst, vg or []))
+    schrijf_json("commissie", cp or {"items": [], "bekend": 0, "huidig": ""})
     schrijf_json("debatten", {"zittingen": p.get("zittingen", []),
                               "debatten": [{k: v for k, v in x.items() if k != "sprekers"} for x in p.get("debatten", [])]})
-    schrijf_json("mensen", mensen(st["leden"], lijst, p.get("debatten", []), st["stemmen"]))
+    schrijf_json("mensen", mensen(st["leden"], lijst, p.get("debatten", []), st["stemmen"], st.get("posities", {})))
 
     terrein_namen = [n for n, _ in eu_nieuws.TERREINEN] + ["Overig"]
     vervang = {
         "{{STIJL}}": (ONDERDELEN / "stijl.css").read_text(encoding="utf-8"),
         "{{MELDINGEN}}": "".join(f'<div class="melding">{e(m)}</div>' for m in meldingen),
         "{{BIJGEWERKT}}": f"{DAGEN[nu.weekday()]} {nu.day} {MAANDEN[nu.month - 1]}, {nu:%H:%M}",
-        "{{OV_NIEUWS}}": nieuws_blokken(media, officieel),
         "{{NIEUWS_MEDIA}}": eu_nieuws.nieuws_html(media),
         "{{NIEUWS_OFFICIEEL}}": eu_nieuws.nieuws_html(officieel),
         "{{TERREIN_KNOPPEN}}": eu_nieuws.knoppen_html(nieuws, "terreinen", terrein_namen),
@@ -289,7 +398,7 @@ def main():
 
     grootte = sum(f.stat().st_size for f in SITE.rglob("*") if f.is_file()) // 1024
     print(f"{nu:%Y-%m-%d %H:%M} — {len(nieuws)} berichten, {len(lijst)} dossiers ({len(alle)} bekend), "
-          f"{len(st['stemmen'])} stemmingen, {len(p.get('debatten', []))} debatten; pagina "
+          f"{len(st['stemmen'])} stemmingen, {len(p.get('debatten', []))} debatten, {gekoppeld} persberichten aan dossiers gekoppeld; pagina "
           f"{(SITE / 'index.html').stat().st_size // 1024} kB, alles samen {grootte} kB"
           + (f" | {' | '.join(meldingen)}" if meldingen else ""))
 

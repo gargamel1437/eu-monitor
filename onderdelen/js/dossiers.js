@@ -56,7 +56,7 @@ function dossierKaart(d) {
   if (plan) feiten.push("gepland " + kort(plan.datum));
   else if (d.laatst) feiten.push("laatste stap " + kort(d.laatst));
   return '<div class="kaart compact dkaart" data-ref="' + esc(d.ref) + '" role="button" tabindex="0">'
-    + '<div class="kaartkop"><div class="klein">' + esc(d.ref) + " · " + esc(d.soort_naam || d.soort) + (d.eigen && d.eigen.titel ? ' · <span class="label">eigen samenvatting</span>' : "") + "</div>" + ster("dossiers", d.ref, d.laatst) + "</div>"
+    + '<div class="kaartkop"><div class="klein">' + esc(d.ref) + " · " + esc(d.soort_naam || d.soort) + (d.eigen && d.eigen.titel ? ' · <span class="label">eigen samenvatting</span>' : "") + ((d.pers || []).length ? ' · <span class="label officieel">' + d.pers.length + " uit Brussel</span>" : "") + "</div></div>"
     + '<h3 class="twee-regels">' + esc(titelVan(d)) + "</h3>"
     + '<div class="klein status">' + esc(d.status) + "</div>"
     + stappenBalk(d, false)
@@ -67,7 +67,7 @@ function dossierKaart(d) {
 function dossierDetail(d) {
   var e = d.eigen || {};
   KOPIEER["d:" + d.ref] = function () { return feitenDossier(d); };
-  var h = '<div class="kaartkop"><div class="klein">' + esc(d.ref) + " · " + esc(d.soort_naam || d.soort) + (d.instrument ? " · " + esc(d.instrument) : "") + "</div>" + ster("dossiers", d.ref, d.laatst) + "</div>"
+  var h = '<div class="kaartkop"><div class="klein">' + esc(d.ref) + " · " + esc(d.soort_naam || d.soort) + (d.instrument ? " · " + esc(d.instrument) : "") + "</div></div>"
     + "<h2 class='paneel-kop'>" + esc(titelVan(d)) + "</h2>" + (e.titel ? '<p class="klein en">' + esc(d.titel) + "</p>" : "")
     + '<p class="klein">Stand: <b>' + esc(d.status) + "</b></p>" + stappenBalk(d, true)
     + '<div class="knoprij"><button class="mini" data-kopieer="d:' + esc(d.ref) + '">Kopieer feiten</button>' + a(d.url, "Legislative Observatory") + "</div>";
@@ -76,6 +76,8 @@ function dossierDetail(d) {
       + (e.verandert ? "<dt>Wat het voorstel inhoudt</dt><dd>" + esc(e.verandert) + "</dd>" : "") + "</dl>"
       + ((e.links || []).length ? '<p class="klein">Bron: ' + e.links.map(function (l) { return a(l[1], l[0]); }).join(" · ") + "</p>" : "");
   }
+  if ((d.pers || []).length) h += '<h4>Uit Brussel zelf</h4><div class="officieel-koppel"><p class="klein">Persberichten van Commissie of Raad die automatisch aan dit dossier zijn gekoppeld. Het label zegt waarop: procedurenummer, COM-document, eigen bron of trefwoorden in de kop. Controleer zelf of ze echt over dit dossier gaan.</p><ul class="lijst officieel">'
+    + d.pers.map(function (b) { return lijstRegel(b.link, esc(b.titel), "<span>" + esc(b.bron) + "</span><span>" + kort(b.datum) + "</span>" + (b.soort ? "<span>" + esc(b.soort) + "</span>" : "") + '<span class="label">' + esc(b.hoe) + "</span>", true); }).join("") + "</ul></div>";
   var plan = toekomstig(d);
   if (plan.length) h += "<h4>Gepland</h4><ul class='punten'>" + plan.map(function (v) { return "<li><b>" + kort(v.datum) + "</b>: " + esc(v.wat) + " " + icsKnop(v.wat + ": " + titelVan(d), v.datum, d.ref, d.url) + "</li>"; }).join("") + "</ul>";
   h += "<h4>Wie is betrokken</h4>";
@@ -103,7 +105,7 @@ function dossierDetail(d) {
 }
 function openDossier(ref) { var d = DOSSIER_INDEX[ref]; if (d) openPaneel(d.ref, dossierDetail(d)); }
 
-var dFilter = { fase: "", q: "", terrein: "", commissie: "", soort: "", jaar: "", nl: false, volg: false, afgerond: false, sort: lees("eu-d-sort") || "laatst", n: 30 };
+var dFilter = { fase: "", q: "", terrein: "", commissie: "", soort: "", jaar: "", nl: false, afgerond: false, sort: lees("eu-d-sort") || "laatst", n: 30 };
 function dossiersTonen() {
   var q = dFilter.q.toLowerCase();
   var uit = DOSSIERS.filter(function (d) {
@@ -114,7 +116,6 @@ function dossiersTonen() {
     if (dFilter.soort && d.soort !== dFilter.soort) return false;
     if (dFilter.jaar && d.ref.slice(0, 4) !== dFilter.jaar) return false;
     if (dFilter.nl && !heeftNL(d)) return false;
-    if (dFilter.volg && !volgt("dossiers", d.ref)) return false;
     if (q && (d.ref + " " + d.titel + " " + ((d.eigen || {}).titel || "") + " " + rapporteursVan(d).map(function (p) { return p.naam; }).join(" ") + " " + (d.commissaris || "")).toLowerCase().indexOf(q) < 0) return false;
     return true;
   });
@@ -129,7 +130,7 @@ function dossiersTonen() {
   document.getElementById("d-aantal").textContent = uit.length + " dossiers";
   doel.innerHTML = uit.slice(0, dFilter.n).map(dossierKaart).join("") || '<p class="leeg">Geen dossiers met deze filters.</p>';
   document.getElementById("d-meer").classList.toggle("verborgen", uit.length <= dFilter.n);
-  var aan = ["fase", "terrein", "commissie", "soort", "jaar", "nl", "volg", "afgerond"].filter(function (k) { return dFilter[k]; }).length + (s !== "laatst" ? 1 : 0);
+  var aan = ["fase", "terrein", "commissie", "soort", "jaar", "nl", "afgerond"].filter(function (k) { return dFilter[k]; }).length + (s !== "laatst" ? 1 : 0);
   filterTeller("d-filterknop", aan);
   window.euMarkeer(doel);
   return uit;
@@ -155,12 +156,12 @@ function dossiersOpzetten() {
   [["d-fase", "fase"], ["d-terrein", "terrein"], ["d-commissie", "commissie"], ["d-soort", "soort"], ["d-jaar", "jaar"], ["d-sort", "sort"]].forEach(function (x) {
     document.getElementById(x[0]).addEventListener("change", function (ev) { dFilter[x[1]] = ev.target.value; dFilter.n = 30; if (x[1] === "sort") bewaar("eu-d-sort", ev.target.value); dossiersTonen(); });
   });
-  [["d-nl", "nl"], ["d-volg", "volg"], ["d-afgerond", "afgerond"]].forEach(function (x) {
+  [["d-nl", "nl"], ["d-afgerond", "afgerond"]].forEach(function (x) {
     document.getElementById(x[0]).addEventListener("change", function (ev) { dFilter[x[1]] = ev.target.checked; dFilter.n = 30; dossiersTonen(); });
   });
   document.getElementById("d-wis").addEventListener("click", function () {
     ["fase", "terrein", "commissie", "soort", "jaar"].forEach(function (k) { dFilter[k] = ""; document.getElementById("d-" + k).value = ""; });
-    ["nl", "volg", "afgerond"].forEach(function (k) { dFilter[k] = false; document.getElementById("d-" + k).checked = false; });
+    ["nl", "afgerond"].forEach(function (k) { dFilter[k] = false; document.getElementById("d-" + k).checked = false; });
     dFilter.sort = "laatst"; document.getElementById("d-sort").value = "laatst"; bewaar("eu-d-sort", "laatst");
     dossiersTonen();
   });
