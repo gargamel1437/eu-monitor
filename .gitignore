@@ -1,7 +1,7 @@
+site/
 index.html
 log.txt
 __pycache__/
 data/*.log
-oud/
 .DS_Store
 *.plist

@@ -8,6 +8,8 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 
+from bronnen import DAGEN, MAANDEN, ophalen
+
 DAGEN_TERUG = 5  # EU-nieuws gaat trager dan gewoon nieuws
 ATOM = "{http://www.w3.org/2005/Atom}"
 
@@ -64,12 +66,8 @@ COMMISSIE_SOORT = [  # eerste woorden van de beschrijving in de Commissie-feed
     ("Nieuws", r"News|Nieuws"),
 ]
 
-MAANDEN = ["januari", "februari", "maart", "april", "mei", "juni", "juli",
-           "augustus", "september", "oktober", "november", "december"]
-DAGEN = ["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"]
 
 
-from bronnen import ophalen
 
 
 def schoon(tekst):

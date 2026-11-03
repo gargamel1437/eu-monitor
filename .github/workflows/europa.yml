@@ -1,9 +1,14 @@
+# Bouwt de EU-monitor drie keer per dag en zet hem op GitHub Pages.
+# GitHub rekent in UTC. Om in winter- én zomertijd steeds rond 07:15, 12:15 en 18:15
+# Nederlandse tijd te draaien, staan er twee schema's; de eerste stap kijkt welke bij de
+# huidige Nederlandse tijd hoort en slaat de andere over.
 name: EU-monitor bijwerken
 
 on:
   schedule:
-    - cron: "15 6,11,17 * * *"   # 07:15, 12:15 en 18:15 Nederlandse wintertijd
-  workflow_dispatch:              # handmatig starten via de knop "Run workflow"
+    - cron: "15 6,11,17 * * *"   # wintertijd (UTC+1)
+    - cron: "15 5,10,16 * * *"   # zomertijd (UTC+2)
+  workflow_dispatch:              # handmatig starten via "Run workflow"
   push:
     branches: [main]
 
@@ -24,35 +29,47 @@ jobs:
       name: github-pages
       url: ${{ steps.publiceren.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Hoort deze run bij de huidige Nederlandse tijd?
+        id: tijd
+        env:
+          SCHEMA: ${{ github.event.schedule }}
+        run: |
+          verschil=$(TZ=Europe/Amsterdam date +%z)
+          ga=ja
+          if [ "$SCHEMA" = "15 6,11,17 * * *" ] && [ "$verschil" != "+0100" ]; then ga=nee; fi
+          if [ "$SCHEMA" = "15 5,10,16 * * *" ] && [ "$verschil" != "+0200" ]; then ga=nee; fi
+          echo "Nederlandse tijd: $(TZ=Europe/Amsterdam date '+%H:%M') ($verschil) — bouwen: $ga"
+          echo "ga=$ga" >> "$GITHUB_OUTPUT"
 
-      # De bewaarde gegevens (dossiers, stemmingen, debatten) van de vorige run terugzetten.
-      # Lukt dat niet, dan gebruikt de site de versie die in de repository staat.
-      - name: Bewaarde gegevens terugzetten
-        uses: actions/cache/restore@v4
+      - if: steps.tijd.outputs.ga == 'ja'
+        uses: actions/checkout@v7
+
+      # Bewaarde gegevens (dossiers, stemmingen, debatten) van de vorige run terugzetten.
+      - if: steps.tijd.outputs.ga == 'ja'
+        uses: actions/cache/restore@v6
         with:
           path: data
           key: eu-data-${{ github.run_id }}
           restore-keys: eu-data-
 
-      - name: Gegevens ophalen en pagina maken
+      - name: Gegevens ophalen en site bouwen
+        if: steps.tijd.outputs.ga == 'ja'
         env:
           TZ: Europe/Amsterdam
-        run: |
-          python3 europa.py
-          mkdir -p site
-          cp index.html web/* site/
+        run: python3 europa.py
 
-      - name: Gegevens bewaren voor de volgende run
-        if: always()
-        uses: actions/cache/save@v4
+      - if: always() && steps.tijd.outputs.ga == 'ja'
+        uses: actions/cache/save@v6
         with:
           path: data
           key: eu-data-${{ github.run_id }}
 
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - if: steps.tijd.outputs.ga == 'ja'
+        uses: actions/configure-pages@v6
+      - if: steps.tijd.outputs.ga == 'ja'
+        uses: actions/upload-pages-artifact@v5
         with:
           path: site
       - id: publiceren
-        uses: actions/deploy-pages@v4
+        if: steps.tijd.outputs.ga == 'ja'
+        uses: actions/deploy-pages@v5

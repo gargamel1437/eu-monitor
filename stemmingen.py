@@ -9,21 +9,11 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 
 import dossiers
-from bronnen import CACHE, ophalen_json
+from bronnen import CACHE, FRACTIES, naam_mooi, ophalen_json
 
 HTV = "https://howtheyvote.eu/api"
 MAP = CACHE / "stemmen"
-FRACTIES = {"EPP": "EVP", "SD": "S&D", "PFE": "PfE", "ECR": "ECR", "RENEW": "Renew",
-            "GREEN_EFA": "Groenen", "GUE_NGL": "Links", "ESN": "ESN", "NI": "Niet-ingeschreven"}
 PARTIJ_NAMEN = {"Independent": "Onafhankelijk"}
-
-
-def naam_mooi(voor, achter):
-    import re
-    a = " ".join(w.capitalize() for w in achter.lower().split())
-    a = re.sub(r"\b(Van|De|Der|Den|Het|Ten|Ter)\b", lambda m: m.group(1).lower(), a)
-    a = re.sub(r"\bMc([a-z])", lambda m: "Mc" + m.group(1).upper(), a)
-    return f"{voor} {a}".strip()
 
 
 def meerderheid(telling):

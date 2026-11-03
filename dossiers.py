@@ -108,6 +108,16 @@ ONDERWERPEN = [
 ]
 
 
+# Fractienamen zoals OEIL ze schrijft -> korte Nederlandse naam (zie ook bronnen.VOLGORDE_FRACTIES)
+FRACTIE_OEIL = {"EPP": "EVP", "S&D": "S&D", "PfE": "PfE", "ECR": "ECR", "Renew": "Renew", "Greens/EFA": "Groenen",
+                "The Left": "Links", "ESN": "ESN", "NI": "Niet-ingeschreven"}
+
+
+def mooie_naam(n):
+    """'Ursula Von Der Leyen' -> 'Ursula von der Leyen'."""
+    return re.sub(r"(?<=\S )(Von|Der|Van|De|Den|Ter|Ten)\b(?= )", lambda m: m.group(1).lower(), n or "")
+
+
 def schoon(s):
     return re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", s or ""))).strip()
 
