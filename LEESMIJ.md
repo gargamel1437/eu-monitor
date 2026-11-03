@@ -28,6 +28,8 @@ Online: https://gargamel1437.github.io/eu-monitor/
 | `parlement.py` | agenda (komende 4 weken) en debatten (laatste drie zittingen) |
 | `raad.py` | vergaderingen van de Raad en EU-toppen, van de site van het EU-voorzitterschap |
 | `commissie.py` | planning van de Commissie (per kwartaal), van Geef uw mening |
+| `bestuur.py` | het College van commissarissen en de woordvoerders (commission.europa.eu); de Nederlandse bewindspersonen, hun gebruikelijke raadsformatie en de woordvoerders per ministerie (rijksoverheid.nl) |
+| `contacten.py` | contactgegevens van europarlementariërs (open data van het Parlement), bewaard in `data/contacten.json` |
 | `bronnen.py` | gedeelde hulpjes: ophalen, bewaren, fractienamen |
 | `wetgeving.json` | eigen samenvattingen bij enkele dossiers, met bron |
 | `onderdelen/sjabloon.html` | de opbouw van de pagina |
@@ -35,25 +37,41 @@ Online: https://gargamel1437.github.io/eu-monitor/
 | `onderdelen/js/*.js` | de scripts per onderdeel; worden samengevoegd tot één script |
 | `onderdelen/begrippen.json` | uitleg bij begrippen (lang drukken of muis even stil houden) |
 | `onderdelen/bronnen.html` | de pagina "Bronnen en beperkingen" |
-| `web/` | icoon, manifest en robots.txt |
+| `web/` | icoon, manifest, robots.txt en `sw.js` (werkt ook zonder internet) |
 
 ## Indeling
 
 Vijf tabbladen onderin: **Agenda** · **Nieuws** · **Overzicht** (in het midden, met zoeken) ·
 **Dossiers** · **Stemmen** (stemmingen en europarlementariërs). De bronnen staan onder de
-i-knop rechtsboven. Licht of donker volgt de instelling van je iPhone of computer.
+tandwiel rechtsboven (Instellingen > Over). Licht of donker volgt de instelling van je iPhone of computer.
 
-- **Vegen**: in een tab met een schakelaar (Nieuws: Media | Uit Brussel zelf; Agenda; Stemmen)
+- **Instellingen** (tandwiel): starttab, tekstgrootte, minder beweging, nieuwsbronnen aan/uit,
+  Engelstalige berichten, wat er onder "Alles" in de agenda staat, het Overzicht inrichten,
+  je notities (exporteren of wissen), persdiensten in Brussel en Den Haag, en Bronnen. Alles
+  wordt alleen in je eigen browser bewaard.
+- **Overzicht inrichten**: knop "Wijzig overzicht" onderaan het Overzicht. Blokken aan of uit,
+  volgorde slepen met ≡, aantal regels, en per blok een filter (agenda per soort, nieuws per
+  bron, dossiers met Nederlandse rapporteur).
+- **Als web-app** (op het beginscherm) maakt de site geen eigen stappen in de geschiedenis.
+  Zo kan alleen het eigen terugvegen van een paneel bewegen, en schuift de pagina erachter niet mee.
+
+- **Vegen**: in een tab met een schakelaar (Nieuws: Media | Persberichten; Stemmen)
   veeg je naar links of rechts naar het volgende deel. Elk deel onthoudt waar je was.
 - **Zoeken** vergeeft tikfouten, accenten en hoofdletters, en kent afkortingen en
   Nederlands/Engels (AI = KI, EC = Commissie, Oekraïne = Ukraine). Treffers zonder tikfout
   staan eerst; bij bijna-treffers staat er "Bedoel je …?". De lijst met synoniemen staat in
   `onderdelen/js/basis.js` (`SYNONIEMEN`).
-- **Agenda** is ingedeeld in kalenderweken (deze week, volgende week, later). Bij de plenaire
-  vergaderingen staan de exacte tijden per dagdeel (debatten en stemmingen), uit de open data
-  van het Parlement. De Raad en EU-toppen hebben alleen een datum: het voorzitterschap
-  publiceert geen tijden. Dossiers die OEIL in een zitting verwacht, staan bij die zitting.
-  **＋ Agenda** opent een `.ics`-bestand (`site/ics/`), ook in de web-app op de iPhone.
+- **Agenda**: één lijst met knoppen bovenaan (Alles · Parlement · Raad · EU-top · Commissie ·
+  Dossiers · Eerder), ingedeeld in kalenderweken. In de lijst staan alleen soort, titel, plaats
+  en datum. Tik op een item voor het programma met exacte tijden per dagdeel (open data van het
+  Parlement), de locatie (gebouw en zaal), de livestream, de verwachte dossiers en **＋ Agenda**
+  voor de hele zitting, één dag of één dagdeel (`.ics` met locatie, ook in de web-app). De Raad
+  en EU-toppen hebben alleen een datum: het voorzitterschap publiceert geen tijden. De midday
+  briefing en het College van de Commissie zijn gebruikelijke tijdstippen, geen bevestigde afspraken.
+- **Mensen**: Parlement (met contactgegevens), Commissie (commissarissen en woordvoerders) en
+  Raad (voorzitterschap, Nederlandse bewindspersonen met persvoorlichting, persdiensten).
+- **Stemmingen** tonen in welke vergadering ze waren, met links naar agenda, notulen en de
+  hoofdelijke stemmingen.
 - **App-icoon**: de bron is `onderdelen/icoon-donker.html`. Na een nieuw icoon moet je de
   web-app op je beginscherm verwijderen en opnieuw toevoegen; iOS bewaart het oude.
 

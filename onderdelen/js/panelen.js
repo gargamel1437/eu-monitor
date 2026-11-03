@@ -47,7 +47,6 @@ var paneel = document.getElementById("paneel");
 var paneelLijf = document.getElementById("paneel-lijf");
 var paneelTitel = document.getElementById("paneel-titel");
 var paneelOpen = false;
-var ALS_APP = !!(navigator.standalone || (window.matchMedia && matchMedia("(display-mode: standalone)").matches));
 var randVeeg = 0;   // moment van de laatste aanraking vlak bij de rand
 
 function openPaneel(titel, html) {
@@ -58,7 +57,8 @@ function openPaneel(titel, html) {
   paneel.style.transform = paneel.style.transition = "";
   paneel.classList.add("open");
   document.body.classList.add("geen-scroll");
-  if (!paneelOpen) history.pushState({ paneel: 1 }, "", location.href);
+  // in Safari een eigen stap in de geschiedenis (de terugknop sluit dan het paneel); als web-app niet
+  if (!paneelOpen && !ALS_APP) history.pushState({ paneel: 1 }, "", location.href);
   paneelOpen = true;
   window.euMarkeer(paneelLijf);
 }
@@ -93,7 +93,8 @@ paneelLijf.addEventListener("click", function (ev) {
   var doel = l.getAttribute("href");
   var hadPaneel = history.state && history.state.paneel;
   sluitPaneel(false, "vervang");
-  if (hadPaneel) { history.replaceState(null, "", doel); toonTab(); zetLens(actieveLink()); }
+  if (ALS_APP) gaNaar(doel);
+  else if (hadPaneel) { history.replaceState(null, "", doel); toonTab(); zetLens(actieveLink()); }
   else location.hash = doel.slice(1);
 });
 

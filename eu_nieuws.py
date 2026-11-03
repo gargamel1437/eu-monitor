@@ -3,6 +3,7 @@
 en geeft elk bericht een beleidsterrein. Wordt gebruikt door europa.py."""
 
 import html
+import json
 import re
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
@@ -14,22 +15,39 @@ DAGEN_TERUG = 5  # EU-nieuws gaat trager dan gewoon nieuws
 ATOM = "{http://www.w3.org/2005/Atom}"
 
 # naam: (feed-url, taal, alleen_eu_nieuws_houden)
+# Alleen bronnen met een werkende, openbare RSS-feed (getest op 3 november 2026). Niet gelukt:
+# Reuters en AP (geen openbare feed meer), FD (geen feed), The Brussels Times en Agence Europe
+# (feed is kapotte XML). Algemene feeds filteren we op EU-nieuws.
 BRONNEN = {
     "Europese Commissie": [("https://ec.europa.eu/commission/presscorner/api/rss?language=nl", "nl", False)],
     "Raad van de EU": [("https://www.consilium.europa.eu/nl/rss/pressreleases.ashx", "nl", False)],
     "NOS": [("https://feeds.nos.nl/nosnieuwspolitiek", "nl", True),
             ("https://feeds.nos.nl/nosnieuwsbuitenland", "nl", True)],
+    "NRC": [("https://www.nrc.nl/rss/", "nl", True)],
+    "de Volkskrant": [("https://www.volkskrant.nl/buitenland/rss.xml", "nl", True),
+                      ("https://www.volkskrant.nl/voorpagina/rss.xml", "nl", True)],
+    "Trouw": [("https://www.trouw.nl/buitenland/rss.xml", "nl", True)],
     "Politico Europe": [("https://www.politico.eu/feed/", "en", False)],
     "Euractiv": [("https://www.euractiv.com/feed/", "en", False)],
+    "EUobserver": [("https://euobserver.com/rss", "en", False)],
+    "The Guardian": [("https://www.theguardian.com/world/eu/rss", "en", False)],
+    "Financial Times": [("https://www.ft.com/europe?format=rss", "en", True)],
+    "BBC News": [("https://feeds.bbci.co.uk/news/world/europe/rss.xml", "en", True)],
+    "Deutsche Welle": [("https://rss.dw.com/xml/rss-en-eu", "en", False)],
+    "Le Monde": [("https://www.lemonde.fr/en/europe/rss_full.xml", "en", True)],
+    "Euronews": [("https://www.euronews.com/rss?format=mrss&level=program&name=europe-news", "en", True)],
 }
 
 # Officiële communicatie van de EU zelf (persberichten) houden we apart van journalistiek nieuws.
 OFFICIEEL = {"Europese Commissie", "Raad van de EU"}
+# Bronnen waarvan (een deel van) de artikelen achter een betaalmuur staat.
+BETAALMUUR = {"NRC", "de Volkskrant", "Trouw", "Financial Times"}
 
-# Berichten van NOS houden we alleen als ze over de EU gaan.
+# Algemene feeds houden we alleen als het bericht over de EU gaat (Nederlands en Engels).
 EU_WOORDEN = re.compile(
-    r"\bEU\b|\bEU-|Europese (Unie|Commissie|Raad|Parlement|ministers|leiders)|Europees Parlement|"
-    r"\bBrussel\b|europarlement|eurocommissaris|Von der Leyen|Kallas|Metsola|EU-lidstaten|eurozone",
+    r"\bEU\b|\bEU-|\bEU's\b|Europese (Unie|Commissie|Raad|Parlement|ministers|leiders)|Europees Parlement|"
+    r"European (Union|Commission|Parliament|Council)|\bBrussel\b|\bBrussels\b|europarlement|eurocommissaris|\bMEPs?\b|"
+    r"Von der Leyen|Kallas|Metsola|EU-lidstaten|member states|eurozone|\bECB\b|Strasbourg|Straatsburg",
     re.I)
 
 OVERSLAAN = re.compile(r"weekly schedule|dagelijks nieuws|daily news|partner content|promoted content|\bsponsored\b", re.I)
@@ -193,16 +211,20 @@ def bericht_html(b):
         extra = '<span class="label officieel">Officieel</span>' + extra
     if b["taal"] == "en":
         extra += '<span class="label taal" title="Engelstalige bron">EN</span>'
+    if b["bron"] in BETAALMUUR:
+        extra += '<span class="label taal" title="Mogelijk achter een betaalmuur">Betaalmuur</span>'
     terreinen = "|".join(b["terreinen"])
     return (
-        f'<li class="bericht {e(b.get("kanaal", "media"))}" data-bron="{e(b["bron"])}" data-terrein="{e(terreinen)}"'
+        f'<li class="bericht {e(b.get("kanaal", "media"))}" data-bron="{e(b["bron"])}" data-taal="{e(b["taal"])}" data-terrein="{e(terreinen)}"'
         f' data-tijd="{b["datum"].day} {MAANDEN[b["datum"].month - 1][:3]} {b["datum"]:%H:%M}">'
         f'<a href="{e(b["link"])}" target="_blank" rel="noopener">'
         f'<div class="meta"><span class="bron">{e(b["bron"])}</span>'
         f'<span class="tijd">{b["datum"]:%H:%M}</span></div>'
         f'<h3>{e(b["titel"])}</h3>'
         + (f'<p>{e(b["tekst"])}</p>' if b["tekst"] else "")
-        + f'<div class="labels">{extra}{labels}</div></a></li>'
+        + f'<div class="labels">{extra}{labels}</div></a>'
+        + f'<button class="deel-mini" aria-label="Delen" data-deel="{e(json.dumps({"t": b["titel"], "u": b["link"]}, ensure_ascii=False))}">'
+        + '<svg viewBox="0 0 24 24"><path d="M12 15V3.5M8 7.5l4-4 4 4"/><path d="M6 11H5v9.5h14V11h-1"/></svg></button></li>'
     )
 
 

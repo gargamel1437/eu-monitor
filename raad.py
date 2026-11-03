@@ -108,6 +108,20 @@ def lees_pagina(t, site, vandaag):
     return uit
 
 
+LANDNAMEN = {"irish": "Ierland", "lithuanian": "Litouwen", "greek": "Griekenland", "cyprus": "Cyprus", "danish": "Denemarken"}
+
+
+def voorzitterschap(vandaag=None):
+    """Welk land nu voorzitter is van de Raad (en tot wanneer), volgens VOORZITTERSCHAPPEN."""
+    nu = (vandaag or date.today()).isoformat()
+    for i, (begin, site) in enumerate(VOORZITTERSCHAPPEN):
+        volgende = VOORZITTERSCHAPPEN[i + 1][0] if i + 1 < len(VOORZITTERSCHAPPEN) else "9999"
+        if begin <= nu < volgende:
+            code = site.split("//")[1].split("-")[0]
+            return {"land": LANDNAMEN.get(code, code.capitalize()), "van": begin, "tot": volgende, "site": site}
+    return {}
+
+
 def vergaderingen(vandaag=None):
     vandaag = vandaag or date.today()
     nu = vandaag.isoformat()

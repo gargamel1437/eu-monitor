@@ -19,7 +19,7 @@ function bijTab(naam) {
       if (adres === "mensen") { toonSegment("deel-mensen"); mensenTab(q); }
       else { if (q.id) toonSegment("deel-stemmingen"); stemmenTab(q); }
     }
-    else if (naam === "agenda") agendaTab();
+    else if (naam === "agenda") agendaTab(q);
   } catch (e) { if (window.console) console.error(e); }
 }
 document.addEventListener("eu-tab", function (ev) { sluitSheet(); bijTab(ev.detail); });

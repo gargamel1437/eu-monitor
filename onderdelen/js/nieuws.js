@@ -3,7 +3,8 @@ var filter = { terrein: "", bron: "", zoek: "" }, nieuwsWacht = null;
 function pasToe() {
   var zichtbaar = 0, z = zoeker(filter.zoek);
   alle("li.bericht").forEach(function (li) {
-    var ok = (!filter.terrein || li.dataset.terrein.split("|").indexOf(filter.terrein) >= 0)
+    var ok = INST.bronnenUit.indexOf(li.dataset.bron) < 0 && (INST.engels || li.dataset.taal !== "en")
+      && (!filter.terrein || li.dataset.terrein.split("|").indexOf(filter.terrein) >= 0)
       && (!filter.bron || li.dataset.bron === filter.bron)
       && z.past(li.textContent + " " + (li.dataset.bron || ""), li);
     li.classList.toggle("verborgen", !ok);
@@ -53,3 +54,11 @@ document.getElementById("zoek").addEventListener("input", function (ev) {
   nieuwsWacht = setTimeout(function () { filter.zoek = ev.target.value.trim(); pasToe(); }, 150);
 });
 
+
+// instellingen: uitgezette bronnen ook uit de knoppenrij, en het standaard deel kiezen
+function nieuwsInst() {
+  alle(".bron-knoppen .chip").forEach(function (c) { c.classList.toggle("verborgen", !!c.dataset.waarde && INST.bronnenUit.indexOf(c.dataset.waarde) >= 0); });
+  pasToe();
+}
+nieuwsInst();
+if (INST.nieuwsDeel === "kanaal-officieel") toonSegment("kanaal-officieel");

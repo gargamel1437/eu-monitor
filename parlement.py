@@ -14,6 +14,7 @@ from bronnen import CACHE, VOLGORDE_FRACTIES, ophalen_json
 EP = "https://data.europarl.europa.eu/api/v2"
 FMT = "format=application%2Fld%2Bjson"
 PLAATSEN = {"FRA_SXB": "Straatsburg", "BEL_BRU": "Brussel"}
+GEBOUWEN = {"LOW": "Louise Weiss-gebouw", "PHS": "Paul-Henri Spaak-gebouw"}
 
 PROCEDUREEL = re.compile(
     r"hervatting|redevoeringen van één minuut|opening van de|sluiting van de|notulen|agenda van de volgende|"
@@ -88,6 +89,11 @@ def agenda_dag(dag):
         return label.get("nl") or label.get("en") or ""
 
     debatten, stemmen, blokken, begin, eind = [], [], [], [], []
+    zalen = [(x.get("hasRoom") or {}).get("identifier", "") for x in data if isinstance(x.get("hasRoom"), dict)]
+    zaal = next((z for z in zalen if z), "")
+    gebouw = GEBOUWEN.get(zaal.split("-")[0], "")
+    if gebouw and zaal.endswith("HEM"):
+        gebouw += ", plenaire zaal"
     for x in data:
         soort = x.get("had_activity_type", "")
         if soort.endswith("PLENARY_DEBATE") and not PROCEDUREEL.search(tekst(x)):
@@ -112,7 +118,7 @@ def agenda_dag(dag):
                                 "soort": "Stemmingen" if stemming else "Debatten", "punten": list(dict.fromkeys(punten))})
     blokken.sort(key=lambda b: b["begin"])
     return {**dag, "debatten": list(dict.fromkeys(debatten)), "stemmingen": sorted(set(stemmen)),
-            "blokken": blokken, "begin": min(begin) if begin else "", "eind": max(eind) if eind else "",
+            "blokken": blokken, "begin": min(begin) if begin else "", "eind": max(eind) if eind else "", "gebouw": gebouw,
             "agenda_url": f"https://www.europarl.europa.eu/doceo/document/OJQ-10-{dag['datum']}_NL.html"}
 
 

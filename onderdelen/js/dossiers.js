@@ -70,13 +70,13 @@ function dossierDetail(d) {
   var h = '<div class="kaartkop"><div class="klein">' + esc(d.ref) + " · " + esc(d.soort_naam || d.soort) + (d.instrument ? " · " + esc(d.instrument) : "") + "</div></div>"
     + "<h2 class='paneel-kop'>" + esc(titelVan(d)) + "</h2>" + (e.titel ? '<p class="klein en">' + esc(d.titel) + "</p>" : "")
     + '<p class="klein">Stand: <b>' + esc(d.status) + "</b></p>" + stappenBalk(d, true)
-    + '<div class="knoprij"><button class="mini" data-kopieer="d:' + esc(d.ref) + '">Kopieer feiten</button>' + a(d.url, "Legislative Observatory") + "</div>";
+    + '<div class="knoprij"><button class="mini" data-kopieer="d:' + esc(d.ref) + '">Kopieer feiten</button>' + deelKnop(titelVan(d) + " (" + d.ref + ")", d.url) + a(d.url, "Legislative Observatory") + "</div>";
   if (e.probleem || e.verandert) {
     h += '<h4>Eigen samenvatting</h4><dl class="feiten">' + (e.probleem ? "<dt>Aanleiding (volgens de Commissie)</dt><dd>" + esc(e.probleem) + "</dd>" : "")
       + (e.verandert ? "<dt>Wat het voorstel inhoudt</dt><dd>" + esc(e.verandert) + "</dd>" : "") + "</dl>"
       + ((e.links || []).length ? '<p class="klein">Bron: ' + e.links.map(function (l) { return a(l[1], l[0]); }).join(" · ") + "</p>" : "");
   }
-  if ((d.pers || []).length) h += '<h4>Uit Brussel zelf</h4><div class="officieel-koppel"><p class="klein">Persberichten van Commissie of Raad die automatisch aan dit dossier zijn gekoppeld. Het label zegt waarop: procedurenummer, COM-document, eigen bron of trefwoorden in de kop. Controleer zelf of ze echt over dit dossier gaan.</p><ul class="lijst officieel">'
+  if ((d.pers || []).length) h += '<h4>Persberichten</h4><div class="officieel-koppel"><p class="klein">Persberichten van Commissie of Raad die automatisch aan dit dossier zijn gekoppeld. Het label zegt waarop: procedurenummer, COM-document, eigen bron of trefwoorden in de kop. Controleer zelf of ze echt over dit dossier gaan.</p><ul class="lijst officieel">'
     + d.pers.map(function (b) { return lijstRegel(b.link, esc(b.titel), "<span>" + esc(b.bron) + "</span><span>" + kort(b.datum) + "</span>" + (b.soort ? "<span>" + esc(b.soort) + "</span>" : "") + '<span class="label">' + esc(b.hoe) + "</span>", true); }).join("") + "</ul></div>";
   var plan = toekomstig(d);
   if (plan.length) h += "<h4>Gepland</h4><ul class='punten'>" + plan.map(function (v) { return "<li><b>" + kort(v.datum) + "</b>: " + esc(v.wat) + " " + icsKnop(v.wat + ": " + titelVan(d), v.datum, d.ref, d.url, v.ics) + "</li>"; }).join("") + "</ul>";

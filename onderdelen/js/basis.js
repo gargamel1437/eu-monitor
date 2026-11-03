@@ -11,6 +11,56 @@ function alle(sel, ouder) { return Array.prototype.slice.call((ouder || document
 // een vroeger handmatig gekozen thema opruimen: het systeem bepaalt nu
 try { localStorage.removeItem("eu-thema"); } catch (e) {}
 
+// ---- instellingen (alleen in deze browser bewaard) ----
+var STANDAARD = {
+  start: "overzicht", nieuwsDeel: "kanaal-media", engels: true, tekst: "standaard", beweging: "systeem",
+  bronnenUit: [], informeel: true, vastePunten: true,
+  agendaAlles: ["parlement", "raad", "top", "commissie", "dossiers"],
+  overzicht: [
+    { id: "vandaag", aan: true, n: 5 }, { id: "agenda", aan: true, n: 3, soorten: [] },
+    { id: "nieuws", aan: true, n: 3, bron: "" }, { id: "persberichten", aan: false, n: 3 },
+    { id: "dossiers", aan: true, n: 3, nl: false }, { id: "stemmen", aan: true, n: 3 },
+    { id: "mensen", aan: false, n: 5 }, { id: "recent", aan: true, n: 6 }
+  ]
+};
+var INST = (function () {
+  var bewaard = {};
+  try { bewaard = JSON.parse(localStorage.getItem("eu-instellingen") || "{}") || {}; } catch (e) {}
+  var uit = JSON.parse(JSON.stringify(STANDAARD));
+  Object.keys(bewaard).forEach(function (k) { if (k in uit) uit[k] = bewaard[k]; });
+  // nieuwe blokken die er later bij kwamen, achteraan toevoegen
+  STANDAARD.overzicht.forEach(function (b) { if (!uit.overzicht.some(function (x) { return x.id === b.id; })) uit.overzicht.push(JSON.parse(JSON.stringify(b))); });
+  return uit;
+})();
+function bewaarInst() { bewaar("eu-instellingen", JSON.stringify(INST)); pasInstToe(); }
+function pasInstToe() {
+  var h = document.documentElement;
+  h.dataset.tekst = INST.tekst; h.dataset.beweging = INST.beweging;
+  if (typeof MINDER_BEWEGING !== "undefined") MINDER_BEWEGING = INST.beweging === "minder" || SYSTEEM_MINDER;
+}
+
+// Als web-app op het beginscherm bouwen we geen eigen geschiedenis op: een tab of link vervangt
+// het adres (replaceState) en een paneel maakt geen nieuwe stap. Dan heeft iOS niets om "terug"
+// naar te vegen, en schuift alleen ons eigen paneel weg (zonder dat de pagina erachter meeschuift).
+// In Safari zelf blijft de gewone geschiedenis werken (terugknop).
+var ALS_APP = !!(navigator.standalone || (window.matchMedia && matchMedia("(display-mode: standalone)").matches));
+function gaNaar(hash) {
+  hash = String(hash).replace(/^#/, "");
+  if (!ALS_APP) { if (location.hash === "#" + hash) toonTab(); else location.hash = hash; return; }
+  history.replaceState(null, "", "#" + hash);
+  toonTab();
+  zetLens(actieveLink());
+}
+document.addEventListener("click", function (ev) {
+  if (!ALS_APP || ev.defaultPrevented) return;
+  var l = ev.target.closest && ev.target.closest('a[href^="#"]');
+  if (!l) return;
+  ev.preventDefault();
+  gaNaar(l.getAttribute("href"));
+});
+// starttab: als je de app opent zonder adres
+if (!location.hash && INST.start && INST.start !== "overzicht") history.replaceState(null, "", "#" + INST.start);
+
 // ---- tabbladen ----
 var tabs = alle("section.tab").map(function (s) { return s.id; });
 // oude of extra adressen en het tabblad waar ze nu staan
@@ -57,7 +107,8 @@ toonTab();
 // ---- schakelaars (segmenten) ----
 // Elk deel onthoudt zijn eigen scrollpositie. Een glazen bel achter de gekozen knop loopt mee,
 // ook tijdens het vegen (zie hieronder).
-var MINDER_BEWEGING = !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
+var SYSTEEM_MINDER = !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
+var MINDER_BEWEGING = SYSTEEM_MINDER || INST.beweging === "minder";
 var segScroll = {};
 // Waar de delen beginnen (net onder de vaste schakelaar): daar kom je in een deel dat je nog niet bekeek.
 function segBeginY(schakel) {
@@ -289,7 +340,7 @@ function loslaten(ev) {
   var doel = dichtstbij(l.left + l.width / 2);
   pil.dataset.netGesleept = "1";
   setTimeout(function () { delete pil.dataset.netGesleept; }, 80);
-  if (doel && "#" + doel.dataset.tab !== location.hash) location.hash = doel.dataset.tab;
+  if (doel && "#" + doel.dataset.tab !== location.hash) gaNaar(doel.dataset.tab);
   else zetLens(actieveLink());
 }
 tabLinks.forEach(function (a) { a.setAttribute("draggable", "false"); });
@@ -628,3 +679,41 @@ document.addEventListener("click", function (ev) {
   var volgende = META.updates.filter(function (t) { return t > tijd; })[0];
   el.textContent = volgende ? "volgende rond " + volgende : "volgende morgen rond " + META.updates[0];
 })();
+
+
+// ---------- delen (deelmenu van de iPhone; anders de link kopiëren) ----------
+function deelKnop(titel, url) {
+  if (!url) return "";
+  return '<button class="mini" data-deel="' + esc(JSON.stringify({ t: titel, u: url })) + '"><svg class="ik" viewBox="0 0 24 24"><path d="M12 15V3.5M8 7.5l4-4 4 4"/><path d="M6 11H5v9.5h14V11h-1"/></svg>Delen</button>';
+}
+document.addEventListener("click", function (ev) {
+  var k = ev.target.closest && ev.target.closest("[data-deel]");
+  if (!k) return;
+  ev.preventDefault(); ev.stopPropagation();
+  var x = JSON.parse(k.dataset.deel);
+  if (navigator.share) navigator.share({ title: x.t, url: x.u }).catch(function () {});
+  else kopieer(x.t + "\n" + x.u, k);
+});
+
+// ---------- offline ----------
+(function () {
+  var el = document.getElementById("offline-melding");
+  function toon() {
+    if (!el) return;
+    el.textContent = "Offline · je ziet de stand van " + (META.bijgewerkt || "de laatste keer");
+    el.classList.toggle("verborgen", navigator.onLine !== false);
+  }
+  window.addEventListener("online", toon); window.addEventListener("offline", toon); toon();
+  if ("serviceWorker" in navigator && location.protocol === "https:") {
+    window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function () {}); });
+  }
+})();
+
+// ---------- recente zoekopdrachten (Overzicht) ----------
+var RECENT = leesJSON("eu-recent", []);
+function onthoudZoek(q) {
+  q = q.trim();
+  if (normaal(q).length < 3) return;
+  RECENT = [q].concat(RECENT.filter(function (x) { return normaal(x) !== normaal(q); })).slice(0, 12);
+  bewaar("eu-recent", JSON.stringify(RECENT));
+}

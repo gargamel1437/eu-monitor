@@ -29,7 +29,7 @@ function nlPartijen(np) {
 }
 function feitenStemKort(s) {
   var t = s.totaal || {};
-  return ["Stemming " + s.moment.slice(0, 10) + ": " + s.titel,
+  return ["Stemming " + s.moment.slice(0, 10) + " (" + vergaderingTekst(s, true) + "): " + s.titel,
     "Uitslag: " + (s.uitslag === "ADOPTED" ? "aangenomen" : "verworpen") + " — " + (t.FOR || 0) + " voor, " + (t.AGAINST || 0) + " tegen, " + (t.ABSTENTION || 0) + " onthouden, " + (t.DID_NOT_VOTE || 0) + " niet gestemd",
     "Nederlandse partijen: " + Object.keys(s.nl_partijen || {}).map(function (p) {
       var c = s.nl_partijen[p];
@@ -40,9 +40,13 @@ function feitenStem(s) {
   return feitenStemKort(s) + (s.procedure ? "\nProcedure: " + s.procedure : "") + "\nBron: " + s.url;
 }
 
+function vergaderingTekst(s, lang_) {
+  var v = s.vergadering || {};
+  return "Plenaire vergadering" + (v.plaats ? " " + v.plaats : "") + ", " + (lang_ ? lang(s.moment) : kort(s.moment)) + (v.tijd ? " om " + v.tijd : "");
+}
 function stemKaart(s) {
   return '<div class="kaart compact skaart" data-id="' + esc(s.id) + '" role="button" tabindex="0">'
-    + '<div class="klein">' + kort(s.moment) + (s.terreinen || []).slice(0, 2).map(function (t) { return ' · ' + esc(t); }).join("") + "</div>"
+    + '<div class="klein">' + esc(vergaderingTekst(s)) + (s.terreinen || []).slice(0, 2).map(function (t) { return ' · ' + esc(t); }).join("") + "</div>"
     + '<h3 class="twee-regels">' + esc(s.titel) + "</h3>"
     + '<div class="stemregel">' + uitslag(s.uitslag) + '<span class="klein">' + (s.totaal.FOR || 0) + " voor · " + (s.totaal.AGAINST || 0) + " tegen · " + (s.totaal.ABSTENTION || 0) + " onth.</span></div>"
     + verdeling(s.totaal || {})
@@ -52,9 +56,13 @@ function stemKaart(s) {
 function stemDetail(s) {
   KOPIEER["s:" + s.id] = function () { return feitenStem(s); };
   var afw = (s.afwijkers || []).map(function (x) { return esc(x.partij) + ": " + POS[x.partij_stem][1] + "; fractie " + esc(x.fractie) + " (meerderheid): " + POS[x.fractie_stem][1]; });
-  var h = '<div class="klein">' + esc(lang(s.moment)) + ' · <span class="label taal">EN</span>' + (s.terreinen || []).map(function (t) { return ' <span class="label">' + esc(t) + "</span>"; }).join("") + "</div>"
-    + "<h2 class='paneel-kop'>" + esc(s.titel) + "</h2>" + uitslag(s.uitslag) + verdeling(s.totaal || {}) + cijfers(s.totaal || {})
-    + '<div class="knoprij"><button class="mini" data-kopieer="s:' + esc(s.id) + '">Kopieer feiten</button>' + a(s.url, "HowTheyVote") + (s.document ? a(s.document, "Tekst") : "")
+  var v = s.vergadering || {};
+  var h = '<div class="klein"><span class="label taal">EN</span>' + (s.terreinen || []).map(function (t) { return ' <span class="label">' + esc(t) + "</span>"; }).join("") + "</div>"
+    + "<h2 class='paneel-kop'>" + esc(s.titel) + "</h2>"
+    + '<div class="feiten"><div><span>Vergadering</span><b>' + esc(vergaderingTekst(s, true)) + "</b></div>"
+    + (v.notulen ? "<div><span>Stukken</span><b>" + a(v.agenda, "Agenda") + " · " + a(v.notulen, "Notulen") + " · " + a(v.uitslagen, "Hoofdelijke stemmingen") + "</b></div>" : "") + "</div>"
+    + uitslag(s.uitslag) + verdeling(s.totaal || {}) + cijfers(s.totaal || {})
+    + '<div class="knoprij"><button class="mini" data-kopieer="s:' + esc(s.id) + '">Kopieer feiten</button>' + deelKnop(s.titel, s.url) + a(s.url, "HowTheyVote") + (s.document ? a(s.document, "Tekst") : "")
     + (s.procedure ? (s.in_dossiers ? '<a href="#dossiers?q=' + encodeURIComponent(s.procedure) + '">Dossier ' + esc(s.procedure) + "</a>" : a("https://oeil.europarl.europa.eu/oeil/en/procedure-file?reference=" + s.procedure, s.procedure)) : "") + "</div>"
     + "<h4>Nederlandse partijen</h4><p class='klein'>Wat de meeste leden van de partij stemden.</p>" + nlPartijen(s.nl_partijen)
     + (afw.length ? "<p class='klein'><b>Partij stemde anders dan de meerderheid van haar fractie:</b><br>" + afw.join("<br>") + "</p>" : "")
