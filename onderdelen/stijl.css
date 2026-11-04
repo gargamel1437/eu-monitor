@@ -10,7 +10,7 @@
 :root {
   /* tekstmaten: overal dezelfde reeks (zie LEESMIJ) */
   /* vaste balk bovenaan steekt zoveel buiten de kaarten uit (zie LEESMIJ) */
-  --plak-uit: 20px;
+  --plak-uit: 10px;
   /* afstand van de kaarten tot de schermrand: balk + 8px lucht */
   --pagina-rand: calc(var(--plak-uit) + 8px);
   --t-titel: 34px; --t-kop: 22px; --t-kop2: 20px; --t-kaart: 17px; --t-tekst: 16px; --t-sub: 15px; --t-meta: 13px; --t-label: 12px; --t-mini: 11px;
