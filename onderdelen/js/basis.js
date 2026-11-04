@@ -166,6 +166,10 @@ alle(".schakel").forEach(function (schakel) {
   bel.className = "schakel-bel"; bel.setAttribute("aria-hidden", "true");
   schakel.insertBefore(bel, schakel.firstChild);
 });
+// Elk deel is een eigen blok (flow-root): dan liggen de marges binnenin precies hetzelfde, of het
+// deel nu tijdens het vegen los naast het andere staat of daarna gewoon in de pagina. Anders
+// verspringt de inhoud aan het eind van het vegen een stukje.
+alle(".schakel button[data-toon]").forEach(function (knop) { var d = document.getElementById(knop.dataset.toon); if (d) d.classList.add("segdeel"); });
 alle(".schakel button[data-toon]").forEach(function (knop) {
   knop.addEventListener("click", function () { if (!knop.classList.contains("actief")) kiesSegment(knop); });
 });
@@ -186,7 +190,7 @@ window.addEventListener("load", alleBellen);
     }
     return false;
   }
-  function opruimen(el) { if (el) { el.style.transform = el.style.transition = el.style.position = el.style.top = el.style.left = el.style.width = el.style.zIndex = ""; } }
+  function opruimen(el) { if (el) { el.style.transform = el.style.transition = el.style.position = el.style.top = el.style.left = el.style.width = el.style.zIndex = el.style.willChange = ""; } }
   document.addEventListener("touchstart", function (ev) {
     g = null;
     if (bezig || ev.touches.length !== 1 || (typeof paneelOpen !== "undefined" && paneelOpen) || (typeof openSheetId !== "undefined" && openSheetId)) return;
@@ -211,6 +215,8 @@ window.addEventListener("load", alleBellen);
     g.buurKnop = g.knoppen[j] || null;
     g.buur = g.buurKnop ? document.getElementById(g.buurKnop.dataset.toon) : null;
     g.huidig.style.transition = "none";
+    g.huidig.style.willChange = "transform";
+    document.body.classList.add("veegt");
     if (!g.buur) return;
     // het buurdeel naast het huidige zetten, op de hoogte waar je straks uitkomt
     var y = window.scrollY, doelY = segDoelY(g.buur.id, g.schakel, y);
@@ -220,16 +226,16 @@ window.addEventListener("load", alleBellen);
     s.position = "absolute"; s.zIndex = "1"; s.transition = "none";
     s.left = g.huidig.offsetLeft + "px"; s.width = g.w + "px";
     s.top = (g.huidig.offsetTop + y - doelY) + "px";
-    s.transform = "translateX(" + richting * (g.w + TUSSEN) + "px)";
+    s.transform = "translate3d(" + richting * (g.w + TUSSEN) + "px,0,0)"; s.willChange = "transform";
     // gegevens van het buurdeel alvast laden (Mensen, planning van de Commissie)
     g.buurKnop.dispatchEvent(new CustomEvent("eu-segment", { bubbles: true, detail: g.buurKnop.dataset.toon }));
   }
   function zet(d) {
     if (!g.buur) d = d / (1 + Math.abs(d) / 60) ;   // geen buurdeel: rekt een beetje mee en veert terug
     g.d = d;
-    g.huidig.style.transform = "translateX(" + d + "px)";
+    g.huidig.style.transform = "translate3d(" + d + "px,0,0)";
     if (g.buur) {
-      g.buur.style.transform = "translateX(" + (g.richting * (g.w + TUSSEN) + d) + "px)";
+      g.buur.style.transform = "translate3d(" + (g.richting * (g.w + TUSSEN) + d) + "px,0,0)";
       zetBel(g.schakel, g.knoppen[g.i], g.buurKnop, Math.min(1, Math.abs(d) / g.w));
     }
   }
@@ -248,12 +254,15 @@ window.addEventListener("load", alleBellen);
     // van richting wisselen tijdens het vegen: buurdeel aan de andere kant
     if (g.buur && d * g.richting > 0) { opruimen(g.buur); g.buur.classList.add("verborgen"); begin(-g.richting); }
     g.v = (d - g.d) / Math.max(nu - g.t, 1); g.t = nu;
-    zet(d);
+    g.nieuw = d;
+    if (!g.raf) { var gg = g; g.raf = requestAnimationFrame(function () { gg.raf = 0; if (g === gg) zet(gg.nieuw); }); }
   }, { passive: false });
 
   function klaar(ev) {
     if (!g || !g.vast) { g = null; return; }
     var x = g; g = null; bezig = true;
+    if (x.raf) { cancelAnimationFrame(x.raf); x.raf = 0; }
+    if (x.nieuw != null) x.d = x.nieuw;
     var naar = -x.richting, ga = !!x.buur && ev.type !== "touchcancel" && (naar * x.d > x.w * 0.3 || (naar * x.v > 0.35 && naar * x.d > 20));
     var bel = x.schakel.querySelector(".schakel-bel");
     var duur = MINDER_BEWEGING ? 0 : 320, curve = "transform " + duur + "ms cubic-bezier(.2,.9,.25,1)";
@@ -261,12 +270,12 @@ window.addEventListener("load", alleBellen);
     x.huidig.style.transition = curve;
     if (x.buur) x.buur.style.transition = curve;
     if (ga) {
-      x.huidig.style.transform = "translateX(" + (naar * (x.w + TUSSEN)) + "px)";
-      x.buur.style.transform = "translateX(0)";
+      x.huidig.style.transform = "translate3d(" + (naar * (x.w + TUSSEN)) + "px,0,0)";
+      x.buur.style.transform = "translate3d(0,0,0)";
       zetBel(x.schakel, x.buurKnop);
     } else {
-      x.huidig.style.transform = "translateX(0)";
-      if (x.buur) x.buur.style.transform = "translateX(" + x.richting * (x.w + TUSSEN) + "px)";
+      x.huidig.style.transform = "translate3d(0,0,0)";
+      if (x.buur) x.buur.style.transform = "translate3d(" + x.richting * (x.w + TUSSEN) + "px,0,0)";
       zetBel(x.schakel, x.knoppen[x.i]);
     }
     setTimeout(function () {
@@ -274,6 +283,7 @@ window.addEventListener("load", alleBellen);
       opruimen(x.huidig);
       if (ga) { opruimen(x.buur); x.buurKnop.click(); }
       else if (x.buur) { opruimen(x.buur); x.buur.classList.add("verborgen"); }
+      document.body.classList.remove("veegt");
       bezig = false;
     }, duur + 20);
   }

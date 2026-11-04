@@ -1041,3 +1041,6 @@ body.sheet-open #laag-achter.voor-paneel { background: rgba(0,0,0,.28); -webkit-
 html[data-beweging="minder"] #paneel.vol { transform: none; opacity: 0; transition: opacity .2s ease, visibility 0s linear .2s !important; }
 html[data-beweging="minder"] #paneel.vol.open { opacity: 1; transition: opacity .2s ease !important; }
 html[data-beweging="minder"] body.sheet-open .wrap { transform: none; }
+/* delen van een tab (Procedures | Stemmingen, Media | Persberichten): eigen blok, zodat de
+   inhoud na het vegen niet een stukje verspringt */
+.segdeel { display: flow-root; }
