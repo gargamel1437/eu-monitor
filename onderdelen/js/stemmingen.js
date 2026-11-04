@@ -40,14 +40,56 @@ function feitenStem(s) {
   return feitenStemKort(s) + (s.procedure ? "\nProcedure: " + s.procedure : "") + "\nBron: " + s.url;
 }
 
+// Wat er precies in stemming kwam, volgens het Parlement (in de bron in het Frans).
+var STEM_WAT = [
+  [/^Accord provisoire/, "Voorlopig akkoord met de Raad"],
+  [/^Proposition de rejet/, "Voorstel om het voorstel te verwerpen"],
+  [/^Proposition de la Commission au Conseil/, "Voorstel van de Commissie aan de Raad"],
+  [/^Proposition de la Commission et amendement/, "Voorstel van de Commissie met amendementen"],
+  [/^Proposition de la Commission/, "Voorstel van de Commissie (standpunt van het Parlement)"],
+  [/^Proposition de résolution \(ensemble du texte\)/, "Resolutie, de hele tekst"],
+  [/^Proposition de résolution/, "Resolutie"],
+  [/^Projet de règlement du Conseil/, "Ontwerpverordening van de Raad"],
+  [/^Projet de décision du Conseil/, "Ontwerpbesluit van de Raad"],
+  [/^Projet de décision/, "Ontwerpbesluit"],
+  [/^Résolution législative/, "Wetgevingsresolutie"],
+  [/^Objection/, "Bezwaar"],
+  [/^Décision/, "Besluit"]
+];
+function stemWat(s) {
+  var b = s.beschrijving || ((STEM_INDEX[s.id] || {}).beschrijving) || "";
+  if (!b) return "";
+  var w = STEM_WAT.filter(function (x) { return x[0].test(b); })[0];
+  var am = (b.match(/ - (Am [^]*)$/) || [])[1];
+  var nrs = am ? am.replace(/^Am\s*/, "").split(/[=\s]+/).filter(Boolean) : [];
+  return w ? w[1] + (nrs.length ? " (amendement" + (nrs.length > 1 ? "en " : " ") + nrs.join(", ") + ")" : "") : b;
+}
+// Het dossier waar een stemming bij hoort, als kaartje. Volledige gegevens (fase, rapporteur)
+// zodra de dossiers geladen zijn; tot die tijd de titel uit de stemming zelf.
+function dossierKoppel(s) {
+  if (!s.procedure) return "";
+  var d = typeof DOSSIER_INDEX !== "undefined" && DOSSIER_INDEX[s.procedure];
+  var href = s.in_dossiers ? "#dossiers?open=" + encodeURIComponent(s.procedure) : "https://oeil.europarl.europa.eu/oeil/en/procedure-file?reference=" + s.procedure;
+  var h = '<a class="dkoppel" data-ref="' + esc(s.procedure) + '" href="' + esc(href) + '"' + (s.in_dossiers ? "" : ' target="_blank" rel="noopener"') + ">"
+    + '<span class="dkoppel-kop">Hoort bij dossier</span>'
+    + "<b>" + esc(d ? titelVan(d) : (s.procedure_titel || s.procedure)) + "</b>"
+    + '<span class="klein">' + esc(s.procedure) + (d ? " · " + esc(d.status) : "") + "</span>";
+  if (d) {
+    var rap = rapporteursVan(d).filter(function (p) { return /responsible/i.test(p.rol); })[0];
+    h += stappenBalk(d, false) + (rap ? '<span class="klein">Rapporteur ' + esc(rap.naam) + (rap.fractie ? " (" + esc(FR_OEIL[rap.fractie] || rap.fractie) + ")" : "") + "</span>" : "");
+  }
+  return h + '<span class="pijl" aria-hidden="true">›</span></a>';
+}
 function vergaderingTekst(s, lang_) {
   var v = s.vergadering || {};
   return "Plenaire vergadering" + (v.plaats ? " " + v.plaats : "") + ", " + (lang_ ? lang(s.moment) : kort(s.moment)) + (v.tijd ? " om " + v.tijd : "");
 }
 function stemKaart(s) {
   return '<div class="kaart compact skaart k-ep" data-id="' + esc(s.id) + '" role="button" tabindex="0">'
-    + '<div class="klein">' + esc(vergaderingTekst(s)) + (s.terreinen || []).slice(0, 2).map(function (t) { return ' · ' + esc(t); }).join("") + "</div>"
+    + '<div class="klein"><i class="stip"></i>' + esc(vergaderingTekst(s)) + (s.terreinen || []).slice(0, 2).map(function (t) { return ' · ' + esc(t); }).join("") + "</div>"
     + '<h3 class="twee-regels">' + esc(s.titel) + "</h3>"
+    + (stemWat(s) ? '<div class="klein stemwat">' + esc(stemWat(s)) + "</div>" : "")
+    + (s.procedure ? '<div class="klein dossierregel"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h7"/></svg>' + esc(s.procedure) + (s.procedure_titel && normaal(s.procedure_titel) !== normaal(s.titel) ? " · " + esc(s.procedure_titel) : "") + "</div>" : "")
     + '<div class="stemregel">' + uitslag(s.uitslag) + '<span class="klein">' + (s.totaal.FOR || 0) + " voor · " + (s.totaal.AGAINST || 0) + " tegen · " + (s.totaal.ABSTENTION || 0) + " onth.</span></div>"
     + verdeling(s.totaal || {})
     + ((s.afwijkers || []).length ? '<div class="klein feitregel">' + s.afwijkers.map(function (x) { return esc(x.partij); }).join(", ") + " anders dan de fractie</div>" : "")
@@ -59,11 +101,12 @@ function stemDetail(s) {
   var v = s.vergadering || {};
   var h = '<div class="klein"><span class="label taal">EN</span>' + (s.terreinen || []).map(function (t) { return ' <span class="label">' + esc(t) + "</span>"; }).join("") + "</div>"
     + "<h2 class='paneel-kop'>" + esc(s.titel) + "</h2>"
-    + '<div class="feiten"><div><span>Vergadering</span><b>' + esc(vergaderingTekst(s, true)) + "</b></div>"
+    + dossierKoppel(s)
+    + '<div class="feiten">' + (stemWat(s) ? "<div><span>Wat</span><b>" + esc(stemWat(s)) + "</b></div>" : "") + '<div><span>Vergadering</span><b>' + esc(vergaderingTekst(s, true)) + "</b></div>"
     + (v.notulen ? "<div><span>Stukken</span><b>" + a(v.agenda, "Agenda") + " · " + a(v.notulen, "Notulen") + " · " + a(v.uitslagen, "Hoofdelijke stemmingen") + "</b></div>" : "") + "</div>"
     + uitslag(s.uitslag) + verdeling(s.totaal || {}) + cijfers(s.totaal || {})
     + '<div class="knoprij"><button class="mini" data-kopieer="s:' + esc(s.id) + '">Kopieer feiten</button>' + deelKnop(s.titel, s.url) + a(s.url, "HowTheyVote") + (s.document ? a(s.document, "Tekst") : "")
-    + (s.procedure ? (s.in_dossiers ? '<a href="#dossiers?q=' + encodeURIComponent(s.procedure) + '">Dossier ' + esc(s.procedure) + "</a>" : a("https://oeil.europarl.europa.eu/oeil/en/procedure-file?reference=" + s.procedure, s.procedure)) : "") + "</div>"
+    + "</div>"
     + "<h3 class='sectiekop'>Nederlandse partijen</h3><p class='klein'>Wat de meeste leden van de partij stemden.</p>" + nlPartijen(s.nl_partijen)
     + (afw.length ? "<p class='klein'><b>Partij stemde anders dan de meerderheid van haar fractie:</b><br>" + afw.join("<br>") + "</p>" : "")
     + "<h3 class='sectiekop'>Per fractie</h3><div class='tabel-scroll'><table><tr><th>Fractie</th><th>voor</th><th>tegen</th><th>onth.</th><th>niet</th></tr>"
@@ -77,7 +120,15 @@ function stemDetail(s) {
   }).join("") + "</ul>";
   return h;
 }
-function openStem(id, dieper) { var s = STEM_INDEX[id]; if (s) openPaneel("Stemming", stemDetail(s), { dieper: dieper }); }
+function openStem(id, dieper) {
+  var s = STEM_INDEX[id];
+  if (!s) return;
+  openPaneel("Stemming", stemDetail(s), { dieper: dieper });
+  // het kaartje van het dossier aanvullen zodra de dossiers er zijn
+  if (s.in_dossiers && !DOSSIER_INDEX[s.procedure]) dossiersLaden().then(function () {
+    alle('#paneel-lijf .dkoppel[data-ref="' + s.procedure + '"]').forEach(function (el) { el.outerHTML = dossierKoppel(s); });
+  }).catch(function () {});
+}
 function stemmenLaden() { return laden("stemmen").then(function (d) { if (!STEMMEN) STEMMEN = d; stemIndex(); return STEMMEN; }); }
 
 var SOPT = {};

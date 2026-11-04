@@ -13,7 +13,7 @@ var INST_IK = {
   over: ["#34c759", '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v6M12 7.5v.01"/>'],
   bronnen: ["#007aff", '<path d="M5 4h10l4 4v12H5z"/><path d="M8 11h8M8 15h8"/>']
 };
-function ikoon(k) { var x = INST_IK[k]; return '<span class="inst-ik" style="background:' + x[0] + '"><svg viewBox="0 0 24 24">' + x[1] + "</svg></span>"; }
+function ikoon(k) { return '<span class="inst-ik"><svg viewBox="0 0 24 24">' + INST_IK[k][1] + "</svg></span>"; }
 function instRij(label, control, uitleg) { return '<div class="inst-rij"><div class="inst-label">' + label + (uitleg ? '<span class="klein">' + uitleg + "</span>" : "") + "</div>" + control + "</div>"; }
 function instKnopRij(label, actie, waarde, ik) {
   return '<button type="button" class="inst-rij inst-link" data-inst="' + actie + '">' + (ik ? ikoon(ik) : "") + '<span class="inst-label">' + label + "</span>" + (waarde ? '<span class="fs-waarde">' + waarde + "</span>" : "") + '<span class="pijl">›</span></button>';
@@ -31,11 +31,11 @@ var INST_SCHERM = {
   hoofd: function () {
     return groep("", instKnopRij("Algemeen", "algemeen", "", "algemeen") + instKnopRij("Pers", "pers", "", "pers") + instKnopRij("Agenda", "agenda", "", "agenda"))
       + groep("", instKnopRij("Bronnen en beperkingen", "bronnen", "", "bronnen") + instKnopRij("Over deze site", "over", "", "over"))
-      + '<p class="klein inst-voet">Het Zoek-scherm pas je aan door een widget even vast te houden.</p>';
+      + '<p class="klein inst-voet">Het Zoek-scherm pas je aan met Wijzig, of door een widget even vast te houden.</p>';
   },
   algemeen: function () {
     return groep("", instKnopRij("Openen met", "start", TAB_NAMEN[INST.start]) + instKnopRij("Tekstgrootte", "tekst", TEKST[INST.tekst]))
-      + groep("", instRij("Minder beweging", schakel("minder", INST.beweging === "minder")), "Zet schuif-, zoom- en wiebelanimaties uit.");
+      + groep("", instRij("Minder beweging", schakel("minder", INST.beweging === "minder")), "Zet schuif- en zoomanimaties uit.");
   },
   start: function () { return vinkLijst("start", TAB_NAMEN, INST.start); },
   tekst: function () { return vinkLijst("tekst", TEKST, INST.tekst); },
@@ -68,7 +68,7 @@ function instOpen(naam, dieper) {
   var vorige = instHuidig;
   instHuidig = naam;
   bronRect = document.getElementById("instellingen-knop").getBoundingClientRect();
-  openPaneel(INST_TITEL[naam] || "Instellingen", '<div data-inst-scherm="' + naam + '">' + INST_SCHERM[naam]() + "</div>", { dieper: dieper });
+  openPaneel(INST_TITEL[naam] || "Instellingen", '<div data-inst-scherm="' + naam + '">' + INST_SCHERM[naam]() + "</div>", { dieper: dieper, vol: true });
   if (dieper) stapel[stapel.length - 1].terug = function () { instHuidig = vorige; instTeken(); };
 }
 document.getElementById("instellingen-knop").addEventListener("click", function () { instOpen("hoofd"); });

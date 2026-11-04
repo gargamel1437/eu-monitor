@@ -26,7 +26,6 @@
 </head>
 <body>
 <div class="topbalk" id="topbalk"><div id="kleine-titel">Zoek</div></div>
-<button class="bronknop" id="instellingen-knop" type="button" aria-label="Instellingen"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
 <div class="offline verborgen" id="offline-melding" role="status"></div>
 
 <div class="wrap">
@@ -34,7 +33,7 @@
 
   <!-- ============ ZOEK (overzicht met widgets) ============ -->
   <section class="tab actief" id="overzicht" data-titel="Zoek">
-    <header class="groot"><div class="kop-rij"><h1>Zoek</h1><button class="linkknop wijzig" id="ov-wijzig" type="button">Wijzig</button></div><p class="sub">Bijgewerkt {{BIJGEWERKT}} · <span id="volgende-update"></span></p></header>
+    <header class="groot"><div class="kop-rij"><h1>Zoek</h1><div class="kopknoppen"><button class="wplus" id="w-plus" type="button" aria-label="Widget toevoegen" hidden><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button><button class="linkknop wijzig" id="ov-wijzig" type="button">Wijzig</button><button class="tandwiel" id="instellingen-knop" type="button" aria-label="Instellingen"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button></div></div><p class="sub">Bijgewerkt {{BIJGEWERKT}} · <span id="volgende-update"></span></p></header>
     <div class="zoekgroot"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><input class="zoek" id="ov-zoek" type="search" placeholder="Zoek in alles" aria-label="Zoek in alles" autocomplete="off"></div>
     <div id="ov-recent" class="recentlijst verborgen" role="listbox" aria-label="Recente zoekopdrachten"></div>
     <div id="ov-resultaten" class="verborgen"></div>
@@ -66,9 +65,11 @@
 
   <!-- ============ AGENDA ============ -->
   <section class="tab" id="agenda" data-titel="Agenda">
-    <header class="groot"><div class="kop-rij"><h1>Agenda</h1><span class="maand" id="a-maand"></span></div></header>
+    <header class="groot"><h1>Agenda</h1></header>
+    <div class="agenda-plak">
     <div class="zoekbalk" id="a-balk"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><span class="tokens"></span><input class="zoekinvoer" id="a-zoek" type="search" placeholder="Zoek of filter" autocomplete="off" aria-label="Zoek of filter in de agenda"><button class="wis" type="button" aria-label="Alles wissen" hidden>×</button></div>
-    <div class="plakrij strookrij"><div class="strook" id="a-strook" aria-label="Datumstrook"></div></div>
+    <div class="strookrij"><div class="maand" id="a-maand" aria-live="polite"></div><div class="strook" id="a-strook" aria-label="Datumstrook"></div></div>
+    </div>
     <div id="a-tijdlijn" class="tijdlijn d0"></div>
     <div class="dichtknoppen" role="group" aria-label="Hoeveel je ziet">
       <button type="button" id="a-uit" aria-label="Meer dagen tonen"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
@@ -104,7 +105,6 @@
     <p class="klein uitleg-onder" id="m-uitleg"></p>
   </section>
 
-  <footer>EU-monitor · eigen overzicht · licht of donker volgt je iPhone</footer>
 </div>
 
 <nav class="tabs" aria-label="Onderdelen"><div class="pil">

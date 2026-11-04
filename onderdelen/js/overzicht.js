@@ -2,9 +2,9 @@
 //  overzicht.js: de tab Zoek. Bovenaan zoeken in alles; daaronder widgets zoals op het
 //  beginscherm van de iPhone: Agenda (met vandaag), Pers, Dossiers, Stemmen, en naar keuze
 //  Persberichten en Personen. Elke widget heeft een maat: klein (half breed), middel of groot.
-//  Aanpassen: houd een widget even vast (of tik op Wijzig). De widgets wiebelen; sleep om de
-//  volgorde te wijzigen, tik op het min-teken om weg te halen, tik op een widget voor de maat,
-//  + om er een toe te voegen, Klaar om te stoppen. Geen scherm dat inschuift.
+//  Aanpassen: tik op Wijzig (rechtsboven) of houd een widget even vast. Dan: kort vasthouden en
+//  slepen = verplaatsen (de pagina scrolt pas mee als je de widget tegen de rand van het scherm
+//  sleept), min-teken = weghalen, tikken = maat kiezen, + = toevoegen, Klaar = stoppen.
 // =====================================================================
 
 function lijstRegel(href, titel, meta, extern) {
@@ -80,8 +80,7 @@ function overzichtTonen() {
   if (!OV_DATA) return;
   var doel = document.getElementById("ov-data");
   var h = INST.widgets.filter(function (b) { return b.aan; }).map(widgetHtml).join("");
-  doel.innerHTML = (h || '<p class="leeg">Geen widgets. Tik op Wijzig en dan op + om er een toe te voegen.</p>')
-    + '<div class="wiebelbalk"><button type="button" class="wplus" id="w-plus" aria-label="Widget toevoegen">+</button><button type="button" class="knop" id="w-klaar">Klaar</button></div>';
+  doel.innerHTML = h || '<p class="leeg">Geen widgets. Tik op Wijzig en dan op + om er een toe te voegen.</p>';
   window.euMarkeer(doel);
 }
 function overzichtTab() {
@@ -95,78 +94,144 @@ function overzichtTab() {
 // een verhaal uit de Pers-widget: dezelfde keuze van bronnen als in Pers
 document.addEventListener("click", function (e) {
   var v = e.target.closest && e.target.closest("[data-verhaal-van]");
-  if (!v || document.body.classList.contains("wiebelen")) return;
+  if (!v || document.body.classList.contains("bewerken")) return;
   e.preventDefault();
   var li = alle("li.bericht")[+v.dataset.verhaalVan];
   if (li && li.dataset.verhaal) openPaneel("Verhaal", verhaalDetail(li));
 });
 
 // ---------- aanpassen zoals widgets op de iPhone ----------
+// Slepen werkt met aanraken (touch) en met de muis. Op een telefoon: eerst kort vasthouden, dan
+// slepen; zolang je niet vasthoudt, scrolt de pagina gewoon. Tijdens het slepen scrolt de pagina
+// alleen als je vinger bij de boven- of onderrand komt, sneller naarmate je dieper in die rand zit.
 (function () {
-  var data = document.getElementById("ov-data");
-  function aan() { document.body.classList.add("wiebelen"); }
-  function uit() { document.body.classList.remove("wiebelen"); sluitWMenu(); }
-  function bewaarW() { bewaarInst(); }
-  document.getElementById("ov-wijzig").addEventListener("click", function () { if (document.body.classList.contains("wiebelen")) uit(); else aan(); });
-  // lang indrukken op een widget = aanpassen
-  var houd = null, start = null;
-  data.addEventListener("pointerdown", function (e) {
-    var w = e.target.closest(".widget");
-    if (!w) return;
-    start = { x: e.clientX, y: e.clientY, w: w, id: e.pointerId, sleept: false };
-    if (!document.body.classList.contains("wiebelen")) {
-      clearTimeout(houd);
-      houd = setTimeout(function () { aan(); if (navigator.vibrate) try { navigator.vibrate(10); } catch (x) {} start = null; }, 520);
-    }
-  });
-  data.addEventListener("pointermove", function (e) {
-    if (!start) return;
-    var dx = e.clientX - start.x, dy = e.clientY - start.y;
-    if (!document.body.classList.contains("wiebelen")) { if (Math.abs(dx) + Math.abs(dy) > 8) { clearTimeout(houd); start = null; } return; }
-    // slepen in de aanpasmodus
-    if (!start.sleept && Math.abs(dx) + Math.abs(dy) > 8) {
-      start.sleept = true; start.w.classList.add("sleept"); sluitWMenu();
-      try { start.w.setPointerCapture(start.id); } catch (x) {}
-    }
-    if (!start.sleept) return;
-    e.preventDefault();
-    start.w.style.transform = "translate(" + dx + "px," + dy + "px) scale(1.04)";
-    start.w.style.pointerEvents = "none";
-    var onder = document.elementFromPoint(e.clientX, e.clientY);
-    var doel = onder && onder.closest && onder.closest(".widget");
-    start.w.style.pointerEvents = "";
-    if (doel && doel !== start.w) {
-      var r = doel.getBoundingClientRect(), voor = e.clientY < r.top + r.height / 2 || (e.clientX < r.left + r.width / 2 && Math.abs(e.clientY - (r.top + r.height / 2)) < r.height / 3);
-      var oud = start.w.getBoundingClientRect();
-      data.insertBefore(start.w, voor ? doel : doel.nextSibling);
-      var nieuw = start.w.getBoundingClientRect();
-      start.x += nieuw.left - oud.left; start.y += nieuw.top - oud.top;
-      start.w.style.transform = "translate(" + (e.clientX - start.x) + "px," + (e.clientY - start.y) + "px) scale(1.04)";
-    }
-  });
-  function los() {
-    clearTimeout(houd);
-    if (start && start.sleept) {
-      start.w.classList.remove("sleept"); start.w.style.transform = "";
-      var volgorde = alle(".widget", data).map(function (w) { return w.dataset.id; });
-      INST.widgets.sort(function (a, b) { var x = volgorde.indexOf(a.id), y = volgorde.indexOf(b.id); return (x < 0 ? 99 : x) - (y < 0 ? 99 : y); });
-      bewaarW();
-      start.w.dataset.netGesleept = "1";
-    }
-    start = null;
+  var data = document.getElementById("ov-data"), knop = document.getElementById("ov-wijzig"), plus = document.getElementById("w-plus");
+  function bewerkt() { return document.body.classList.contains("bewerken"); }
+  function aan() { document.body.classList.add("bewerken"); knop.textContent = "Klaar"; plus.hidden = false; }
+  function uit() { document.body.classList.remove("bewerken"); knop.textContent = "Wijzig"; plus.hidden = true; sluitWMenu(); }
+  knop.addEventListener("click", function () { if (bewerkt()) uit(); else aan(); });
+  plus.addEventListener("click", function (e) { e.stopPropagation(); plusMenu(plus); });
+
+  var s = null, raf = 0, vinger = { x: 0, y: 0 }, rustTot = 0, RAND = 64;
+  function tril() { if (navigator.vibrate) try { navigator.vibrate(10); } catch (x) {} }
+  function begin(w, x, y, touch) {
+    annuleer();
+    s = { w: w, x0: x, y0: y, touch: touch, klaar: false, sleept: false };
+    vinger.x = x; vinger.y = y;
+    if (!touch && bewerkt()) { s.klaar = true; return; }          // muis in de aanpasmodus: meteen
+    s.timer = setTimeout(function () {
+      if (!s) return;
+      if (!bewerkt()) aan();
+      s.klaar = true; tril();
+      if (touch) optillen();
+    }, bewerkt() ? 250 : 450);
   }
-  data.addEventListener("pointerup", los); data.addEventListener("pointercancel", los);
+  function annuleer() { if (s) clearTimeout(s.timer); s = null; cancelAnimationFrame(raf); }
+  function bewogen() { return Math.abs(vinger.x - s.x0) + Math.abs(vinger.y - s.y0); }
+  function optillen() {
+    sluitWMenu();
+    var r = s.w.getBoundingClientRect();
+    s.gx = vinger.x - r.left; s.gy = vinger.y - r.top;
+    s.sleept = true;
+    s.w.classList.add("sleept");
+    plaats();
+    raf = requestAnimationFrame(randScroll);
+  }
+  // de widget onder de vinger houden (ook als de pagina scrolt of de volgorde verandert)
+  function plaats() {
+    var b = data.getBoundingClientRect();
+    s.w.style.transform = "translate(" + (vinger.x - s.gx - b.left - s.w.offsetLeft) + "px," + (vinger.y - s.gy - b.top - s.w.offsetTop) + "px) scale(1.03)";
+  }
+  // de andere widgets schuiven met een animatie naar hun nieuwe plek
+  function verschuif(doe) {
+    var andere = alle(".widget", data).filter(function (x) { return x !== s.w; });
+    var voor = andere.map(function (x) { return x.getBoundingClientRect(); });
+    doe();
+    andere.forEach(function (x, i) {
+      var na = x.getBoundingClientRect(), dx = voor[i].left - na.left, dy = voor[i].top - na.top;
+      if (!dx && !dy) return;
+      x.style.transition = "none"; x.style.transform = "translate(" + dx + "px," + dy + "px)";
+      x.offsetWidth;
+      x.style.transition = "transform .26s cubic-bezier(.2,.9,.3,1)"; x.style.transform = "";
+    });
+    plaats();
+  }
+  function herschik() {
+    if (performance.now() < rustTot) return;
+    var onder = document.elementFromPoint(vinger.x, vinger.y);
+    var doel = onder && onder.closest && onder.closest(".widget");
+    if (!doel || doel === s.w || doel.parentNode !== data) return;
+    var r = doel.getBoundingClientRect(), naW = s.w.compareDocumentPosition(doel) & Node.DOCUMENT_POSITION_FOLLOWING;
+    var klein = doel.classList.contains("maat-k") && s.w.classList.contains("maat-k") && Math.abs(r.top - s.w.offsetTop - data.getBoundingClientRect().top) < 10;
+    var voorbij = klein ? (naW ? vinger.x > r.left + r.width / 2 : vinger.x < r.left + r.width / 2)
+      : (naW ? vinger.y > r.top + r.height / 2 : vinger.y < r.top + r.height / 2);
+    if (!voorbij) return;
+    verschuif(function () { data.insertBefore(s.w, naW ? doel.nextSibling : doel); });
+    rustTot = performance.now() + 200;
+  }
+  function randScroll() {
+    if (!s || !s.sleept) return;
+    var boven = 56, onder = window.innerHeight - 96, v = 0;
+    if (vinger.y < boven + RAND) v = -Math.min(16, (boven + RAND - vinger.y) / 4);
+    else if (vinger.y > onder - RAND) v = Math.min(16, (vinger.y - onder + RAND) / 4);
+    if (v) { var y0 = window.scrollY; window.scrollBy(0, v); if (window.scrollY !== y0) { plaats(); herschik(); } }
+    raf = requestAnimationFrame(randScroll);
+  }
+  function eind() {
+    if (!s) return;
+    clearTimeout(s.timer); cancelAnimationFrame(raf);
+    var w = s.w, gesleept = s.sleept, gehouden = s.klaar && s.touch;
+    s = null;
+    if (gehouden || gesleept) { w.dataset.netGesleept = "1"; setTimeout(function () { delete w.dataset.netGesleept; }, 450); }
+    if (!gesleept) return;
+    w.classList.remove("sleept");
+    w.style.transition = "transform .26s cubic-bezier(.2,.9,.3,1)"; w.style.transform = "";
+    setTimeout(function () { w.style.transition = ""; }, 280);
+    var volgorde = alle(".widget", data).map(function (x) { return x.dataset.id; });
+    INST.widgets.sort(function (a, b) { var x = volgorde.indexOf(a.id), y = volgorde.indexOf(b.id); return (x < 0 ? 99 : x) - (y < 0 ? 99 : y); });
+    bewaarInst();
+  }
+  // aanraken
+  data.addEventListener("touchstart", function (e) {
+    var w = e.target.closest(".widget");
+    if (e.touches.length !== 1 || !w || e.target.closest(".wmin")) { annuleer(); return; }
+    begin(w, e.touches[0].clientX, e.touches[0].clientY, true);
+  }, { passive: true });
+  document.addEventListener("touchmove", function (e) {
+    if (!s || !s.touch) return;
+    vinger.x = e.touches[0].clientX; vinger.y = e.touches[0].clientY;
+    if (!s.klaar) { if (bewogen() > 10) annuleer(); return; }   // gewoon scrollen
+    e.preventDefault();
+    plaats(); herschik();
+  }, { passive: false });
+  document.addEventListener("touchend", function () { if (s && s.touch) eind(); });
+  document.addEventListener("touchcancel", function () { if (s && s.touch) eind(); });
+  // muis
+  data.addEventListener("pointerdown", function (e) {
+    if (e.pointerType === "touch" || e.button) return;
+    var w = e.target.closest(".widget");
+    if (!w || e.target.closest(".wmin")) return;
+    begin(w, e.clientX, e.clientY, false);
+  });
+  document.addEventListener("pointermove", function (e) {
+    if (!s || s.touch || e.pointerType === "touch") return;
+    vinger.x = e.clientX; vinger.y = e.clientY;
+    if (!s.klaar) { if (bewogen() > 6) annuleer(); return; }
+    if (!s.sleept) { if (bewogen() > 4) optillen(); else return; }
+    e.preventDefault();
+    plaats(); herschik();
+  });
+  document.addEventListener("pointerup", function (e) { if (s && !s.touch && e.pointerType !== "touch") eind(); });
+
   // in de aanpasmodus: tikken doet aanpassen, geen links volgen
   data.addEventListener("click", function (e) {
-    if (!document.body.classList.contains("wiebelen")) return;
     var w = e.target.closest(".widget");
-    if (e.target.closest("#w-klaar")) { uit(); return; }
-    if (e.target.closest("#w-plus")) { e.preventDefault(); plusMenu(e.target.closest("#w-plus")); return; }
+    if (w && w.dataset.netGesleept) { e.preventDefault(); e.stopPropagation(); delete w.dataset.netGesleept; return; }
+    if (!bewerkt()) return;
     if (!w) { if (!e.target.closest(".wmenu")) uit(); return; }
     e.preventDefault(); e.stopPropagation();
-    if (w.dataset.netGesleept) { delete w.dataset.netGesleept; return; }
     var b = INST.widgets.filter(function (x) { return x.id === w.dataset.id; })[0];
-    if (e.target.closest(".wmin")) { b.aan = false; bewaarW(); w.classList.add("weg"); setTimeout(overzichtTonen, 200); return; }
+    if (e.target.closest(".wmin")) { b.aan = false; bewaarInst(); w.classList.add("weg"); setTimeout(overzichtTonen, 200); return; }
     maatMenu(w, b);
   }, true);
   function sluitWMenu() { var m = document.querySelector(".wmenu"); if (m) m.remove(); }
@@ -186,8 +251,8 @@ document.addEventListener("click", function (e) {
     zetMenu(m, w);
     m.onclick = function (e) {
       var k = e.target.closest("[data-maat]");
-      if (k) { b.maat = k.dataset.maat; bewaarW(); sluitWMenu(); overzichtTonen(); return; }
-      if (e.target.closest("[data-weg]")) { b.aan = false; bewaarW(); sluitWMenu(); overzichtTonen(); }
+      if (k) { b.maat = k.dataset.maat; bewaarInst(); sluitWMenu(); overzichtTonen(); return; }
+      if (e.target.closest("[data-weg]")) { b.aan = false; bewaarInst(); sluitWMenu(); overzichtTonen(); }
     };
   }
   function plusMenu(knop) {
@@ -197,13 +262,14 @@ document.addEventListener("click", function (e) {
     m.className = "tokmenu wmenu";
     m.innerHTML = uitstaand.length ? uitstaand.map(function (b) { return '<button type="button" data-plus="' + b.id + '">' + WIDGETS[b.id].naam + "</button>"; }).join("") : '<button type="button" disabled>Alle widgets staan er al</button>';
     zetMenu(m, knop);
+    m.style.left = Math.max(10, Math.min(knop.getBoundingClientRect().right - m.offsetWidth, window.innerWidth - m.offsetWidth - 10)) + "px";
     m.onclick = function (e) {
       var k = e.target.closest("[data-plus]");
       if (!k) return;
       var b = INST.widgets.filter(function (x) { return x.id === k.dataset.plus; })[0];
       b.aan = true;
       INST.widgets.splice(INST.widgets.indexOf(b), 1); INST.widgets.unshift(b);
-      bewaarW(); sluitWMenu(); overzichtTonen();
+      bewaarInst(); sluitWMenu(); overzichtTonen();
     };
   }
   document.addEventListener("pointerdown", function (e) { if (!e.target.closest(".wmenu") && !e.target.closest(".widget") && !e.target.closest("#w-plus")) sluitWMenu(); });

@@ -201,16 +201,31 @@ function vindDag(d) {
 // ---------- datumstrook loopt mee ----------
 function volgStrook() {
   if (huidigeTab() !== "agenda") return;
-  var strook = document.getElementById("a-strook"), grens = strook.getBoundingClientRect().bottom + 10, eerste = null;
+  var strook = document.getElementById("a-strook"), grens = document.querySelector("#agenda .agenda-plak").getBoundingClientRect().bottom + 10, eerste = null;
   alle("#a-tijdlijn .dag, #a-tijdlijn .leegrij, #a-tijdlijn .orij[data-dag]").some(function (el) { if (el.getBoundingClientRect().bottom > grens) { eerste = el.dataset.dag; return true; } return false; });
-  if (!eerste) return;
-  document.getElementById("a-maand").textContent = MAANDEN[dt(eerste).getMonth()] + " " + dt(eerste).getFullYear();
+  if (!eerste) { strookMaand(); return; }
   alle(".sdag", strook).forEach(function (b) { b.classList.toggle("zicht", b.dataset.dag === eerste); });
   var knop = strook.querySelector('.sdag[data-dag="' + eerste + '"]');
   if (knop && !volgStrook.bezig) {
     var links = knop.offsetLeft - 12;
     if (links < strook.scrollLeft || links + knop.offsetWidth > strook.scrollLeft + strook.clientWidth) strook.scrollTo({ left: links - strook.clientWidth / 3, behavior: "smooth" });
   }
+  strookMaand();
+}
+// De maand boven de datumstrook hoort bij de dagen die in de strook in beeld zijn: de meeste
+// zichtbare dagen bepalen de maand (schuif je de strook opzij, dan loopt de maand mee).
+function strookMaand() {
+  var strook = document.getElementById("a-strook"), links = strook.scrollLeft, rechts = links + strook.clientWidth, tel = {}, beste = null;
+  alle(".sdag", strook).forEach(function (b) {
+    var m = b.offsetLeft + b.offsetWidth / 2;
+    if (m < links || m > rechts) return;
+    var k = b.dataset.dag.slice(0, 7);
+    tel[k] = (tel[k] || 0) + 1;
+    if (!beste || tel[k] > tel[beste]) beste = k;
+  });
+  if (!beste) return;
+  var tekst = MAANDEN[+beste.slice(5, 7) - 1] + " " + beste.slice(0, 4), el = document.getElementById("a-maand");
+  if (el.textContent !== tekst) el.textContent = tekst;
 }
 window.addEventListener("scroll", function () { cancelAnimationFrame(volgStrook.f); volgStrook.f = requestAnimationFrame(volgStrook); }, { passive: true });
 
@@ -223,6 +238,7 @@ function agendaPop(i, el) {
   pop.innerHTML = '<button type="button" class="apop-sluit" aria-label="Sluiten">×</button>'
     + '<div class="poplab"><i></i>' + esc(wieKort(i)) + ((i.wat || [])[0] ? " · " + esc(i.wat[0]) : "") + "</div>"
     + "<h3>" + esc(i.titel) + "</h3>"
+    + (basisInfo(i) ? '<p class="apop-wat">' + basisInfo(i) + "</p>" : "")
     + '<div class="feit"><span>Wanneer</span><b>' + wanneer + "</b></div>"
     + (i.plaats ? '<div class="feit"><span>Waar</span><b>' + esc([i.gebouw, i.plaats].filter(Boolean).join(", ")) + "</b></div>" : "")
     + '<div class="apop-knoppen">' + (i.ics ? '<a class="hoofd" href="' + esc(i.ics) + '"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M12 13v5M9.5 15.5h5"/></svg>Zet in agenda</a>' : "")
@@ -238,6 +254,37 @@ function agendaPop(i, el) {
   achter.onclick = function () { sluitAgendaPop(); };
   pop.querySelector(".apop-sluit").onclick = function () { sluitAgendaPop(); };
   pop.querySelector("[data-meer]").onclick = function () { bronRect = pop.getBoundingClientRect(); sluitAgendaPop(true); openAgenda(i.id); };
+}
+// Een of twee zinnen over wat het is: uit de bron zelf (programma, agendapunten, dossier) of
+// een vaste omschrijving van de vergadering. Geen samenvatting of invalshoek.
+var RAAD_WAT = [
+  [/Algemene Zaken/, "Ministers (meestal van Europese Zaken) bereiden de Europese Raad voor en bespreken onder meer uitbreiding, de rechtsstaat en het meerjarig budget."],
+  [/Buitenlandse Zaken \(defensie\)/, "Ministers van Defensie, onder leiding van de Hoge Vertegenwoordiger: Europese defensie en veiligheid."],
+  [/Buitenlandse Zaken \(handel\)/, "Ministers van Handel: handelsakkoorden en handelsbeleid van de EU."],
+  [/Buitenlandse Zaken/, "Ministers van Buitenlandse Zaken, onder leiding van de Hoge Vertegenwoordiger: buitenlands beleid, sancties en ontwikkelingssamenwerking."],
+  [/Ecofin.*begroting/, "Ministers van Financiën stellen het standpunt van de Raad over de EU-begroting vast."],
+  [/Ecofin/, "Ministers van Financiën: economisch beleid, belastingen, financiële regels en het herstelfonds."],
+  [/Eurogroep/, "Informeel overleg van de ministers van Financiën van de eurolanden, met de ECB en de Commissie."],
+  [/Justitie en Binnenlandse Zaken/, "Ministers van Justitie en van Binnenlandse Zaken: migratie, Schengen, politie- en justitiesamenwerking."],
+  [/Werkgelegenheid|Sociaal Beleid|Volksgezondheid|EPSCO/i, "Ministers van Sociale Zaken en van Volksgezondheid: werk, sociale rechten, gezondheid en consumentenzaken."],
+  [/Concurrentievermogen/, "Ministers van Economische Zaken en van Onderzoek: interne markt, industrie, ruimtevaart en onderzoek."],
+  [/Vervoer|Telecommunicatie|Energie/, "Ministers van Vervoer, Telecom of Energie (afhankelijk van het deel): netwerken, digitale markt en energiemarkt."],
+  [/Landbouw en Visserij/, "Ministers van Landbouw en Visserij: landbouwbeleid, visquota en voedselveiligheid."],
+  [/Milieu/, "Ministers van Milieu: klimaat, natuur, lucht- en waterkwaliteit en internationale klimaatonderhandelingen."],
+  [/Onderwijs|Jeugd|Cultuur|Sport/, "Ministers van Onderwijs, Jeugd, Cultuur of Sport (afhankelijk van het deel)."]
+];
+function lijstje(l, n) { return l.slice(0, n).map(esc).join("; ") + (l.length > n ? " en nog " + (l.length - n) : ""); }
+function basisInfo(i) {
+  if (i.extra) return esc(i.extra);
+  if ((i.punten || []).length) return "Onder meer op de agenda: " + lijstje(i.punten, 2) + ".";
+  var dagpunten = [];
+  (i.dagen || []).forEach(function (d) { (d.debatten || []).forEach(function (p) { if (dagpunten.indexOf(p) < 0) dagpunten.push(p); }); });
+  if (dagpunten.length) return "Onder meer op de agenda: " + lijstje(dagpunten, 2) + ".";
+  if (/^Informele/.test(i.titel)) return "Informele bijeenkomst: de ministers praten, maar nemen geen formele besluiten.";
+  if (i.soort === "Raad") { var w = RAAD_WAT.filter(function (x) { return x[0].test(i.raad || i.titel); })[0]; if (w) return esc(w[1]); }
+  if (i.soort === "EU-top") return "Bijeenkomst van regeringsleiders. De onderwerpen staan op de pagina van de bijeenkomst (Meer info).";
+  if (i.ref) return "Geplande stap in het dossier " + esc(i.ref) + ".";
+  return "";
 }
 function sluitAgendaPop(direct) {
   alle(".gekozen").forEach(function (x) { x.classList.remove("gekozen"); });
@@ -349,11 +396,12 @@ function agendaOpzetten() {
     var it = e.target.closest(".item, .orij[data-id]");
     if (it) agendaPop(AGENDA_INDEX[it.dataset.id], it);
   });
+  document.getElementById("a-strook").addEventListener("scroll", function () { cancelAnimationFrame(strookMaand.f); strookMaand.f = requestAnimationFrame(strookMaand); }, { passive: true });
   document.getElementById("a-strook").addEventListener("click", function (e) {
     var b = e.target.closest(".sdag"); if (!b || b.disabled) return;
     var el = vindDag(b.dataset.dag); if (!el) return;
     volgStrook.bezig = true;
-    var plak = document.querySelector("#agenda .strookrij").getBoundingClientRect().bottom;
+    var plak = document.querySelector("#agenda .agenda-plak").getBoundingClientRect().bottom;
     window.scrollTo({ top: window.scrollY + el.getBoundingClientRect().top - plak - 8, behavior: MINDER_BEWEGING ? "auto" : "smooth" });
     setTimeout(function () { volgStrook.bezig = false; volgStrook(); }, 600);
   });

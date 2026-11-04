@@ -57,7 +57,8 @@ function dossierKaart(d) {
   if (plan) feiten.push("gepland " + kort(plan.datum));
   else if (d.laatst) feiten.push("laatste stap " + kort(d.laatst));
   return '<div class="kaart compact dkaart k-ep" data-ref="' + esc(d.ref) + '" role="button" tabindex="0">'
-    + '<div class="kaartkop"><div class="klein">' + esc(d.ref) + " · " + esc(d.soort_naam || d.soort) + (d.eigen && d.eigen.titel ? ' · <span class="label">eigen samenvatting</span>' : "") + ((d.pers || []).length ? ' · <span class="label wie k-com">' + d.pers.length + " persberichten</span>" : "") + "</div></div>"
+    + '<div class="kaartkop"><div class="klein"><i class="stip"></i>' + esc(d.ref) + " · " + esc(d.soort_naam || d.soort) + (d.eigen && d.eigen.titel ? ' · <span class="label">eigen samenvatting</span>' : "") + ((d.pers || []).length ? ' · <span class="label wie k-com">' + d.pers.length + " persberichten</span>" : "")
+    + ((d.stemmen || []).length ? ' · <span class="label stemlabel"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10M12 20V5M19 20v-7"/></svg>' + d.stemmen.length + (d.stemmen.length === 1 ? " stemming" : " stemmingen") + "</span>" : "") + "</div></div>"
     + '<h3 class="twee-regels">' + esc(titelVan(d)) + "</h3>"
     + '<div class="klein status">' + esc(d.status) + "</div>"
     + stappenBalk(d, false)
@@ -79,6 +80,7 @@ function dossierDetail(d) {
   }
   if ((d.pers || []).length) h += '<h3 class="sectiekop">Persberichten</h3><div class="officieel-koppel"><p class="klein">Persberichten van Commissie of Raad die automatisch aan dit dossier zijn gekoppeld. Het label zegt waarop: procedurenummer, COM-document, eigen bron of trefwoorden in de kop. Controleer zelf of ze echt over dit dossier gaan.</p><ul class="lijst officieel">'
     + d.pers.map(function (b) { return lijstRegel(b.link, esc(b.titel), '<span class="label wie k-' + (PERS_KLEUR[b.bron] || "com") + '">' + esc(b.bron) + "</span><span>" + kort(b.datum) + "</span>" + (b.soort ? "<span>" + esc(b.soort) + "</span>" : "") + '<span class="label">' + esc(b.hoe) + "</span>", true); }).join("") + "</ul></div>";
+  if ((d.stemmen || []).length) h += dossierStemmen(d);
   var plan = toekomstig(d);
   if (plan.length) h += "<h3 class='sectiekop'>Gepland</h3><ul class='punten'>" + plan.map(function (v) { return "<li><b>" + kort(v.datum) + "</b>: " + esc(v.wat) + " " + icsKnop(v.wat + ": " + titelVan(d), v.datum, d.ref, d.url, v.ics) + "</li>"; }).join("") + "</ul>";
   h += "<h3 class='sectiekop'>Wie is betrokken</h3>";
@@ -94,15 +96,25 @@ function dossierDetail(d) {
   h += "<h3 class='sectiekop'>Alle stappen</h3>" + ((d.gebeurtenissen || []).length ? '<ol class="tijdlijn">' + d.gebeurtenissen.map(function (g) {
     return "<li><time>" + kort(g.datum) + "</time>" + esc(g.wat) + (g.doc ? " · " + a(g.url, g.doc) : "") + "</li>";
   }).join("") + "</ol>" : '<p class="klein">Geen stappen bekend.</p>');
-  if ((d.stemmen || []).length) h += "<h3 class='sectiekop'>Stemmingen in het Parlement</h3>" + d.stemmen.map(function (s) {
-    return '<p class="klein">' + kort(s.moment) + ": " + esc(s.titel) + " — " + uitslag(s.uitslag) + " " + (s.totaal.FOR || 0) + "–" + (s.totaal.AGAINST || 0) + "–" + (s.totaal.ABSTENTION || 0)
-      + ' · <a href="#stemmingen?id=' + esc(s.id) + '">details</a></p>';
-  }).join("");
   if ((d.documenten || []).length) h += "<h3 class='sectiekop'>Documenten</h3><ul class='punten'>" + d.documenten.map(function (x) { return "<li>" + kort(x.datum) + " · " + esc(x.soort) + ": " + a(x.url, x.ref) + "</li>"; }).join("") + "</ul>";
   if (d.transparantie_aantal) h += "<h3 class='sectiekop'>Ontmoetingen met belangenvertegenwoordigers</h3><p class='klein'>Opgegeven door (schaduw)rapporteurs" + (d.transparantie_aantal >= 10 ? "; OEIL toont er 10 per pagina, zie de bron voor alles" : "") + ".</p><ul class='punten'>"
     + d.transparantie.map(function (t) { return "<li>" + kort(t.datum) + " · " + esc(t.wie) + " (" + esc(t.rol) + "): " + esc(t.met) + "</li>"; }).join("") + "</ul>";
   if ((d.onderwerpen || []).length) h += '<p class="klein">Onderwerpen (OEIL): ' + d.onderwerpen.map(function (o) { return esc(o[0] + " " + o[1]); }).join("; ") + "</p>";
   return h;
+}
+// Alle plenaire stemmingen over dit dossier, op volgorde van tijd: zo zie je hoe het dossier
+// door het Parlement ging. Tik = de stemming (Terug brengt je hier terug).
+function dossierStemmen(d) {
+  var l = d.stemmen.slice().sort(function (x, y) { return x.moment.localeCompare(y.moment); });
+  return "<h3 class='sectiekop'>Stemmingen in het Parlement <span class='teller-klein'>" + l.length + "</span></h3>"
+    + '<div class="kaart lijstkaart stemkoppel">' + l.map(function (s) {
+      var t = s.totaal || {}, wat = stemWat(s);
+      return '<a class="stemrij" href="#stemmingen?id=' + esc(s.id) + '"><span class="klein">' + esc(lang(s.moment)) + (s.moment.length > 10 ? " · " + s.moment.slice(11, 16) : "") + "</span>"
+        + "<b>" + esc(wat || s.titel) + "</b>"
+        + '<span class="stemregel">' + uitslag(s.uitslag) + '<span class="klein">' + (t.FOR || 0) + " voor · " + (t.AGAINST || 0) + " tegen · " + (t.ABSTENTION || 0) + " onth.</span></span>"
+        + verdeling(t) + '<span class="pijl" aria-hidden="true">›</span></a>';
+    }).join("") + "</div>"
+    + '<p class="klein">Hoofdstemmingen uit de laatste twee plenaire zittingen (HowTheyVote.eu). Oudere stemmingen staan bij Alle stappen en in de Legislative Observatory.</p>';
 }
 function openDossier(ref, dieper) { var d = DOSSIER_INDEX[ref]; if (d) openPaneel(d.ref, dossierDetail(d), { dieper: dieper }); }
 // alleen de gegevens klaarzetten (ook als je een dossier vanuit een ander scherm opent)

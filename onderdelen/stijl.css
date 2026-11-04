@@ -35,7 +35,7 @@
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html { -webkit-text-size-adjust: 100%; overflow-x: hidden; }
 body {
-  margin: 0; color: var(--tekst); background: var(--achter); overflow-x: hidden;
+  margin: 0; color: var(--tekst); background: var(--achter); overflow-x: clip;
   font: 16px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
   padding-bottom: calc(96px + env(safe-area-inset-bottom)); min-height: 100vh;
 }
@@ -329,8 +329,6 @@ code { font-size: 13px; background: var(--eu-zacht); padding: 1px 5px; border-ra
 .uitlegpop b { display: block; color: var(--eu); margin-bottom: 3px; }
 .uitlegpop p { margin: 0; }
 .bronlijst li { margin: 6px 0; }
-footer { color: var(--zacht); font-size: 13px; padding: 28px 0 8px; text-align: center; }
-footer a { display: inline-block; padding: 10px 4px; }
 
 /* geen vervaging beschikbaar: wat steviger glas */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
@@ -341,17 +339,6 @@ footer a { display: inline-block; padding: 10px 4px; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 
-/* ---------- bronnenknop rechtsboven ---------- */
-.bronknop {
-  /* iOS-marges: 16 px van de zijkant, midden in de balk van 44 px bovenin */
-  position: fixed; z-index: 31; top: calc(env(safe-area-inset-top) + 4px); right: max(16px, calc(env(safe-area-inset-right) + 8px));
-  width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; color: var(--eu);
-  /* één zachte rand, geen extra glansrand: die gaf op scherpe schermen een dubbele omlijning */
-  background: var(--glas); border: 0; box-shadow: 0 0 0 .5px var(--rand-buiten), 0 4px 14px rgba(20,30,80,.12);
-  -webkit-backdrop-filter: blur(20px) saturate(170%); backdrop-filter: blur(20px) saturate(170%); cursor: pointer; padding: 0;
-}
-.bronknop svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-header.groot { padding-right: 56px; }
 .topbalk div { padding: 0 60px; }
 
 /* ---------- groot zoekveld (Overzicht) ---------- */
@@ -378,11 +365,9 @@ header.groot { padding-right: 56px; }
     radial-gradient(circle at 15% 15%, #ffcc00 1.5px, transparent 2px), radial-gradient(circle at 85% 15%, #ffcc00 1.5px, transparent 2px),
     radial-gradient(circle at 15% 85%, #ffcc00 1.5px, transparent 2px), radial-gradient(circle at 85% 85%, #ffcc00 1.5px, transparent 2px); }
 .officieel-deel ul.berichten { background: color-mix(in srgb, var(--eu) 5%, var(--kaart)); border-color: color-mix(in srgb, var(--eu) 22%, var(--rand)); }
-li.bericht.officieel a { border-left: 4px solid var(--eu); padding-left: 12px; }
 li.bericht.officieel .meta .bron { color: var(--tekst); }
 .label.officieel { background: var(--eu); color: #fff; border: 0; font-weight: 700; letter-spacing: .2px; }
 @media (prefers-color-scheme: dark) { .label.officieel { color: #06112e; } }
-ul.lijst.officieel li { border-left: 3px solid var(--eu); padding-left: 10px; }
 .officieel-koppel { padding: 10px 12px; border-radius: 16px; background: color-mix(in srgb, var(--eu) 7%, var(--kaart)); border: 1px solid color-mix(in srgb, var(--eu) 20%, transparent); }
 .officieel-koppel > .klein { margin: 0 0 8px; }
 
@@ -698,10 +683,7 @@ li.bericht .ook a { display: inline; padding: 0; font-weight: 600; }
 .k-ep { --k: #1d4ed8; } .k-raad { --k: #7a3db8; } .k-top { --k: #0b2a8a; } .k-com { --k: #c98f00; } .k-int { --k: #8a8f9c; }
 @media (prefers-color-scheme: dark) { .k-ep { --k: #8fb0ff; } .k-raad { --k: #c9a6ff; } .k-top { --k: #7f9bff; } .k-com { --k: #ffd60a; } .k-int { --k: #a4aab7; } }
 .label.wie[class*="k-"], .lab[class*="k-"] { background: color-mix(in srgb, var(--k) 14%, transparent); color: var(--k); border: 0; font-weight: 650; }
-.kaart.compact[class*="k-"] { border-left: 3px solid var(--k); }
-li.bericht.k-com, li.bericht.k-raad { box-shadow: inset 3px 0 0 var(--k); }
 li.bericht.k-com .meta .bron, li.bericht.k-raad .meta .bron { color: var(--k); }
-li.bericht.officieel a { border-left: 0; }
 .officieel-deel ul.berichten { background: var(--kaart); border-color: var(--rand); }
 .lab { display: inline-block; font-size: 12px; padding: 1px 7px; border-radius: 6px; cursor: context-menu; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .lab.frlab, .lab.landlab { background: none; padding: 0; color: inherit; font-weight: 500; }
@@ -811,7 +793,7 @@ li.bericht.officieel a { border-left: 0; }
 .tijdlijn .leegrij { display: grid; grid-template-columns: 46px 1fr; color: var(--zacht); font-size: 12.5px; }
 .tijdlijn .leegrij .items { padding: 7px 0 7px 10px; flex-direction: row; align-items: center; gap: 6px; }
 .tijdlijn .leegrij .items::before { content: ""; width: 14px; border-top: 1px dashed var(--lijn); }
-.tijdlijn .item { position: relative; background: var(--kaart); border-radius: 14px; padding: 9px 12px 9px 13px; border-left: 4px solid var(--k); box-shadow: 0 1px 2px rgba(0,0,0,.05); cursor: pointer; min-width: 0; transition: transform .15s ease, background-color .15s ease; }
+.tijdlijn .item { position: relative; background: var(--kaart); border-radius: 14px; padding: 9px 12px; box-shadow: 0 1px 2px rgba(0,0,0,.05); cursor: pointer; min-width: 0; transition: transform .15s ease, background-color .15s ease; }
 .tijdlijn .item:active { transform: scale(.985); }
 .tijdlijn .item .t { font-weight: 650; line-height: 1.3; }
 .tijdlijn .item .m { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 3px; font-size: 12.5px; color: var(--zacht); }
@@ -908,15 +890,11 @@ li.bericht.officieel a { border-left: 0; }
 .wregel i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--k); }
 .wleeg { color: var(--zacht); font-size: 13.5px; margin: 6px 0; }
 .wmin { display: none; position: absolute; top: -8px; left: -8px; z-index: 2; width: 26px; height: 26px; border-radius: 50%; border: 0; background: rgba(120,120,128,.9); color: #fff; font-size: 20px; line-height: 24px; padding: 0; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,.2); }
-.wiebelbalk { display: none; grid-column: span 2; justify-content: space-between; align-items: center; margin-top: 4px; }
-body.wiebelen .wiebelbalk { display: flex; }
-body.wiebelen .wmin { display: block; }
-body.wiebelen .widget { animation: wiebel .32s ease-in-out infinite alternate; cursor: grab; }
-body.wiebelen .widget:nth-child(2n) { animation-delay: -.16s; }
-body.wiebelen .widget a { pointer-events: none; }
-body.wiebelen .widget.sleept { animation: none; z-index: 5; box-shadow: 0 20px 50px rgba(10,20,60,.3); cursor: grabbing; }
+body.bewerken .wmin { display: block; }
+body.bewerken .widget { cursor: grab; }
+body.bewerken .widget a { pointer-events: none; }
+.widget.sleept { z-index: 5; box-shadow: 0 22px 55px rgba(10,20,60,.32); cursor: grabbing; pointer-events: none; transition: box-shadow .2s ease; }
 .widget.weg { transform: scale(.6) !important; opacity: 0; transition: transform .2s ease, opacity .2s ease; }
-@keyframes wiebel { from { transform: rotate(-.7deg); } to { transform: rotate(.7deg); } }
 .wplus { width: 36px; height: 36px; border-radius: 50%; border: 0; background: var(--glas-sterk); box-shadow: var(--schaduw); font-size: 24px; line-height: 1; cursor: pointer; color: var(--tekst); }
 .wmaten { display: flex; gap: 6px; padding: 8px; }
 .wmaten button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; border: 1px solid var(--lijn); background: var(--kaart); border-radius: 12px; padding: 8px 6px; font: inherit; font-size: 12.5px; cursor: pointer; color: var(--tekst); }
@@ -927,10 +905,84 @@ body.wiebelen .widget.sleept { animation: none; z-index: 5; box-shadow: 0 20px 5
 .recent-vraag { display: flex; gap: 10px; align-items: center; text-transform: none; letter-spacing: 0; color: var(--tekst); font-weight: 500; }
 .recent-rij .ik { color: var(--zacht); }
 .bronnen-tekst .kaart { box-shadow: none; }
-#agenda .maand { white-space: nowrap; padding-right: 56px; }
-#agenda header.groot { padding-right: 0; }
-#overzicht .linkknop.wijzig { padding-right: 0; }
-#overzicht header.groot { padding-right: 56px; }
 #sug { background: var(--glas-sterk); -webkit-backdrop-filter: blur(28px) saturate(180%); backdrop-filter: blur(28px) saturate(180%); }
 @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) { #sug { background: var(--achter); } }
 .widgets { padding-left: 6px; }
+
+/* =====================================================================
+   Ronde 4 november (middag): geen gekleurde lijn links meer, maar een stip in de kleur van de
+   instelling; tandwiel alleen op Zoek; instellingen over het hele scherm; agenda met vaste
+   zoekbalk en datumstrook.
+   ===================================================================== */
+/* accent: een stip in de kleur van de instelling (Parlement, Raad, Commissie …) */
+.stip { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--k, var(--eu)); margin-right: 6px; vertical-align: 1px; flex: none; }
+li.bericht.k-com .meta .bron::before, li.bericht.k-raad .meta .bron::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--k); margin-right: 6px; vertical-align: 1px; }
+.tijdlijn .item .t::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--k); margin-right: 7px; vertical-align: 2px; }
+.officieel-deel ul.berichten { background: var(--kaart); border-color: var(--rand); }
+
+/* Zoek: titel links, Wijzig en het tandwiel rechts op dezelfde lijn */
+#overzicht header.groot { padding: calc(20px + env(safe-area-inset-top)) 4px 8px; }
+#overzicht .kop-rij { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.kopknoppen { display: flex; align-items: center; gap: 14px; }
+#overzicht .linkknop.wijzig { position: static; font-size: 17px; font-weight: 500; padding: 4px 0; min-height: 32px; }
+.tandwiel { width: 32px; height: 32px; padding: 0; border: 0; background: none; color: var(--eu); display: grid; place-items: center; cursor: pointer; }
+.tandwiel svg { width: 25px; height: 25px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.kopknoppen .wplus { width: 32px; height: 32px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: var(--eu-zacht); color: var(--eu); box-shadow: none; }
+.kopknoppen .wplus[hidden] { display: none; }
+.kopknoppen .wplus svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2.4; stroke-linecap: round; }
+.widgets { position: relative; }
+.widget { transition: box-shadow .2s ease; }
+
+/* het wolkje: staat de naam al als kop in de inhoud, dan bovenin pas na scrollen */
+#paneel-titel { transition: opacity .18s ease; }
+#paneel.titel-dubbel:not(.titel-zicht) #paneel-titel { opacity: 0; }
+.functie { font-size: 13px; font-weight: 600; color: var(--zacht); margin-bottom: 2px; }
+.functie + .paneel-kop { margin-top: 0; }
+
+/* Instellingen over het hele scherm, rustig: geen gekleurde vakjes */
+#paneel.vol { inset: 0; max-width: none; width: auto; border-radius: 0; box-shadow: none; }
+#paneel.vol .paneel-balk { padding-top: calc(env(safe-area-inset-top) + 4px); }
+@media (min-width: 760px) { #paneel.vol { inset: 0; width: auto; } }
+.inst-ik { background: none; width: 24px; }
+.inst-ik svg { stroke: var(--zacht); }
+
+/* Agenda: zoekbalk en datumstrook blijven bovenin staan */
+#agenda header.groot { padding-right: 4px; }
+.agenda-plak { position: sticky; top: calc(env(safe-area-inset-top) + 50px); z-index: 15; margin: 0 -6px 8px; padding: 6px; border-radius: 20px;
+  background: var(--glas); -webkit-backdrop-filter: blur(22px) saturate(175%); backdrop-filter: blur(22px) saturate(175%); box-shadow: 0 4px 16px rgba(20,30,80,.08); }
+.agenda-plak .zoekbalk { margin: 0 0 4px; }
+.agenda-plak .strookrij { margin: 0; }
+.agenda-plak .strook { background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; padding: 2px 0 0; border-radius: 0; }
+#agenda .maand { display: block; padding: 2px 6px 0; font-size: 13px; font-weight: 650; color: var(--zacht); text-transform: capitalize; white-space: nowrap; }
+/* smallere, rustigere datumkolom */
+.tijdlijn .dag, .tijdlijn .leegrij { grid-template-columns: 34px 1fr; }
+.tijdlijn .datum { padding-top: 9px; }
+.tijdlijn .datum .l { font-size: 10px; letter-spacing: .3px; }
+.tijdlijn .datum .n { font-size: 16px; font-weight: 650; }
+.tijdlijn.d1 .datum .n { font-size: 14px; }
+.tijdlijn .items { padding-left: 8px; }
+.orij { grid-template-columns: 44px 8px 1fr auto; }
+.orij .odag { font-size: 12px; }
+/* wolkje bij een agendapunt: kort wat het is */
+.apop .apop-wat { margin: 0 0 8px; font-size: 14px; line-height: 1.4; color: var(--zacht); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* Dossiers en stemmingen aan elkaar */
+.stemlabel { display: inline-flex; align-items: center; gap: 3px; }
+.stemlabel .ik { width: 12px; height: 12px; }
+.stemwat { margin-top: 1px; }
+.dossierregel { display: flex; gap: 5px; align-items: center; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dossierregel .ik { width: 13px; height: 13px; color: var(--eu); }
+.dkoppel { position: relative; display: flex; flex-direction: column; gap: 3px; margin: 10px 0 12px; padding: 11px 36px 11px 14px; border-radius: 16px; background: var(--kaart); border: 1px solid var(--rand); color: inherit; text-decoration: none; }
+.dkoppel:active { background: var(--eu-zacht); }
+.dkoppel-kop { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--eu); }
+.dkoppel b { line-height: 1.3; }
+.dkoppel .stappen { margin: 4px 0 2px; }
+.dkoppel .pijl { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 22px; color: var(--zacht); opacity: .6; }
+.stemkoppel { padding: 0; overflow: hidden; }
+.stemrij { position: relative; display: flex; flex-direction: column; gap: 3px; padding: 10px 34px 10px 14px; border-top: 1px solid var(--lijn); color: inherit; text-decoration: none; }
+.stemrij:first-child { border-top: 0; }
+.stemrij:active { background: var(--eu-zacht); }
+.stemrij b { font-size: 14.5px; line-height: 1.3; }
+.stemrij .stemregel { display: flex; gap: 8px; align-items: center; }
+.stemrij .balk { margin: 3px 0 0; }
+.stemrij .pijl { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 20px; color: var(--zacht); opacity: .6; }

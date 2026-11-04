@@ -51,7 +51,7 @@ function openPaneel(titel, html, opties) {
     paneelLijf.innerHTML = html;
     paneelLijf.scrollTop = 0;
     paneel.classList.remove("peek");
-    terugKnop(); schuifIn("vooruit"); duw();
+    terugKnop(); schuifIn("vooruit"); duw(); kopTitel();
     window.euMarkeer(paneelLijf);
     return;
   }
@@ -62,7 +62,9 @@ function openPaneel(titel, html, opties) {
   paneelLijf.innerHTML = html;
   paneelLijf.scrollTop = 0;
   paneel.classList.toggle("peek", peekModus);
+  paneel.classList.toggle("vol", !!opties.vol);
   peekModus = false;
+  kopTitel();
   if (!wasOpen) {
     zetOorsprong();
     paneel.classList.remove("direct", "dicht-gaat");
@@ -87,6 +89,7 @@ function paneelTerug(vanGeschiedenis) {
   paneelLijf.scrollTop = v.scroll;
   terugKnop();
   schuifIn("terug");
+  kopTitel();
   if (typeof v.terug === "function") v.terug();
 }
 // hoe: "animeer" (standaard), "direct" (iOS schoof al) of "vervang" (een link naar elders)
@@ -104,6 +107,19 @@ function sluitPaneel(vanGeschiedenis, hoe) {
   var n = geduwd; geduwd = 0;
   if (!vanGeschiedenis && hoe !== "vervang" && n && history.state && history.state.paneel) history.go(-n);
 }
+// Staat dezelfde naam bovenin het wolkje én als kop in de inhoud, dan alleen de kop tonen;
+// de naam bovenin verschijnt pas als je de kop voorbij scrollt (zoals op de iPhone).
+function kopTitel() {
+  var h = paneelLijf.querySelector(".paneel-kop");
+  paneel.classList.toggle("titel-dubbel", !!h && h.textContent.trim() === paneelTitel.textContent.trim());
+  titelScroll();
+}
+function titelScroll() {
+  if (!paneel.classList.contains("titel-dubbel")) { paneel.classList.remove("titel-zicht"); return; }
+  var h = paneelLijf.querySelector(".paneel-kop");
+  paneel.classList.toggle("titel-zicht", !!h && h.getBoundingClientRect().bottom < paneelLijf.getBoundingClientRect().top + 4);
+}
+paneelLijf.addEventListener("scroll", titelScroll, { passive: true });
 document.getElementById("paneel-terug").addEventListener("click", function () { paneelTerug(); });
 document.getElementById("paneel-sluit").addEventListener("click", function () { sluitPaneel(false); });
 achtergrond.addEventListener("click", function () { if (paneelOpen) sluitPaneel(false); else sluitSheet(); });

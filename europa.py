@@ -86,7 +86,7 @@ def dossiers_ophalen(eigen_refs):
 
 def stem_kort(s):
     return {"id": s["id"], "moment": s["moment"], "titel": s["titel"], "uitslag": s["uitslag"],
-            "totaal": s["totaal"], "nl_partijen": s["nl_partijen"]}
+            "beschrijving": s.get("beschrijving", ""), "totaal": s["totaal"], "nl_partijen": s["nl_partijen"]}
 
 
 def pagina_dossiers(alle, eigen, stemmen):
@@ -408,7 +408,7 @@ def mensen(leden, lijst, debatten, stemmen, posities):
 
     def persoon(p):
         if p["id"] not in m:
-            m[p["id"]] = {"id": p["id"], "naam": p["naam"], "partij": "", "land": "",
+            m[p["id"]] = {"id": p["id"], "naam": p["naam"], "partij": "", "land": "", "oud": 1,
                           "fractie": dossiers.FRACTIE_OEIL.get(p["fractie"], p["fractie"]),
                           "rap": [], "schaduw": [], "debatten": []}
         return m[p["id"]]
