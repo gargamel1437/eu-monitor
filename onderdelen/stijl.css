@@ -10,7 +10,9 @@
 :root {
   /* tekstmaten: overal dezelfde reeks (zie LEESMIJ) */
   /* vaste balk bovenaan steekt zoveel buiten de kaarten uit (zie LEESMIJ) */
-  --plak-uit: 6px;
+  --plak-uit: 20px;
+  /* afstand van de kaarten tot de schermrand: balk + 8px lucht */
+  --pagina-rand: calc(var(--plak-uit) + 8px);
   --t-titel: 34px; --t-kop: 22px; --t-kop2: 20px; --t-kaart: 17px; --t-tekst: 16px; --t-sub: 15px; --t-meta: 13px; --t-label: 12px; --t-mini: 11px;
   color-scheme: light;
   --achter: #e4ebff;
@@ -55,7 +57,7 @@ body::before { /* zachte kleurvlekken achter het glas */
   opacity: .75;
 }
 a { color: var(--eu); }
-.wrap { max-width: 720px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-left)) 0 max(16px, env(safe-area-inset-right)); }
+.wrap { max-width: 720px; margin: 0 auto; padding: 0 max(var(--pagina-rand), env(safe-area-inset-left)) 0 max(var(--pagina-rand), env(safe-area-inset-right)); }
 .verborgen { display: none !important; }
 .klein { font-size: var(--t-meta); color: var(--zacht); }
 .intro { color: var(--zacht); margin: 0 4px 12px; font-size: var(--t-sub); }
@@ -1007,7 +1009,7 @@ li.bericht.k-com .meta .bron::before, li.bericht.k-raad .meta .bron::before { co
    ===================================================================== */
 /* het vaste blok bovenaan elke tab: één glazen bobbel met schakelaar en/of zoekbalk.
    Geen negatieve marge: zo valt het blok binnen dezelfde marges als de kaarten. */
-.plakrij.plakblok, .agenda-plak.plakblok { position: sticky; top: calc(env(safe-area-inset-top) + 50px); z-index: 15; margin: 4px calc(-1 * var(--plak-uit)) 12px; padding: var(--plak-uit); border-radius: 22px;
+.plakrij.plakblok, .agenda-plak.plakblok { position: sticky; top: calc(env(safe-area-inset-top) + 50px); z-index: 15; margin: 4px calc(-1 * var(--plak-uit)) 12px; padding: 6px; border-radius: 22px;
   background: var(--glas); -webkit-backdrop-filter: blur(22px) saturate(175%); backdrop-filter: blur(22px) saturate(175%);
   box-shadow: 0 4px 14px rgba(20,30,80,.07); border: 0; }
 .plakblok .schakel { margin: 0; background: var(--glas-zacht); border: 0; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; }

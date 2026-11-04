@@ -77,7 +77,7 @@ daarin ook Bronnen en beperkingen. Licht of donker volgt de instelling van je iP
 
 ## Vaste balk bovenaan
 
-De meeschuivende balk met zoekbalk en tabwissel (`.plakblok`) steekt op elke pagina aan beide kanten even ver buiten de kaarten uit: `--plak-uit` (6px) bovenin `stijl.css`. Dezelfde maat is de binnenruimte van de balk, zodat de velden erin precies op één lijn staan met de kaarten eronder. Pas alleen die variabele aan, nooit per pagina.
+De meeschuivende balk met zoekbalk en tabwissel (`.plakblok`) steekt op elke pagina aan beide kanten even ver buiten de kaarten uit: `--plak-uit` (20px) bovenin `stijl.css`. De kaarten staan daarom `--pagina-rand` (20 + 8 = 28px) van de schermrand, zodat er naast de balk 8px lucht blijft. Pas alleen die variabelen aan, nooit per pagina.
 
 ## Tekstmaten
 
