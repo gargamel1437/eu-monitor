@@ -33,21 +33,23 @@
 
   <!-- ============ ZOEK (overzicht met widgets) ============ -->
   <section class="tab actief" id="overzicht" data-titel="Zoek">
-    <header class="groot"><div class="kop-rij"><h1>Zoek</h1><div class="kopknoppen"><button class="wplus" id="w-plus" type="button" aria-label="Widget toevoegen" hidden><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button><button class="linkknop wijzig" id="ov-wijzig" type="button">Wijzig</button><button class="tandwiel" id="instellingen-knop" type="button" aria-label="Instellingen"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button></div></div><p class="sub">Bijgewerkt {{BIJGEWERKT}} · <span id="volgende-update"></span></p></header>
-    <div class="zoekgroot"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><input class="zoek" id="ov-zoek" type="search" placeholder="Zoek in alles" aria-label="Zoek in alles" autocomplete="off"></div>
-    <div id="ov-recent" class="recentlijst verborgen" role="listbox" aria-label="Recente zoekopdrachten"></div>
+    <header class="groot"><div class="kop-rij"><h1>Zoek</h1><div class="kopknoppen"><button class="wplus" id="w-plus" type="button" aria-label="Widget toevoegen" hidden><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button><button class="linkknop wijzig" id="ov-wijzig" type="button">Wijzig</button><button class="tandwiel" id="instellingen-knop" type="button" aria-label="Instellingen"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button></div></div></header>
+    <div class="plakrij plakblok"><div class="zoekgroot"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><input class="zoek" id="ov-zoek" type="search" placeholder="Zoek in alles" aria-label="Zoek in alles" autocomplete="off"></div>
+    <div id="ov-recent" class="recentlijst verborgen" role="listbox" aria-label="Recente zoekopdrachten"></div></div>
     <div id="ov-resultaten" class="verborgen"></div>
     <div id="ov-data" class="widgets"></div>
+    <p class="klein bijgewerkt">Bijgewerkt {{BIJGEWERKT}} · <span id="volgende-update"></span></p>
   </section>
 
   <!-- ============ PERS ============ -->
   <section class="tab" id="nieuws" data-titel="Pers">
     <header class="groot"><h1>Pers</h1><p class="sub">{{AANTAL}} berichten · afgelopen 5 dagen · hetzelfde nieuws staat bij elkaar</p></header>
-    <div class="plakrij"><div class="schakel breed" id="kanaal-schakel">
+    <div class="plakrij plakblok"><div class="schakel breed" id="kanaal-schakel">
       <button class="actief" data-toon="kanaal-media">Media <small>{{AANTAL_MEDIA}}</small></button>
       <button data-toon="kanaal-officieel">Persberichten <small>{{AANTAL_OFFICIEEL}}</small></button>
-    </div></div>
+    </div>
     <div class="zoekbalk" id="n-balk"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><span class="tokens"></span><input class="zoekinvoer" id="zoek" type="search" placeholder="Zoek of filter" autocomplete="off" aria-label="Zoek of filter in het nieuws"><button class="wis" type="button" aria-label="Alles wissen" hidden>×</button></div>
+    </div>
     <div id="kanaal-media">
       <div class="nieuwslijst">
 {{NIEUWS_MEDIA}}
@@ -66,30 +68,27 @@
   <!-- ============ AGENDA ============ -->
   <section class="tab" id="agenda" data-titel="Agenda">
     <header class="groot"><h1>Agenda</h1></header>
-    <div class="agenda-plak">
+    <div class="agenda-plak plakblok">
     <div class="zoekbalk" id="a-balk"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><span class="tokens"></span><input class="zoekinvoer" id="a-zoek" type="search" placeholder="Zoek of filter" autocomplete="off" aria-label="Zoek of filter in de agenda"><button class="wis" type="button" aria-label="Alles wissen" hidden>×</button></div>
-    <div class="strookrij"><div class="maand" id="a-maand" aria-live="polite"></div><div class="strook" id="a-strook" aria-label="Datumstrook"></div></div>
+    <div class="strookrij"><div class="strookkop"><div class="maand" id="a-maand" aria-live="polite"></div><button type="button" class="vandaagknop" id="a-vandaag">Vandaag</button></div><div class="strook" id="a-strook" aria-label="Datumstrook"></div></div>
     </div>
     <div id="a-tijdlijn" class="tijdlijn d0"></div>
-    <div class="dichtknoppen" role="group" aria-label="Hoeveel je ziet">
-      <button type="button" id="a-uit" aria-label="Meer dagen tonen"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
-      <button type="button" id="a-in" aria-label="Meer details tonen"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
-    </div>
-    <p class="klein uitleg-onder">Plenaire zittingen (Europees Parlement), vergaderingen van de Raad en toppen (agenda van het EU-voorzitterschap), vaste punten van de Commissie en geplande stappen in dossiers (Legislative Observatory). Scrol omhoog voor de debatten van de laatste plenaire zittingen. De planning van de Commissie is alleen per kwartaal bekend en staat daarom als één regel per kwartaal. Knijp met twee vingers om meer of minder te zien. Tik op een item voor de details.</p>
+    <p class="klein uitleg-onder">Plenaire zittingen (Europees Parlement), vergaderingen van de Raad en toppen (agenda van het EU-voorzitterschap), vaste punten van de Commissie en geplande stappen in dossiers (Legislative Observatory). Scrol omhoog voor de debatten van de laatste plenaire zittingen. De planning van de Commissie is alleen per kwartaal bekend en staat daarom als één regel per kwartaal. Tik op een item voor de details.</p>
   </section>
 
   <!-- ============ DOSSIERS (dossiers en stemmingen) ============ -->
   <section class="tab" id="dossiers" data-titel="Dossiers">
     <header class="groot"><h1>Dossiers</h1><p class="sub">Procedures van het Europees Parlement en de hoofdstemmingen</p></header>
-    <div class="plakrij"><div class="schakel breed" id="dossier-schakel"><button class="actief" data-toon="deel-dossiers">Dossiers</button><button data-toon="deel-stemmingen">Stemmingen</button></div></div>
+    <div class="plakrij plakblok"><div class="schakel breed" id="dossier-schakel"><button class="actief" data-toon="deel-dossiers">Procedures</button><button data-toon="deel-stemmingen">Stemmingen</button></div>
+      <div class="zoekbalk" data-hoort="deel-dossiers" id="d-balk"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><span class="tokens"></span><input class="zoekinvoer" id="d-zoek" type="search" placeholder="Zoek of filter" autocomplete="off" aria-label="Zoek of filter in de dossiers"><button class="wis" type="button" aria-label="Alles wissen" hidden>×</button></div>
+      <div class="zoekbalk verborgen" data-hoort="deel-stemmingen" id="s-balk"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><span class="tokens"></span><input class="zoekinvoer" id="s-zoek" type="search" placeholder="Zoek of filter" autocomplete="off" aria-label="Zoek of filter in de stemmingen"><button class="wis" type="button" aria-label="Alles wissen" hidden>×</button></div>
+    </div>
     <div id="deel-dossiers">
-      <div class="zoekbalk" id="d-balk"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><span class="tokens"></span><input class="zoekinvoer" id="d-zoek" type="search" placeholder="Zoek of filter" autocomplete="off" aria-label="Zoek of filter in de dossiers"><button class="wis" type="button" aria-label="Alles wissen" hidden>×</button></div>
       <div class="lijstbalk"><span class="telling" id="d-aantal"></span><button class="sorteer" type="button" data-sorteer="d"></button></div>
       <div id="d-lijst"></div>
       <button class="knop tweede breed verborgen" id="d-meer">Toon meer</button>
     </div>
     <div id="deel-stemmingen" class="verborgen">
-      <div class="zoekbalk" id="s-balk"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><span class="tokens"></span><input class="zoekinvoer" id="s-zoek" type="search" placeholder="Zoek of filter" autocomplete="off" aria-label="Zoek of filter in de stemmingen"><button class="wis" type="button" aria-label="Alles wissen" hidden>×</button></div>
       <div class="lijstbalk"><span class="telling" id="s-aantal"></span><button class="sorteer" type="button" data-sorteer="s"></button></div>
       <div id="s-lijst"></div>
     </div>
@@ -98,7 +97,7 @@
   <!-- ============ PERSONEN ============ -->
   <section class="tab" id="mensen" data-titel="Personen">
     <header class="groot"><h1>Personen</h1><p class="sub">Europarlementariërs, de Commissie, ministers en persdiensten, met contact</p></header>
-    <div class="zoekbalk" id="m-balk"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><span class="tokens"></span><input class="zoekinvoer" id="m-zoek" type="search" placeholder="Zoek of filter" autocomplete="off" aria-label="Zoek of filter in personen"><button class="wis" type="button" aria-label="Alles wissen" hidden>×</button></div>
+    <div class="plakrij plakblok"><div class="zoekbalk" id="m-balk"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><span class="tokens"></span><input class="zoekinvoer" id="m-zoek" type="search" placeholder="Zoek of filter" autocomplete="off" aria-label="Zoek of filter in personen"><button class="wis" type="button" aria-label="Alles wissen" hidden>×</button></div></div>
     <p class="telling" id="m-aantal"></p>
     <div id="m-lijst"></div>
     <button class="knop tweede breed verborgen" id="m-meer">Toon meer</button>

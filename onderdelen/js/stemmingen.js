@@ -182,6 +182,8 @@ function stemmenOpzetten() {
 }
 function stemmenTab(q) {
   var doel = document.getElementById("s-lijst");
+  // al getoond: niet opnieuw opbouwen (dat gaf een flits bij het vegen tussen de delen)
+  if (stemmenOpgezet && STEMMEN && doel.children.length && !(q && q.id)) return;
   bezig(doel);
   laden("stemmen").then(function (d) {
     if (!STEMMEN) STEMMEN = d;

@@ -120,9 +120,14 @@ function segBeginY(schakel) {
   var plak = parseFloat(getComputedStyle(rij).top) || 0;
   return Math.max(0, el.getBoundingClientRect().top + window.scrollY - plak - rij.offsetHeight - 8);
 }
-// Wisselen van deel laat de schakelaar op zijn plek: ben je al voorbij het begin van de lijst,
-// dan begint het andere deel bovenaan, net onder de schakelaar. Anders blijft alles staan.
-function segDoelY(id, schakel, y) { return Math.min(y, segBeginY(schakel)); }
+// Wisselen van deel laat alles op zijn plek: ben je nog niet voorbij het begin van de lijst, dan
+// verandert de scrollpositie niet. Ben je er wel voorbij, dan kom je in het andere deel terug waar
+// je was (elk deel onthoudt zijn plek), of aan het begin van dat deel, net onder het vaste blok.
+function segDoelY(id, schakel, y) {
+  var b = segBeginY(schakel);
+  if (y <= b) return y;
+  return segScroll[id] != null && segScroll[id] > b ? segScroll[id] : b;
+}
 function zetBel(schakel, van, naar, f) {
   var bel = schakel.querySelector(".schakel-bel");
   if (!bel || !van) return;
@@ -146,10 +151,13 @@ function kiesSegment(knop) {
     b.classList.toggle("actief", b === knop);
     var doel = document.getElementById(b.dataset.toon);
     if (doel) doel.classList.toggle("verborgen", b !== knop);
+    // onderdelen die bij een deel horen maar in het vaste blok staan (zoekbalk)
+    alle('[data-hoort="' + b.dataset.toon + '"]').forEach(function (el) { el.classList.toggle("verborgen", b !== knop); });
   });
+  // eerst de inhoud van het nieuwe deel klaarzetten (anders is de pagina even te kort en springt hij omhoog)
+  knop.dispatchEvent(new CustomEvent("eu-segment", { bubbles: true, detail: knop.dataset.toon }));
   if (doelY != null) { window.scrollTo(0, doelY); kleineTitel(); }
   zetBel(schakel, knop);
-  knop.dispatchEvent(new CustomEvent("eu-segment", { bubbles: true, detail: knop.dataset.toon }));
 }
 function toonSegment(id) { var k = document.querySelector('.schakel button[data-toon="' + id + '"]'); if (k && !k.classList.contains("actief")) kiesSegment(k); }
 alle(".schakel").forEach(function (schakel) {

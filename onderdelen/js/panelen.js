@@ -63,6 +63,10 @@ function openPaneel(titel, html, opties) {
   paneelLijf.scrollTop = 0;
   paneel.classList.toggle("peek", peekModus);
   paneel.classList.toggle("vol", !!opties.vol);
+  // een schermvullend scherm (Instellingen) schuift als een iOS-sheet van onderen in; de pagina
+  // erachter wijkt iets terug
+  if (opties.vol) document.querySelector(".wrap").style.transformOrigin = "50% " + window.scrollY + "px";
+  document.body.classList.toggle("sheet-open", !!opties.vol);
   peekModus = false;
   kopTitel();
   if (!wasOpen) {
@@ -101,6 +105,7 @@ function sluitPaneel(vanGeschiedenis, hoe) {
   if (hoe === "direct" || MINDER_BEWEGING) paneel.classList.add("direct");
   paneel.classList.remove("open", "peek");
   paneel.style.transform = "";
+  document.body.classList.remove("sheet-open");
   setTimeout(function () { paneel.classList.remove("direct"); }, 60);
   achtergrond.classList.remove("voor-paneel");
   if (!openSheetId) { achtergrond.classList.remove("zichtbaar"); document.body.classList.remove("geen-scroll"); }
@@ -165,7 +170,7 @@ paneelLijf.addEventListener("click", function (ev) {
       else { s = null; return; }
     }
     if (s.richting === "terug") { paneelLijf.style.transition = "none"; paneelLijf.style.transform = "translateX(" + Math.max(0, dx) + "px)"; paneelLijf.style.opacity = String(1 - Math.min(dx / 400, .5)); }
-    else { ev.preventDefault(); paneel.style.transition = "none"; paneel.style.transform = "translateY(" + Math.max(0, dy) + "px) scale(" + (1 - Math.min(dy / 2000, .05)) + ")"; }
+    else { ev.preventDefault(); paneel.style.transition = "none"; paneel.style.transform = "translateY(" + Math.max(0, dy) + "px)" + (paneel.classList.contains("vol") ? "" : " scale(" + (1 - Math.min(dy / 2000, .05)) + ")"); }
   }, { passive: false });
   function los(ev) {
     if (!s || !s.richting) { s = null; return; }

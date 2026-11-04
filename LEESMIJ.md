@@ -75,6 +75,22 @@ daarin ook Bronnen en beperkingen. Licht of donker volgt de instelling van je iP
 - **Meldingen** klik je weg met het kruisje. **Als web-app** maakt de site geen eigen stappen
   in de geschiedenis.
 
+## Tekstmaten
+
+Alle tekst gebruikt één reeks maten (CSS-variabelen bovenin `stijl.css`):
+
+| Variabele | Maat | Waarvoor |
+|---|---|---|
+| `--t-titel` | 34 | grote paginatitel |
+| `--t-kop` | 22 | sectiekoppen |
+| `--t-kop2` | 20 | koppen in een wolkje, kleinere koppen |
+| `--t-kaart` | 17 | titel van een kaart, kleine titel bovenin |
+| `--t-tekst` | 16 | gewone tekst, zoekveld |
+| `--t-sub` | 15 | lijstregels, knoppen, schakelaars, ondertitels |
+| `--t-meta` | 13 | meta onder een kaart, uitleg, datum en bron |
+| `--t-label` | 12 | labels (Parlement, Raad …), kleine tellers |
+| `--t-mini` | 11 | dagletters in de datumstrook, piepkleine koppen |
+
 ## Iets aanpassen
 
 - **Nieuw EU-voorzitterschap** (elk halfjaar, 1 januari en 1 juli): controleer in `raad.py` of de
