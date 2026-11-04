@@ -1120,26 +1120,58 @@ html[data-beweging="minder"] .topbalk { transform: none; transition: opacity .3s
     rgba(var(--balk-rgb), .04) calc(var(--v) + 63px), rgba(var(--balk-rgb), 0) 100%);
   -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 var(--v), rgba(0,0,0,.85) calc(var(--v) + 25px), rgba(0,0,0,.5) calc(var(--v) + 45px), transparent 100%);
   mask-image: linear-gradient(to bottom, #000 0, #000 var(--v), rgba(0,0,0,.85) calc(var(--v) + 25px), rgba(0,0,0,.5) calc(var(--v) + 45px), transparent 100%); }
-/* plusjes: eerst verborgen, verschijnen als je aan de rand doortrekt; de ring loopt vol als je vasthoudt */
-.meerknop { position: relative; transition: opacity .3s ease, transform .35s cubic-bezier(.2,.9,.3,1.25); }
-.meerknop.slaapt { opacity: 0; transform: scale(.6); pointer-events: none; }
-.meerknop.direct, .eerder-rij:has(> .meerknop.direct), .eerder-rij:has(> .meerknop.direct) > * { transition: none !important; }
-.meerknop svg.ring { position: absolute; left: -4px; top: -4px; width: calc(100% + 8px); height: calc(100% + 8px); transform: rotate(-90deg);
-  stroke: var(--eu); stroke-width: 3; fill: none; stroke-linecap: round; pointer-events: none; }
-.meerknop svg.ring circle { stroke-dasharray: 150.8; stroke-dashoffset: 150.8; }
-/* Agenda: "Eerdere weken" boven deze week; ingeklapt zolang het plusje verborgen is */
-.eerder-rij { display: flex; flex-direction: column; align-items: center; gap: 2px; overflow: hidden; max-height: 90px; padding-bottom: 8px;
-  transition: max-height .35s cubic-bezier(.2,.9,.3,1), opacity .3s ease, padding .35s ease; }
-.eerder-rij:has(> .meerknop.slaapt), .eerder-rij:has(> .meerknop.verborgen) { max-height: 0; opacity: 0; padding-bottom: 0; }
-.eerder-rij .meerknop { margin: 6px auto 0; }
-.eerder-rij span { font-size: var(--t-label); font-weight: 600; color: var(--zacht); }
-/* datumstrook: klein plusje links voor de eerdere weken */
-.strook .meerknop.strookmeer { flex: none; align-self: center; width: 34px; height: 34px; margin: 0 8px 0 4px; overflow: visible;
-  transition: opacity .3s ease, transform .35s cubic-bezier(.2,.9,.3,1.25), width .35s cubic-bezier(.2,.9,.3,1), margin .35s ease; }
-.strook .meerknop.strookmeer svg:not(.ring) { width: 18px; height: 18px; }
-.strook .meerknop.strookmeer.slaapt { width: 0; margin: 0; }
-.strook .meerknop.strookmeer.verborgen { display: none; }
-@media (prefers-reduced-motion: reduce) { .meerknop.slaapt { transform: none; } }
-html[data-beweging="minder"] .meerknop.slaapt { transform: none; }
-.strook:has(> .strookmeer:not(.slaapt):not(.verborgen)) { scroll-snap-type: none; }
+/* plusjes: groeien mee als je aan de rand doortrekt; vasthouden laat de ring vollopen, dan een vinkje */
+@property --trek { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --vg { syntax: "<number>"; inherits: true; initial-value: 0; }
+.meerknop[data-trek] { position: relative; overflow: visible; transform: scale(calc(.35 + .65 * var(--trek))); opacity: var(--trek);
+  transition: --trek .55s cubic-bezier(.34,1.5,.5,1); }
+.meerknop[data-trek].ring-terug { transition: --trek .55s cubic-bezier(.34,1.5,.5,1), --vg .4s cubic-bezier(.3,0,.2,1); }
+.meerknop[data-trek].trek-volgt { transition: none; }
+.meerknop[data-trek].trek-volgt.ring-terug { transition: --vg .4s cubic-bezier(.3,0,.2,1); }
+.meerknop[data-trek]:not(.wakker) { pointer-events: none; }
+.meerknop[data-trek]:active { transform: scale(.94); }
+.meerknop[data-trek] > svg:not(.trek-vink) { transform: scale(calc(1 + .14 * var(--vg))); transition: opacity .2s ease; }
+.meerknop .trek-ring { position: absolute; inset: -5px; border-radius: 50%; pointer-events: none;
+  background: conic-gradient(color-mix(in srgb, var(--eu) 40%, transparent) 0deg, var(--eu) calc(var(--vg) * 360deg), transparent calc(var(--vg) * 360deg));
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px)); mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px)); }
+.meerknop .trek-punt { position: absolute; inset: -5px; pointer-events: none; transform: rotate(calc(var(--vg) * 360deg)); opacity: calc(var(--vg) * 6); }
+.meerknop .trek-punt::before { content: ""; position: absolute; top: -1.5px; left: calc(50% - 3px); width: 6px; height: 6px; border-radius: 50%;
+  background: var(--eu); box-shadow: 0 0 7px 2px color-mix(in srgb, var(--eu) 55%, transparent); }
+.meerknop .trek-golf { position: absolute; inset: -5px; border-radius: 50%; border: 2px solid var(--eu); opacity: 0; pointer-events: none; }
+.meerknop svg.trek-vink { position: absolute; inset: 0; margin: auto; stroke-width: 2.6; stroke-linejoin: round; }
+.meerknop svg.trek-vink path { stroke-dasharray: 20; stroke-dashoffset: 20; transition: stroke-dashoffset .3s cubic-bezier(.3,0,.2,1) .06s; }
+.meerknop.klaar > svg:not(.trek-vink) { opacity: 0; }
+.meerknop.klaar svg.trek-vink path { stroke-dashoffset: 0; }
+.meerknop.klaar { animation: trek-pop .42s cubic-bezier(.3,1.6,.5,1); }
+.meerknop.klaar .trek-golf { animation: trek-golf .7s cubic-bezier(.2,.7,.3,1); }
+.meerknop.klaar .trek-punt { opacity: 0; transition: opacity .2s ease; }
+@keyframes trek-pop { 0% { transform: scale(1); } 45% { transform: scale(1.16); } 100% { transform: scale(1); } }
+@keyframes trek-golf { from { opacity: .55; transform: scale(1); } to { opacity: 0; transform: scale(1.75); } }
+/* nieuwe items na het laden: alleen vervagen, zodat er niets verschuift */
+.nieuw-in { animation: nieuw-in .45s ease both; }
+@keyframes nieuw-in { from { opacity: 0; } to { opacity: 1; } }
+/* Agenda: "Eerdere weken" als laag over de inhoud, net onder de vaste balk (neemt geen ruimte in) */
+.eerder-rij { position: relative; height: 0; z-index: 6; transition: --trek .55s cubic-bezier(.34,1.5,.5,1); }
+.eerder-rij.trek-volgt { transition: none; }
+.eerder-rij .meerknop[data-trek] { position: absolute; left: calc(50% - 22px); top: 6px; margin: 0; transition: none; }
+.eerder-rij .meerknop[data-trek].ring-terug { transition: --vg .4s cubic-bezier(.3,0,.2,1); }
+.eerder-rij > span { position: absolute; left: 50%; top: 60px; transform: translateX(-50%) scale(calc(.6 + .4 * var(--trek))); opacity: var(--trek);
+  padding: 3px 10px; border-radius: 999px; background: var(--glas-sterk); box-shadow: var(--schaduw); white-space: nowrap; pointer-events: none;
+  font-size: var(--t-label); font-weight: 600; color: var(--zacht); }
+.eerder-rij:has(> .meerknop.verborgen) { display: none; }
+/* datumstrook: trek je links door, dan schuiven de dagen opzij (alleen transform) en komt het
+   plusje erachter tevoorschijn */
+.strookrij { position: relative; transition: --trek .55s cubic-bezier(.34,1.5,.5,1); }
+.strookrij.trek-volgt { transition: none; }
+.strookrij > .strook { transform: translateX(calc(var(--trek) * 46px)); }
+.strookrij > .meerknop.strookmeer { position: absolute; left: 2px; bottom: 15px; width: 34px; height: 34px; margin: 0; z-index: 0; transition: none; }
+.strookrij > .meerknop.strookmeer.ring-terug { transition: --vg .4s cubic-bezier(.3,0,.2,1); }
+.strookrij > .strook { position: relative; z-index: 1; }
+.strookrij > .meerknop.strookmeer > svg { width: 18px; height: 18px; }
+@media (prefers-reduced-motion: reduce) {
+  .meerknop .trek-punt { display: none; } .meerknop[data-trek], .meerknop[data-trek] > svg:not(.trek-vink) { transform: none !important; }
+  .eerder-rij > span { transform: translateX(-50%); } }
+html[data-beweging="minder"] .meerknop .trek-punt { display: none; }
+html[data-beweging="minder"] .meerknop[data-trek], html[data-beweging="minder"] .meerknop[data-trek] > svg:not(.trek-vink) { transform: none !important; }
+html[data-beweging="minder"] .eerder-rij > span { transform: translateX(-50%); }
 .linkknop.rood { color: var(--tegen); }

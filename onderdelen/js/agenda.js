@@ -190,7 +190,6 @@ function agendaTonen(strookPlek) {
   var strook = document.getElementById("a-strook");
   strook.innerHTML = strookHtml();
   if (A_STROOKMEER) {
-    strook.insertBefore(A_STROOKMEER, strook.firstChild);
     var meer = meerEerder();
     A_EERDER.classList.toggle("verborgen", !meer);
     A_STROOKMEER.classList.toggle("verborgen", !meer);
@@ -230,16 +229,12 @@ function strookHerstel(a) {
 function meerVerleden() {
   if (!meerEerder()) return;
   var la = lijstAnker(), sa = strookAnker();
-  trekSlaap(A_EERDER, true); trekSlaap(A_STROOKMEER, true);
   var oudst = maandagVan(eersteDag()), v = plusDagenVan(beginDag(), -7 * A_STAP_WEKEN);
   A_VANAF = v < oudst ? oudst : v;
   agendaTonen(sa);
   lijstHerstel(la);
   volgStrook();
 }
-// de plusjes weer wegzetten als je wegscrolt (zonder dat de rest verschuift)
-function eerderSlaap() { if (A_EERDER.classList.contains("slaapt")) return; var a = lijstAnker(); trekSlaap(A_EERDER, true); lijstHerstel(a); }
-function strookMeerSlaap() { if (A_STROOKMEER.classList.contains("slaapt")) return; var a = strookAnker(); trekSlaap(A_STROOKMEER, true); strookHerstel(a); }
 // de strook op deze week (zonder de pagina te verschuiven)
 function strookNaarDezeWeek() {
   var strook = document.getElementById("a-strook"), knop = strook.querySelector('.sdag[data-dag="' + maandagVan(vandaag()) + '"]');
@@ -451,17 +446,12 @@ function agendaOpzetten() {
   A_STROOKMEER = document.createElement("button");
   A_STROOKMEER.type = "button"; A_STROOKMEER.className = "meerknop strookmeer verborgen"; A_STROOKMEER.setAttribute("aria-label", "Eerdere weken laden");
   A_STROOKMEER.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
-  trekKnop(A_EERDER, "boven");
-  trekKnop(A_STROOKMEER, "links", document.getElementById("a-strook"));
+  // beide plusjes liggen als laag over de inhoud (nemen geen ruimte in); de plek houdt meerVerleden zelf vast
+  document.querySelector("#agenda .strookrij").appendChild(A_STROOKMEER);
+  trekKnop(A_EERDER, "boven", { ouder: true, eigenPlek: true });
+  trekKnop(A_STROOKMEER, "links", { scroller: document.getElementById("a-strook"), eigenPlek: true, ouder: true });
   A_EERDER.addEventListener("click", meerVerleden);
   A_STROOKMEER.addEventListener("click", meerVerleden);
-  // het plusje in de strook groeit links aan: de strook op het begin houden, zodat het in beeld komt
-  A_STROOKMEER.addEventListener("trekwakker", function () {
-    var strook = document.getElementById("a-strook"), tot = performance.now() + 450;
-    (function vast() { strook.scrollLeft = 0; if (performance.now() < tot) requestAnimationFrame(vast); })();
-  });
-  window.addEventListener("scroll", function () { if (window.scrollY > 160 && huidigeTab() === "agenda") eerderSlaap(); }, { passive: true });
-  document.getElementById("a-strook").addEventListener("scroll", function () { if (this.scrollLeft > 160) strookMeerSlaap(); }, { passive: true });
   var tl = document.getElementById("a-tijdlijn");
   tl.addEventListener("click", function (e) {
     if (e.target.closest("[data-tok-zoeker], [data-kwartaal], a")) return;
@@ -496,7 +486,7 @@ function agendaTab(q) {
     agendaOpzetten();
     // elke keer dat je de Agenda opent: bovenaan, bij deze week
     A_VANAF = null;
-    trekSlaap(A_EERDER, true); trekSlaap(A_STROOKMEER, true);
+    trekReset(A_EERDER, true); trekReset(A_STROOKMEER, true);
     agendaTonen(null);
     AZ.teken();
     strookNaarDezeWeek();

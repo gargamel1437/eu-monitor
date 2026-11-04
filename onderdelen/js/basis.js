@@ -104,7 +104,8 @@ window.addEventListener("load", function () { window.scrollTo(0, 0); kleineTitel
 
 // ---- grote titel wordt klein bij scrollen ----
 var balk = document.getElementById("topbalk");
-function kleineTitel() { balk.classList.toggle("zichtbaar", window.scrollY > 60); }
+var TITEL_GRENS = 60;
+function kleineTitel() { balk.classList.toggle("zichtbaar", window.scrollY > TITEL_GRENS); }
 window.addEventListener("scroll", kleineTitel, { passive: true });
 toonTab();
 
@@ -120,7 +121,18 @@ function segBeginY(schakel) {
   while (el && el.classList.contains("verborgen")) el = el.nextElementSibling;
   if (!el) return 0;
   var plak = parseFloat(getComputedStyle(rij).top) || 0;
-  return Math.max(0, el.getBoundingClientRect().top + window.scrollY - plak - rij.offsetHeight - 8);
+  var b = el.getBoundingClientRect().top + window.scrollY - plak - rij.offsetHeight - 8;
+  // nooit zo hoog dat de grote titel weer in beeld komt (Pers heeft een korte kop): minstens zo
+  // ver dat de kleine titelbalk staat, net als bij Dossiers
+  return Math.max(TITEL_GRENS + 1, b);
+}
+// is het nieuwe deel te kort om op die hoogte uit te komen, dan tijdelijk wat ruimte eronder,
+// zodat de pagina niet omhoog springt
+function segRuimte(deel, doelY) {
+  alle(".segdeel").forEach(function (d) { d.style.minHeight = ""; });
+  if (!deel) return;
+  var tekort = doelY - (document.documentElement.scrollHeight - window.innerHeight);
+  if (tekort > 0) deel.style.minHeight = deel.offsetHeight + tekort + "px";
 }
 // Wisselen van deel laat alles op zijn plek: ben je nog niet voorbij het begin van de lijst, dan
 // verandert de scrollpositie niet. Ben je er wel voorbij, dan kom je in het andere deel terug waar
@@ -158,7 +170,7 @@ function kiesSegment(knop) {
   });
   // eerst de inhoud van het nieuwe deel klaarzetten (anders is de pagina even te kort en springt hij omhoog)
   knop.dispatchEvent(new CustomEvent("eu-segment", { bubbles: true, detail: knop.dataset.toon }));
-  if (doelY != null) { window.scrollTo(0, doelY); kleineTitel(); }
+  if (doelY != null) { segRuimte(document.getElementById(knop.dataset.toon), doelY); window.scrollTo(0, doelY); kleineTitel(); }
   zetBel(schakel, knop);
 }
 function toonSegment(id) { var k = document.querySelector('.schakel button[data-toon="' + id + '"]'); if (k && !k.classList.contains("actief")) kiesSegment(k); }
@@ -772,36 +784,103 @@ try { localStorage.removeItem("eu-recent"); } catch (e) {}
   if (META.bijgewerkt) bewaar("eu-versie", META.bijgewerkt);
 })();
 
-// ---------- plusjes: verschijnen aan de rand, vasthouden laadt ----------
-// Een plusje (.meerknop) is eerst verborgen. Kom je bij de rand van de lijst en trek je verder
-// (onderaan; bij de Agenda ook bovenaan en links in de datumstrook), dan verschijnt het. Blijf je
-// doortrekken, dan loopt er in TREK_DUUR een ring omheen vol en laadt het (zelfde als een tik).
-// Loslaten voordat de ring rond is: de ring loopt terug en er gebeurt niets.
-// Op de computer telt doorscrollen bij de rand als trekken: de eerste keer verschijnt het plusje,
-// blijf je daarna doorscrollen dan loopt de ring vol; stop je, dan loopt hij terug.
-var TREK_DUUR = 600, TREK = [], TREK_OMTREK = 150.8;
-function trekKnop(knop, rand, scroller) {
+// ---------- plusjes: tevoorschijn trekken, vasthouden laadt ----------
+// Een plusje (.meerknop) is eerst onzichtbaar. Trek je aan de rand van de lijst door (onderaan;
+// bij de Agenda ook bovenaan en links in de datumstrook), dan groeit het mee met je vinger. Is het
+// helemaal zichtbaar en houd je vast, dan loopt er in TREK_DUUR een ring omheen vol; dan wordt het
+// een vinkje en laadt het zodra je loslaat en de pagina is uitgeveerd. Laat je eerder los, dan
+// loopt de ring terug en verdwijnt het plusje na TREK_WEG vanzelf. Tikken werkt ook.
+// Bij het laden blijft wat je ziet precies op zijn plek (trekPlek / trekHerstel).
+var TREK_DUUR = 600, TREK_WEG = 1500, TREK_AFSTAND = 56, TREK = [];
+var VINK = '<svg class="trek-vink" viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 12.5l4.2 4.2L18.5 8"/></svg>';
+function trekVan(knop) { for (var n = 0; n < TREK.length; n++) if (TREK[n].knop === knop) return TREK[n]; return null; }
+// --trek (0–1) staat op de knop, of op zijn ouder als die er een label bij heeft (Agenda)
+function trekDrager(knop) { return knop.dataset.trekOuder ? knop.parentElement : knop; }
+function zetTrek(knop, v, volgt) {
+  var d = trekDrager(knop);
+  d.classList.toggle("trek-volgt", !!volgt);
+  d.style.setProperty("--trek", v);
+  knop.classList.toggle("wakker", v >= 1);
+}
+function zetRing(knop, v, terug) {
+  knop.classList.toggle("ring-terug", !!terug);
+  knop.style.setProperty("--vg", v);
+}
+function trekKnop(knop, rand, opties) {
   if (!knop || knop.dataset.trek) return;
+  opties = opties || {};
   knop.dataset.trek = rand;
-  knop.classList.add("slaapt");
-  knop.insertAdjacentHTML("beforeend", '<svg class="ring" viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="24"/></svg>');
-  TREK.push({ knop: knop, rand: rand, scroller: scroller || null });
-  // na een tik of na het vasthouden weer verbergen (de knop staat dan onder of boven de nieuwe items)
-  knop.addEventListener("click", function () { setTimeout(function () { trekSlaap(knop, true); }, 0); });
+  if (opties.ouder) knop.dataset.trekOuder = "1";
+  knop.insertAdjacentHTML("beforeend", '<span class="trek-ring" aria-hidden="true"></span><span class="trek-punt" aria-hidden="true"></span><span class="trek-golf" aria-hidden="true"></span>' + VINK);
+  var t = { knop: knop, rand: rand, scroller: opties.scroller || null, eigenPlek: !!opties.eigenPlek, weg: null };
+  TREK.push(t);
+  zetTrek(knop, 0);
+  // Bij elke keer laden (tik of vasthouden): vlak voor de pagina zelf laadt de plek onthouden,
+  // daarna terugzetten, de nieuwe items zacht laten verschijnen en het plusje terug naar begin.
+  knop.addEventListener("click", function () {
+    clearTimeout(t.weg);
+    var plek = t.eigenPlek ? null : trekPlek(knop), lijst = trekLijst(knop), oud = lijst ? trekItems(lijst).length : 0;
+    knop.classList.add("klaar");
+    setTimeout(function () {
+      if (plek) trekHerstel(plek);
+      if (lijst) trekNieuw(lijst, oud);
+      setTimeout(function () { trekReset(knop); }, 380);
+    }, 0);
+  }, true);
+  if (t.scroller) t.scroller.addEventListener("scroll", function () { if (t.scroller.scrollLeft > 160 && knop.classList.contains("wakker")) trekReset(knop); }, { passive: true });
 }
-function trekRing(knop, v, terug) {
-  var c = knop.querySelector(".ring circle");
-  if (!c) return;
-  c.style.transition = terug && !MINDER_BEWEGING ? "stroke-dashoffset .3s ease" : "none";
-  c.style.strokeDashoffset = TREK_OMTREK * (1 - v);
+// terug naar de beginstand: onzichtbaar, ring leeg
+function trekReset(knop, direct) {
+  var t = trekVan(knop);
+  if (t) clearTimeout(t.weg);
+  if (trekNu && trekNu.t.knop === knop) trekNu = null;
+  knop.classList.remove("klaar");
+  zetRing(knop, 0, false);
+  if (direct) { zetTrek(knop, 0, true); requestAnimationFrame(function () { trekDrager(knop).classList.remove("trek-volgt"); }); }
+  else zetTrek(knop, 0, false);
 }
-function trekWakker(knop) { if (!knop.classList.contains("slaapt")) return; knop.classList.remove("slaapt"); knop.dispatchEvent(new Event("trekwakker")); }
-function trekSlaap(knop, direct) {
-  trekRing(knop, 0, false);
-  if (knop.classList.contains("slaapt")) return;
-  if (direct) { knop.classList.add("direct"); knop.classList.add("slaapt"); knop.offsetWidth; requestAnimationFrame(function () { knop.classList.remove("direct"); }); }
-  else knop.classList.add("slaapt");
+// na loslaten zonder laden: na TREK_WEG vanzelf weer weg
+function trekLaterWeg(t) { clearTimeout(t.weg); t.weg = setTimeout(function () { if (!t.knop.classList.contains("klaar")) trekReset(t.knop); }, TREK_WEG); }
+
+// ---- de plek vasthouden ----
+// Nieuwe items komen onderaan de lijst erbij; het begin van de lijst (en dus alles wat je ziet)
+// hoort daarbij op zijn plek te blijven. Is dat toch verschoven (de lijst opnieuw opgebouwd, of
+// de browser schoof zelf mee), dan precies het verschil terug.
+function trekPlek(knop) {
+  var el = trekLijst(knop) || knop.parentElement;
+  return el ? { el: el, top: el.getBoundingClientRect().top } : null;
 }
+function trekHerstel(p) {
+  if (!p.el.isConnected) return;
+  var d = p.el.getBoundingClientRect().top - p.top;
+  if (Math.abs(d) > .5) window.scrollBy(0, d);
+}
+// de lijst boven een plusje, en de items die erin zichtbaar zijn
+function trekLijst(knop) { var l = knop.previousElementSibling; return l && !knop.dataset.trekOuder && knop.dataset.trek === "onder" ? l : null; }
+function trekItems(lijst) {
+  var l = lijst.querySelector("li.bericht") ? alle("li.bericht", lijst) : Array.prototype.slice.call(lijst.children);
+  return l.filter(function (x) { return x.offsetParent !== null; });
+}
+// nieuwe items komen kort na elkaar in beeld: alleen vervagen, geen beweging in hoogte of plek
+function trekNieuw(lijst, oud) {
+  trekItems(lijst).slice(oud).forEach(function (el, n) {
+    el.style.animationDelay = Math.min(n, 10) * 35 + "ms";
+    el.classList.add("nieuw-in");
+    setTimeout(function () { el.classList.remove("nieuw-in"); el.style.animationDelay = ""; }, 900);
+  });
+}
+// wachten tot de pagina na het doortrekken is uitgeveerd (iPhone), dan pas laden
+function naVeren(t, klaar) {
+  var tot = performance.now() + 900, vorige = null, stil = 0;
+  (function kijk() {
+    var x = t.scroller ? t.scroller.scrollLeft : window.scrollY;
+    var max = t.scroller ? t.scroller.scrollWidth - t.scroller.clientWidth : document.documentElement.scrollHeight - window.innerHeight;
+    if (x >= 0 && x <= max + 1 && x === vorige) stil++; else stil = 0;
+    vorige = x;
+    if (stil >= 3 || performance.now() > tot) klaar(); else requestAnimationFrame(kijk);
+  })();
+}
+
 function trekAanRand(t) {
   if (t.rand === "onder") return window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
   if (t.rand === "boven") return window.scrollY <= 0;
@@ -818,27 +897,40 @@ function trekKandidaat(rand, doel) {
   }
   return null;
 }
-// Eén trekbeweging tegelijk: welke knop, sinds wanneer de ring loopt, en of hij al geladen heeft.
+// Eén trekbeweging tegelijk: welke knop, hoe ver, sinds wanneer de ring loopt.
 var trekNu = null;
-function trekStart(t, vasthouden) {
-  trekNu = { t: t, sinds: performance.now(), klaar: false, loopt: vasthouden };
-  if (vasthouden) trekLus();
+function trekZicht(t, v) {
+  // meegroeien met een zachte curve: eerst snel, dan rustig naar volle grootte
+  var e = 1 - Math.pow(1 - Math.max(0, Math.min(1, v)), 2.2);
+  if (!trekNu || trekNu.t !== t) { clearTimeout(t.weg); trekNu = { t: t, sinds: null, klaar: false }; }
+  if (trekNu.klaar) return;
+  zetTrek(t.knop, e, true);
+  if (v >= 1 && trekNu.sinds == null) { trekNu.sinds = performance.now(); trekLus(); }
+  if (v < .8 && trekNu.sinds != null) { trekNu.sinds = null; zetRing(t.knop, 0, true); }
 }
 function trekLus() {
-  if (!trekNu || trekNu.klaar || !trekNu.loopt) return;
-  var v = Math.min(1, (performance.now() - trekNu.sinds) / TREK_DUUR);
-  trekRing(trekNu.t.knop, v, false);
-  if (v >= 1) {
-    trekNu.klaar = true;
+  var nu = trekNu;
+  if (!nu || nu.klaar || nu.sinds == null) return;
+  var x = Math.min(1, (performance.now() - nu.sinds) / TREK_DUUR);
+  zetRing(nu.t.knop, 1 - Math.pow(1 - x, 1.8), false);   // aan het begin sneller, naar het einde rustiger
+  if (x >= 1) {
+    nu.klaar = true;
+    nu.t.knop.classList.add("klaar");
     try { if (navigator.vibrate) navigator.vibrate(12); } catch (e) {}
-    trekNu.t.knop.click();
     return;
   }
   requestAnimationFrame(trekLus);
 }
+// loslaten: ring rond = laden (na het uitveren), anders terug
 function trekLos() {
-  if (trekNu && !trekNu.klaar) trekRing(trekNu.t.knop, 0, true);
+  var nu = trekNu;
   trekNu = null;
+  if (!nu) return;
+  var t = nu.t, k = t.knop;
+  if (nu.klaar) { naVeren(t, function () { k.click(); }); return; }
+  zetRing(k, 0, true);
+  if (k.classList.contains("wakker")) { zetTrek(k, 1, false); trekLaterWeg(t); }
+  else zetTrek(k, 0, false);
 }
 // vinger: vanaf het punt waar je de rand bereikte telt hoe ver je doortrekt
 (function () {
@@ -856,23 +948,20 @@ function trekLos() {
       var t = rand && trekKandidaat(rand, vorig.doel);
       vorig.x = x; vorig.y = y;
       if (!t) return;
-      basis = { t: t, x: x, y: y, wakker: false };
+      // was het plusje al zichtbaar, dan begin je meteen op volle grootte
+      basis = { t: t, x: x, y: y, start: t.knop.classList.contains("wakker") ? TREK_AFSTAND : 0 };
     }
-    var r = basis.t.rand, trek = r === "onder" ? basis.y - y : r === "boven" ? y - basis.y : x - basis.x;
+    var r = basis.t.rand, trek = basis.start + (r === "onder" ? basis.y - y : r === "boven" ? y - basis.y : x - basis.x);
     // bovenaan de Agenda: de pagina niet laten verend meetrekken of vernieuwen
     if (r === "boven" && e.cancelable) e.preventDefault();
     if (trek < -8) { trekLos(); basis = null; vorig.x = x; vorig.y = y; return; }
-    if (!basis.wakker && trek > 12) {
-      basis.wakker = true;
-      trekWakker(basis.t.knop);
-      trekStart(basis.t, true);
-    }
+    trekZicht(basis.t, trek / TREK_AFSTAND);
   }, { passive: false });
   function eind() { trekLos(); basis = null; vorig = null; }
   document.addEventListener("touchend", eind, { passive: true });
   document.addEventListener("touchcancel", eind, { passive: true });
 })();
-// muiswiel en trackpad
+// muiswiel en trackpad: doorscrollen bij de rand telt als trekken; stoppen = loslaten
 (function () {
   var reeks = null, stil = null;
   window.addEventListener("wheel", function (e) {
@@ -881,22 +970,18 @@ function trekLos() {
     var t = rand && trekKandidaat(rand, e.target);
     clearTimeout(stil);
     if (!t) { if (reeks) { trekLos(); reeks = null; } return; }
-    if (!reeks || reeks.t !== t) {
-      // een nieuwe reeks: was het plusje nog verborgen, dan alleen laten verschijnen
-      var wasWakker = !t.knop.classList.contains("slaapt");
-      trekLos();
-      reeks = { t: t };
-      trekWakker(t.knop);
-      if (wasWakker) trekStart(t, true);
-    }
+    if (!reeks || reeks.t !== t) { trekLos(); reeks = { t: t, trek: t.knop.classList.contains("wakker") ? 2 * TREK_AFSTAND : 0 }; }
+    reeks.trek = Math.min(reeks.trek + Math.min(Math.max(ax, ay), 40), 4 * TREK_AFSTAND);
+    trekZicht(t, reeks.trek / (2 * TREK_AFSTAND));
     stil = setTimeout(function () { trekLos(); reeks = null; }, 180);
   }, { passive: true });
 })();
-// weer verbergen als je wegscrolt van de rand
+// weer terug naar begin als je wegscrolt van de rand
 window.addEventListener("scroll", function () {
   TREK.forEach(function (t) {
-    if (t.rand !== "onder" || t.knop.classList.contains("slaapt")) return;
-    if (document.documentElement.scrollHeight - window.innerHeight - window.scrollY > 220) trekSlaap(t.knop);
+    if (!t.knop.classList.contains("wakker") || t.knop.classList.contains("klaar") || t.rand === "links") return;
+    var ver = t.rand === "onder" ? document.documentElement.scrollHeight - window.innerHeight - window.scrollY : window.scrollY;
+    if (ver > 200) trekReset(t.knop);
   });
 }, { passive: true });
 alle(".meerknop").forEach(function (k) { if (k.id !== "a-eerder") trekKnop(k, "onder"); });
