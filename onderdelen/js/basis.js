@@ -15,12 +15,12 @@ try { localStorage.removeItem("eu-thema"); } catch (e) {}
 var STANDAARD = {
   start: "overzicht", nieuwsDeel: "kanaal-media", engels: true, tekst: "standaard", beweging: "systeem",
   bronnenUit: [], informeel: true, vastePunten: true,
-  agendaAlles: ["parlement", "raad", "top", "commissie", "dossiers"],
-  overzicht: [
-    { id: "vandaag", aan: true, n: 5 }, { id: "agenda", aan: true, n: 3, soorten: [] },
-    { id: "nieuws", aan: true, n: 3, bron: "" }, { id: "persberichten", aan: false, n: 3 },
-    { id: "dossiers", aan: true, n: 3, nl: false }, { id: "stemmen", aan: true, n: 3 },
-    { id: "mensen", aan: false, n: 5 }, { id: "recent", aan: true, n: 6 }
+  // widgets op het Zoek-scherm, zoals op het beginscherm van de iPhone: maat klein (half breed),
+  // middel of groot (meer regels)
+  widgets: [
+    { id: "agenda", aan: true, maat: "m" }, { id: "pers", aan: true, maat: "m" },
+    { id: "dossiers", aan: true, maat: "k" }, { id: "stemmen", aan: true, maat: "k" },
+    { id: "persberichten", aan: false, maat: "m" }, { id: "personen", aan: false, maat: "m" }
   ]
 };
 var INST = (function () {
@@ -29,7 +29,9 @@ var INST = (function () {
   var uit = JSON.parse(JSON.stringify(STANDAARD));
   Object.keys(bewaard).forEach(function (k) { if (k in uit) uit[k] = bewaard[k]; });
   // nieuwe blokken die er later bij kwamen, achteraan toevoegen
-  STANDAARD.overzicht.forEach(function (b) { if (!uit.overzicht.some(function (x) { return x.id === b.id; })) uit.overzicht.push(JSON.parse(JSON.stringify(b))); });
+  var ids = STANDAARD.widgets.map(function (b) { return b.id; });
+  uit.widgets = (uit.widgets || []).filter(function (b) { return ids.indexOf(b.id) >= 0; });
+  STANDAARD.widgets.forEach(function (b) { if (!uit.widgets.some(function (x) { return x.id === b.id; })) uit.widgets.push(JSON.parse(JSON.stringify(b))); });
   return uit;
 })();
 function bewaarInst() { bewaar("eu-instellingen", JSON.stringify(INST)); pasInstToe(); }
@@ -64,14 +66,14 @@ if (!location.hash && INST.start && INST.start !== "overzicht") history.replaceS
 // ---- tabbladen ----
 var tabs = alle("section.tab").map(function (s) { return s.id; });
 // oude of extra adressen en het tabblad waar ze nu staan
-var extra = { mensen: "stemmingen", zoek: "overzicht", stemmen: "stemmingen" };
+var extra = { stemmingen: "dossiers", stemmen: "dossiers", zoek: "overzicht", bronnen: "overzicht", personen: "mensen" };
 function hashNaam() { return (location.hash || "#overzicht").slice(1).split("?")[0]; }
 function huidigeTab() {
   var doel = hashNaam();
   return tabs.indexOf(doel) >= 0 ? doel : (extra[doel] || "overzicht");
 }
 // De volgorde van de tabs onderin: daarmee schuift een nieuwe tab zacht van links of rechts in.
-var TAB_VOLGORDE = ["agenda", "nieuws", "overzicht", "dossiers", "stemmingen"];
+var TAB_VOLGORDE = ["agenda", "nieuws", "overzicht", "dossiers", "mensen"];
 var vorigeTab = null, geenTabAnimatieTot = 0;
 function toonTab() {
   var doel = hashNaam();
@@ -637,9 +639,7 @@ function bezig(doel) { if (doel && !doel.children.length) doel.innerHTML = '<p c
 var NOTITIES = leesJSON("eu-notities", {});
 // opslag van de vroegere volglijst en bezoeken opruimen
 ["eu-volg", "eu-volg-stand", "eu-bezoek"].forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
-function notitie(sleutel) {
-  return '<label class="notitie"><span>Mijn notities</span><textarea data-notitie="' + esc(sleutel) + '" placeholder="Alleen jij ziet dit (bewaard in deze browser)">' + esc(NOTITIES[sleutel] || "") + "</textarea></label>";
-}
+function notitie() { return ""; }   // notities zijn uit de site gehaald
 document.addEventListener("input", function (ev) {
   var k = ev.target.dataset && ev.target.dataset.notitie;
   if (!k) return;

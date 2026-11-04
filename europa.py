@@ -300,6 +300,8 @@ def agenda_items(p, lijst, vergaderingen):
     for i in uit:
         i["wat"], i["wie"] = categorieen(i)
         i["id"] = hashlib.sha1(f"{i['soort']}|{i['titel']}|{i['datum']}".encode()).hexdigest()[:10]
+        if i["soort"] == "Raad":
+            i["raad"] = raadsformatie(i["titel"])
         i.pop("en", None)
         i.setdefault("dossiers", [])
         i["dossiers"].sort(key=lambda x: x["titel"])
@@ -325,6 +327,8 @@ def agenda_items(p, lijst, vergaderingen):
             x = {"datum": v["datum"], "eind_datum": v.get("eind", ""), "soort": v["soort"], "titel": v["titel"], "plaats": v.get("plaats", ""),
                  "url": v["url"], "extra": "Informeel: er worden geen besluiten genomen." if v.get("informeel") else ""}
             x["wat"], x["wie"] = categorieen(x)
+            if x["soort"] == "Raad":
+                x["raad"] = raadsformatie(x["titel"])
             verder.append(x)
     for x in verder:
         x["id"] = hashlib.sha1(f"{x['soort']}|{x['titel']}|{x['datum']}".encode()).hexdigest()[:10]
@@ -334,6 +338,17 @@ def agenda_items(p, lijst, vergaderingen):
                 x.pop(k, None)
     verder.sort(key=lambda x: (x["datum"], x["titel"]))
     return {"items": uit, "verder": verder, "later": p.get("later", [])[:1], "toppen_later": toppen[:2]}
+
+
+def raadsformatie(titel):
+    """'Raad Buitenlandse Zaken (defensie)' -> 'Raad Buitenlandse Zaken'; 'Ecofin-Raad (begroting)' -> 'Ecofin-Raad';
+    'Raad (Landbouw): dossier' -> 'Raad Landbouw'; informeel -> 'Informele ministersbijeenkomst'. Voor het filter 'Raad'."""
+    if titel.startswith("Informele"):
+        return "Informele ministersbijeenkomst"
+    m = re.match(r"Raad \(([^)]+)\):", titel)
+    if m:
+        return "Raad " + m.group(1).split(",")[0].strip()
+    return re.sub(r"\s*\(.*\)$", "", titel).strip()
 
 
 TOP_EU = re.compile(r"Europese Raad|EU-regeringsleiders|regeringsleiders", re.I)

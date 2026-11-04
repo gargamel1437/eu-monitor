@@ -191,35 +191,93 @@ STOP = {"with", "from", "that", "this", "what", "will", "have", "after", "over",
         "says", "said", "could", "would", "should", "amid", "against", "tegen", "onder", "meer", "news"}
 
 
+GENERIEK = {"europe", "european", "europese", "europees", "europa", "brussels", "brussel", "commission", "commissie",
+            "union", "unie", "parliament", "parlement", "council", "raad", "minister", "ministers", "government",
+            "regering", "leaders", "leiders", "year", "week", "plan", "plans", "deal", "states", "lidstaten", "member",
+            "countries", "landen", "president", "chief", "first", "last", "nieuwe", "more", "than", "news", "today",
+            "vandaag", "while", "after", "before", "where", "which", "there", "their", "these", "those", "been", "being",
+            "foreign", "policy", "warns", "warn", "chief", "says", "said", "likely", "could", "would", "zegt", "waarschuwt"}
+
+
 def kopwoorden(titel):
-    return {w for w in re.findall(r"[a-zà-ÿ0-9]{4,}", titel.lower()) if w not in STOP}
+    return {w for w in re.findall(r"[a-zà-ÿ0-9]{4,}", titel.lower()) if w not in STOP and w not in GENERIEK}
+
+
+def namen(tekst):
+    """Eigennamen (met hoofdletter, niet aan het begin van de zin): die zijn hetzelfde in elke taal."""
+    uit = set()
+    for zin in re.split(r"[.:;!?\n]", tekst):
+        woorden = re.findall(r"[A-Za-zÀ-ÿ'’\-]+", zin)
+        for w in woorden[1:]:
+            if w[:1].isupper() and len(w) >= 4 and w.lower() not in GENERIEK and w.lower() not in STOP and not w.isupper():
+                uit.add(w.lower().strip("'’"))
+    return uit
 
 
 def samenvoegen(lijst):
-    """Hetzelfde nieuws van meerdere media wordt één bericht met 'Ook bij: …'. Voorzichtig: alleen
-    als de koppen in dezelfde taal minstens 4 kenmerkende woorden delen, en dat minstens 60% van
-    de woorden van de kortste kop is, binnen 24 uur. Persberichten voegen we nooit samen."""
+    """Hetzelfde nieuwsfeit van meerdere media wordt één verhaal met alle bronnen erbij; je kiest
+    zelf welke je opent. Twee berichten horen bij elkaar (binnen 36 uur, verschillende bron) als:
+    - hun koppen minstens 3 kenmerkende woorden delen, en dat de helft van de kortste kop is; of
+    - kop en eerste regels samen minstens 4 kenmerkende woorden delen, waarvan minstens één
+      eigennaam (zo werken ook een Nederlandse en een Engelse kop over hetzelfde); of
+    - ze minstens 2 eigennamen en 3 kenmerkende woorden delen.
+    Algemene woorden (EU, Commissie, Brussel…) tellen niet mee. Persberichten voegen we niet samen."""
+    media = [b for b in lijst if b["kanaal"] == "media"]
+    info = {}
+    for b in media:
+        kop = kopwoorden(b["titel"])
+        alles = kop | kopwoorden(b["tekst"][:180])
+        info[id(b)] = (kop, alles, namen(b["titel"] + ". " + b["tekst"][:180]))
+    def lijkt(a, b):
+        if a["bron"] == b["bron"] or abs((a["datum"] - b["datum"]).total_seconds()) > 36 * 3600:
+            return False
+        ka, aa, na = info[id(a)]
+        kb, ab, nb = info[id(b)]
+        kop, alle, nm = len(ka & kb), len(aa & ab), len(na & nb)
+        return (kop >= 3 and kop >= 0.5 * min(len(ka), len(kb))) or (alle >= 4 and nm >= 1 and alle >= 0.3 * min(len(aa), len(ab))) or (nm >= 2 and alle >= 3)
+
+    # een bericht hoort bij een verhaal als het op minstens de helft van de berichten daarin lijkt
+    # (zo groeit een verhaal niet via één toevallige overeenkomst door naar een ander onderwerp)
+    verhalen = []
+    for b in media:
+        beste, score = None, 0
+        for v in verhalen:
+            n = sum(1 for x in v if lijkt(b, x))
+            if n and n * 2 >= len(v) and n > score:
+                beste, score = v, n
+        if beste is not None:
+            beste.append(b)
+        else:
+            verhalen.append([b])
+    groep_van = {}
+    for n, v in enumerate(verhalen):
+        for b in v:
+            groep_van[id(b)] = n
+
+    def wortel(x):
+        return groep_van[x]
+    groepen = {n: v for n, v in enumerate(verhalen)}
     uit = []
+    gehad = set()
     for b in lijst:
         b["ook"] = []
-        w = kopwoorden(b["titel"])
-        gevonden = None
-        if b["kanaal"] == "media" and len(w) >= 4:
-            for k in uit:
-                if k["kanaal"] != "media" or k["taal"] != b["taal"] or k["bron"] == b["bron"] or any(o["bron"] == b["bron"] for o in k["ook"]):
-                    continue
-                if abs((k["datum"] - b["datum"]).total_seconds()) > 86400:
-                    continue
-                kw = kopwoorden(k["titel"])
-                gedeeld = len(w & kw)
-                if gedeeld >= 4 and gedeeld >= 0.6 * min(len(w), len(kw)):
-                    gevonden = k
-                    break
-        if gevonden:
-            gevonden["ook"].append({"bron": b["bron"], "link": b["link"], "titel": b["titel"]})
-            gevonden["terreinen"] = list(dict.fromkeys(gevonden["terreinen"] + b["terreinen"]))[:2]
-        else:
+        if b["kanaal"] != "media":
             uit.append(b)
+            continue
+        g = groepen[wortel(id(b))]
+        if wortel(id(b)) in gehad:
+            continue
+        gehad.add(wortel(id(b)))
+        # één bericht per bron; het nieuwste bericht is de kop van het verhaal
+        per_bron = {}
+        for x in g:
+            per_bron.setdefault(x["bron"], x)
+        rest = [x for x in per_bron.values() if x is not b]
+        b["ook"] = [{"bron": x["bron"], "link": x["link"], "titel": x["titel"], "taal": x["taal"],
+                     "tijd": x["datum"].strftime("%H:%M"), "dag": x["datum"].date().isoformat()} for x in rest]
+        for x in rest:
+            b["terreinen"] = list(dict.fromkeys(b["terreinen"] + x["terreinen"]))[:2]
+        uit.append(b)
     return uit
 
 
@@ -251,21 +309,29 @@ def bericht_html(b):
     if b["bron"] in BETAALMUUR:
         extra += '<span class="label taal" title="Mogelijk achter een betaalmuur">Betaalmuur</span>'
     terreinen = "|".join(b["terreinen"])
-    return (
-        f'<li class="bericht {e(b.get("kanaal", "media"))}" data-bron="{e(b["bron"])}" data-bronnen="{e("|".join([b["bron"]] + [o["bron"] for o in b.get("ook", [])]))}"'
-        f' data-taal="{e(b["taal"])}" data-terrein="{e(terreinen)}"'
-        f' data-tijd="{b["datum"].day} {MAANDEN[b["datum"].month - 1][:3]} {b["datum"]:%H:%M}">'
-        f'<a href="{e(b["link"])}" target="_blank" rel="noopener">'
-        f'<div class="meta"><span class="bron">{e(b["bron"])}</span>'
-        f'<span class="tijd">{b["datum"]:%H:%M}</span></div>'
-        f'<h3>{e(b["titel"])}</h3>'
-        + (f'<p>{e(b["tekst"])}</p>' if b["tekst"] else "")
-        + f'<div class="labels">{extra}{labels}</div></a>'
-        + ((f'<div class="ook">Ook bij: ' + ", ".join(f'<a href="{e(o["link"])}" target="_blank" rel="noopener" title="{e(o["titel"])}">{e(o["bron"])}</a>' for o in b["ook"])
-            + f' · {len(b["ook"]) + 1} bronnen</div>') if b.get("ook") else "")
-        + f'<button class="deel-mini" aria-label="Delen" data-deel="{e(json.dumps({"t": b["titel"], "u": b["link"]}, ensure_ascii=False))}">'
-        + '<svg viewBox="0 0 24 24"><path d="M12 15V3.5M8 7.5l4-4 4 4"/><path d="M6 11H5v9.5h14V11h-1"/></svg></button></li>'
-    )
+    kanaal = b.get("kanaal", "media")
+    # de instelling achter een persbericht, voor dezelfde kleur als in de agenda
+    instelling = {"Europese Commissie": "com", "Raad van de EU": "raad"}.get(b["bron"], "")
+    bronnen = [b["bron"]] + [o["bron"] for o in b.get("ook", [])]
+    kop = (f'<li class="bericht {e(kanaal)}{" verhaal" if b.get("ook") else ""}{" k-" + instelling if instelling else ""}" data-bron="{e(b["bron"])}"'
+           f' data-bronnen="{e("|".join(bronnen))}" data-taal="{e(b["taal"])}" data-terrein="{e(terreinen)}"'
+           f' data-tijd="{b["datum"].day} {MAANDEN[b["datum"].month - 1][:3]} {b["datum"]:%H:%M}"')
+    inhoud = (f'<h3>{e(b["titel"])}</h3>' + (f'<p>{e(b["tekst"])}</p>' if b["tekst"] else "")
+              + f'<div class="labels">{extra}{labels}</div>')
+    deel = (f'<button class="deel-mini" aria-label="Delen" data-deel="{e(json.dumps({"t": b["titel"], "u": b["link"]}, ensure_ascii=False))}">'
+            '<svg viewBox="0 0 24 24"><path d="M12 15V3.5M8 7.5l4-4 4 4"/><path d="M6 11H5v9.5h14V11h-1"/></svg></button>')
+    if not b.get("ook"):
+        return (kop + '>' + f'<a href="{e(b["link"])}" target="_blank" rel="noopener">'
+                f'<div class="meta"><span class="bron">{e(b["bron"])}</span><span class="tijd">{b["datum"]:%H:%M}</span></div>'
+                + inhoud + "</a>" + deel + "</li>")
+    # meerdere bronnen over hetzelfde nieuws: één verhaal, tik = kies welke bron je opent
+    alle = [{"bron": b["bron"], "titel": b["titel"], "link": b["link"], "taal": b["taal"], "tijd": b["datum"].strftime("%H:%M"),
+             "dag": b["datum"].date().isoformat()}] + b["ook"]
+    return (kop + f' data-verhaal="{e(json.dumps(alle, ensure_ascii=False))}">'
+            f'<div class="verhaal-kaart" role="button" tabindex="0">'
+            f'<div class="meta"><span class="bron">{len(alle)} bronnen</span><span class="tijd">{b["datum"]:%H:%M}</span></div>'
+            + inhoud
+            + '<div class="bronrij">' + "".join(f'<span>{e(x["bron"])}</span>' for x in alle) + "</div></div>" + deel + "</li>")
 
 
 def nieuws_html(lijst):

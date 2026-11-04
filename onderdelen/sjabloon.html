@@ -14,112 +14,94 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="robots" content="noindex, nofollow">
 <link rel="manifest" href="manifest.json">
-<!-- iOS kiest het beginschermicoon één keer, bij 'Zet op beginscherm', en wisselt het niet mee met
-     licht/donker. Daarom het donkere icoon, gemaakt voor de donkere modus; het tabblad-icoon wisselt wel. -->
-<link rel="apple-touch-icon" href="icoon-donker.png?v=2">
-<link rel="icon" href="icoon.png" media="(prefers-color-scheme: light)">
-<link rel="icon" href="icoon-donker.png" media="(prefers-color-scheme: dark)">
+<!-- Beginschermicoon: iOS neemt het icoon over op het moment dat je 'Zet op beginscherm' kiest en
+     wisselt daarna niet meer mee. Staat je iPhone dan in de donkere modus, dan kiezen we hier het
+     donkergrijze icoon; anders het marineblauwe. -->
+<link rel="apple-touch-icon" id="appicoon" href="icoon-licht.png?v=3">
+<script>try { if (matchMedia("(prefers-color-scheme: dark)").matches) document.getElementById("appicoon").href = "icoon-donker.png?v=3"; } catch (e) {}</script>
+<link rel="icon" href="icoon-licht.png?v=3" media="(prefers-color-scheme: light)">
+<link rel="icon" href="icoon-donker.png?v=3" media="(prefers-color-scheme: dark)">
 <style>{{STIJL}}</style>
 <script>try { var _i = JSON.parse(localStorage.getItem("eu-instellingen") || "{}"); if (_i.tekst) document.documentElement.dataset.tekst = _i.tekst; if (_i.beweging) document.documentElement.dataset.beweging = _i.beweging; } catch (e) {}</script>
 </head>
 <body>
-<div class="topbalk" id="topbalk"><div id="kleine-titel">Overzicht</div></div>
+<div class="topbalk" id="topbalk"><div id="kleine-titel">Zoek</div></div>
 <button class="bronknop" id="instellingen-knop" type="button" aria-label="Instellingen"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
 <div class="offline verborgen" id="offline-melding" role="status"></div>
 
 <div class="wrap">
   <div id="meldingen">{{MELDINGEN}}</div>
 
-  <!-- ============ OVERZICHT (ook zoeken) ============ -->
-  <section class="tab actief" id="overzicht" data-titel="Overzicht">
-    <header class="groot"><div class="kop-rij"><h1>Overzicht</h1><button class="linkknop wijzig" id="ov-wijzig" type="button">Wijzig</button></div><p class="sub">Bijgewerkt {{BIJGEWERKT}} · <span id="volgende-update"></span></p></header>
+  <!-- ============ ZOEK (overzicht met widgets) ============ -->
+  <section class="tab actief" id="overzicht" data-titel="Zoek">
+    <header class="groot"><div class="kop-rij"><h1>Zoek</h1><button class="linkknop wijzig" id="ov-wijzig" type="button">Wijzig</button></div><p class="sub">Bijgewerkt {{BIJGEWERKT}} · <span id="volgende-update"></span></p></header>
     <div class="zoekgroot"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><input class="zoek" id="ov-zoek" type="search" placeholder="Zoek in alles" aria-label="Zoek in alles" autocomplete="off"></div>
     <div id="ov-recent" class="recentlijst verborgen" role="listbox" aria-label="Recente zoekopdrachten"></div>
     <div id="ov-resultaten" class="verborgen"></div>
-    <div id="ov-data"></div>
+    <div id="ov-data" class="widgets"></div>
   </section>
 
-  <!-- ============ NIEUWS ============ -->
-  <section class="tab" id="nieuws" data-titel="Nieuws">
-    <header class="groot"><h1>Nieuws</h1><p class="sub">{{AANTAL}} berichten · afgelopen 5 dagen</p></header>
+  <!-- ============ PERS ============ -->
+  <section class="tab" id="nieuws" data-titel="Pers">
+    <header class="groot"><h1>Pers</h1><p class="sub">{{AANTAL}} berichten · afgelopen 5 dagen · hetzelfde nieuws staat bij elkaar</p></header>
     <div class="plakrij"><div class="schakel breed" id="kanaal-schakel">
       <button class="actief" data-toon="kanaal-media">Media <small>{{AANTAL_MEDIA}}</small></button>
       <button data-toon="kanaal-officieel">Persberichten <small>{{AANTAL_OFFICIEEL}}</small></button>
     </div></div>
-    <div class="zoekrij"><input class="zoek" id="zoek" type="search" placeholder="Zoek in het nieuws" aria-label="Zoek in het nieuws"><button class="filterknop" id="n-filterknop" data-filter="n" type="button"><svg viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></svg>Filters<span class="teller"></span></button></div>
-    <button class="filterregel verborgen" id="n-regel" data-filter="n" type="button"></button>
+    <div class="zoekbalk" id="n-balk"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><span class="tokens"></span><input class="zoekinvoer" id="zoek" type="search" placeholder="Zoek of filter" autocomplete="off" aria-label="Zoek of filter in het nieuws"><button class="wis" type="button" aria-label="Alles wissen" hidden>×</button></div>
     <div id="kanaal-media">
       <div class="nieuwslijst">
 {{NIEUWS_MEDIA}}
       </div>
-      <p class="klein uitleg-onder">Journalistiek nieuws over de EU. Algemene nieuwsbronnen (zoals NOS, NRC, de Volkskrant, Trouw, BBC en de Financial Times) tonen alleen berichten over de EU. <span class="label taal">EN</span> = Engelstalig, <span class="label taal">Betaalmuur</span> = mogelijk alleen voor abonnees. Bronnen aan of uit zetten kan in Instellingen.</p>
+      <p class="klein uitleg-onder">Journalistiek nieuws over de EU. Hetzelfde nieuws van meerdere media staat als één verhaal bij elkaar: tik erop en kies welke bron je opent. Algemene nieuwsbronnen tonen alleen berichten over de EU. <span class="label taal">EN</span> = Engelstalig, <span class="label taal">Betaalmuur</span> = mogelijk alleen voor abonnees.</p>
     </div>
     <div id="kanaal-officieel" class="verborgen officieel-deel">
       <div class="nieuwslijst">
 {{NIEUWS_OFFICIEEL}}
       </div>
-      <p class="klein uitleg-onder">Het label <span class="label voorstel">Voorstel</span> betekent dat de Commissie iets nieuws voorstelt (volgens de kop). Bij een dossier zie je de persberichten die er automatisch aan gekoppeld zijn.</p>
+      <p class="klein uitleg-onder">Persberichten van de Europese Commissie en de Raad van de EU, in dezelfde kleuren als in de agenda. Het label <span class="label voorstel">Voorstel</span> betekent dat de Commissie iets nieuws voorstelt (volgens de kop).</p>
     </div>
-    <p class="leeg verborgen" id="niets">Geen berichten met deze filters.</p>
+    <p class="leeg verborgen" id="niets">Niets gevonden. Haal een filter weg of tik op × om alles te wissen.</p>
   </section>
 
   <!-- ============ AGENDA ============ -->
   <section class="tab" id="agenda" data-titel="Agenda">
-    <header class="groot"><h1>Agenda</h1><p class="sub">Parlement, Raad, Europese Raad en Commissie · tik voor details</p></header>
-    <div class="plakrij"><div class="schakel breed" id="a-weergave" aria-label="Weergave"><button class="actief" data-weergave="week" type="button">Week</button><button data-weergave="maand" type="button">Maand</button><button data-weergave="jaar" type="button">Jaar</button></div></div>
-    <div class="zoekrij"><input class="zoek" id="a-zoek" type="search" placeholder="Zoek in de agenda" aria-label="Zoek in de agenda"><button class="filterknop" id="a-filterknop" data-filter="a" type="button"><svg viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></svg>Filters<span class="teller"></span></button></div>
-    <button class="filterregel verborgen" id="a-regel" data-filter="a" type="button"></button>
-    <div id="a-kalender">
-      <div id="a-lijst"></div>
-      <div id="a-maand" class="verborgen"></div>
-      <div id="a-jaar" class="verborgen"></div>
+    <header class="groot"><div class="kop-rij"><h1>Agenda</h1><span class="maand" id="a-maand"></span></div></header>
+    <div class="zoekbalk" id="a-balk"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><span class="tokens"></span><input class="zoekinvoer" id="a-zoek" type="search" placeholder="Zoek of filter" autocomplete="off" aria-label="Zoek of filter in de agenda"><button class="wis" type="button" aria-label="Alles wissen" hidden>×</button></div>
+    <div class="plakrij strookrij"><div class="strook" id="a-strook" aria-label="Datumstrook"></div></div>
+    <div id="a-tijdlijn" class="tijdlijn d0"></div>
+    <div class="dichtknoppen" role="group" aria-label="Hoeveel je ziet">
+      <button type="button" id="a-uit" aria-label="Meer dagen tonen"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
+      <button type="button" id="a-in" aria-label="Meer details tonen"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
     </div>
-    <div id="a-afgelopen" class="verborgen"><div id="db-lijst"></div></div>
-    <details class="sectie planning" id="a-planning">
-      <summary>Geplande voorstellen van de Commissie <span class="teller-klein" id="c-aantal"></span></summary>
-      <p class="klein">Wat de Commissie zelf zegt te willen voorstellen, per kwartaal. Alleen het kwartaal is bekend, geen datum, en de planning schuift vaak.</p>
-      <div class="zoekrij"><input class="zoek" id="c-zoek" type="search" placeholder="Zoek in de planning" aria-label="Zoek in de planning"><button class="filterknop" id="c-filterknop" data-filter="c" type="button"><svg viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></svg>Filters<span class="teller"></span></button></div>
-      <button class="filterregel verborgen" id="c-regel" data-filter="c" type="button"></button>
-      <div id="c-lijst"></div>
-      <p class="klein">Bron: <a href="https://ec.europa.eu/info/law/better-regulation/have-your-say_nl" target="_blank" rel="noopener">Geef uw mening</a> van de Europese Commissie. Uitvoerings- en gedelegeerde handelingen staan er niet in.</p>
-    </details>
-    <p class="klein uitleg-onder" id="a-uitleg">Plenaire zittingen (Europees Parlement), vergaderingen van de Raad en toppen (agenda van het EU-voorzitterschap), vaste punten van de Commissie en geplande stappen in dossiers (Legislative Observatory). Tik op een item voor het programma, de tijden, de locatie en <b>＋ Agenda</b>. Knijp met twee vingers om van week naar maand en jaar te gaan.</p>
+    <p class="klein uitleg-onder">Plenaire zittingen (Europees Parlement), vergaderingen van de Raad en toppen (agenda van het EU-voorzitterschap), vaste punten van de Commissie en geplande stappen in dossiers (Legislative Observatory). Knijp met twee vingers om meer of minder te zien. Tik op een item voor de details.</p>
   </section>
 
-  <!-- ============ DOSSIERS ============ -->
+  <!-- ============ DOSSIERS (dossiers en stemmingen) ============ -->
   <section class="tab" id="dossiers" data-titel="Dossiers">
-    <header class="groot"><h1>Dossiers</h1><p class="sub">Alle lopende procedures van het Europees Parlement</p></header>
-    <div class="zoekrij"><input class="zoek" id="d-zoek" type="search" placeholder="Titel, nummer, rapporteur…" aria-label="Zoek een dossier"><button class="filterknop" id="d-filterknop" data-filter="d" type="button"><svg viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></svg>Filters<span class="teller"></span></button></div>
-    <button class="filterregel verborgen" id="d-regel" data-filter="d" type="button"></button>
-    <p class="telling" id="d-aantal"></p>
-    <div id="d-lijst"></div>
-    <button class="knop tweede breed verborgen" id="d-meer">Toon meer</button>
+    <header class="groot"><h1>Dossiers</h1><p class="sub">Procedures van het Europees Parlement en de hoofdstemmingen</p></header>
+    <div class="plakrij"><div class="schakel breed" id="dossier-schakel"><button class="actief" data-toon="deel-dossiers">Dossiers</button><button data-toon="deel-stemmingen">Stemmingen</button></div></div>
+    <div id="deel-dossiers">
+      <div class="zoekbalk" id="d-balk"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><span class="tokens"></span><input class="zoekinvoer" id="d-zoek" type="search" placeholder="Zoek of filter" autocomplete="off" aria-label="Zoek of filter in de dossiers"><button class="wis" type="button" aria-label="Alles wissen" hidden>×</button></div>
+      <div class="lijstbalk"><span class="telling" id="d-aantal"></span><button class="sorteer" type="button" data-sorteer="d"></button></div>
+      <div id="d-lijst"></div>
+      <button class="knop tweede breed verborgen" id="d-meer">Toon meer</button>
+    </div>
+    <div id="deel-stemmingen" class="verborgen">
+      <div class="zoekbalk" id="s-balk"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><span class="tokens"></span><input class="zoekinvoer" id="s-zoek" type="search" placeholder="Zoek of filter" autocomplete="off" aria-label="Zoek of filter in de stemmingen"><button class="wis" type="button" aria-label="Alles wissen" hidden>×</button></div>
+      <div class="lijstbalk"><span class="telling" id="s-aantal"></span><button class="sorteer" type="button" data-sorteer="s"></button></div>
+      <div id="s-lijst"></div>
+    </div>
   </section>
 
-  <!-- ============ STEMMEN (stemmingen en mensen) ============ -->
-  <section class="tab" id="stemmingen" data-titel="Stemmen">
-    <header class="groot"><h1>Stemmen</h1><p class="sub">Hoofdstemmingen van de laatste twee zittingen, en de europarlementariërs</p></header>
-    <div class="plakrij"><div class="schakel breed" id="stem-schakel"><button class="actief" data-toon="deel-stemmingen">Stemmingen</button><button data-toon="deel-mensen">Mensen</button></div></div>
-    <div id="deel-stemmingen">
-    <div class="zoekrij"><input class="zoek" id="s-zoek" type="search" placeholder="Stemming of procedurenummer" aria-label="Zoek een stemming"><button class="filterknop" id="s-filterknop" data-filter="s" type="button"><svg viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></svg>Filters<span class="teller"></span></button></div>
-    <button class="filterregel verborgen" id="s-regel" data-filter="s" type="button"></button>
-    <p class="telling" id="s-aantal"></p>
-    <div id="s-lijst"></div>
-    </div>
-    <div id="deel-mensen" class="verborgen">
-    <div class="zoekrij"><input class="zoek" id="m-zoek" type="search" placeholder="Naam, partij of land" aria-label="Zoek een persoon"><button class="filterknop" id="m-filterknop" data-filter="m" type="button"><svg viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></svg>Filters<span class="teller"></span></button></div>
-    <button class="filterregel verborgen" id="m-regel" data-filter="m" type="button"></button>
+  <!-- ============ PERSONEN ============ -->
+  <section class="tab" id="mensen" data-titel="Personen">
+    <header class="groot"><h1>Personen</h1><p class="sub">Europarlementariërs, de Commissie, ministers en persdiensten, met contact</p></header>
+    <div class="zoekbalk" id="m-balk"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><span class="tokens"></span><input class="zoekinvoer" id="m-zoek" type="search" placeholder="Zoek of filter" autocomplete="off" aria-label="Zoek of filter in personen"><button class="wis" type="button" aria-label="Alles wissen" hidden>×</button></div>
     <p class="telling" id="m-aantal"></p>
     <div id="m-lijst"></div>
     <button class="knop tweede breed verborgen" id="m-meer">Toon meer</button>
-    <p class="klein uitleg-onder" id="m-uitleg">Alle 720 europarlementariërs, plus oud-leden die nog een rol in een dossier hebben. Stemgedrag gaat over de hoofdstemmingen van de laatste twee zittingen.</p>
-    </div>
-  </section>
-
-  <!-- ============ BRONNEN ============ -->
-  <section class="tab" id="bronnen" data-titel="Bronnen">
-    <header class="groot"><h1>Bronnen en beperkingen</h1><p class="sub">Wat deze site wel en niet dekt</p></header>
-{{BRONNEN}}
+    <p class="klein uitleg-onder" id="m-uitleg"></p>
   </section>
 
   <footer>EU-monitor · eigen overzicht · licht of donker volgt je iPhone</footer>
@@ -128,22 +110,21 @@
 <nav class="tabs" aria-label="Onderdelen"><div class="pil">
   <span class="lens" id="lens" aria-hidden="true"></span>
   <a href="#agenda" data-tab="agenda"><svg class="lijn" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><svg class="vol" viewBox="0 0 24 24"><path class="v" d="M6.5 4.5h11a3 3 0 0 1 3 3V9.5h-17V7.5a3 3 0 0 1 3-3z"/><path class="v" d="M3.5 11h17v6a3 3 0 0 1-3 3h-11a3 3 0 0 1-3-3z"/><path d="M8 3v3.5M16 3v3.5"/></svg>Agenda</a>
-  <a href="#nieuws" data-tab="nieuws"><svg class="lijn" viewBox="0 0 24 24"><path d="M4 5h13v14H6a2 2 0 0 1-2-2z"/><path d="M17 9h3v8a2 2 0 0 1-2 2"/><path d="M8 9h5M8 13h5"/></svg><svg class="vol" viewBox="0 0 24 24"><path class="v" d="M4 5h13v14H6a2 2 0 0 1-2-2z"/><path d="M17 9h3v8a2 2 0 0 1-2 2"/><path class="uit" d="M8 9h5M8 13h5"/></svg>Nieuws</a>
-  <a href="#overzicht" data-tab="overzicht"><svg class="lijn" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><svg class="vol" viewBox="0 0 24 24"><circle class="v" cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5" stroke-width="2.6"/></svg>Overzicht</a>
+  <a href="#nieuws" data-tab="nieuws"><svg class="lijn" viewBox="0 0 24 24"><path d="M4 5h13v14H6a2 2 0 0 1-2-2z"/><path d="M17 9h3v8a2 2 0 0 1-2 2"/><path d="M8 9h5M8 13h5"/></svg><svg class="vol" viewBox="0 0 24 24"><path class="v" d="M4 5h13v14H6a2 2 0 0 1-2-2z"/><path d="M17 9h3v8a2 2 0 0 1-2 2"/><path class="uit" d="M8 9h5M8 13h5"/></svg>Pers</a>
+  <a href="#overzicht" data-tab="overzicht"><svg class="lijn" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><svg class="vol" viewBox="0 0 24 24"><circle class="v" cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5" stroke-width="2.6"/></svg>Zoek</a>
   <a href="#dossiers" data-tab="dossiers"><svg class="lijn" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h7M9 8h3"/></svg><svg class="vol" viewBox="0 0 24 24"><path class="v" d="M6 3h9l4 4v14H6z"/><path class="uit" d="M9 12h7M9 16h7M9 8h3"/></svg>Dossiers</a>
-  <a href="#stemmingen" data-tab="stemmingen"><svg class="lijn" viewBox="0 0 24 24"><path d="M5 20V10M12 20V5M19 20v-7"/><path d="M3 20h18"/></svg><svg class="vol" viewBox="0 0 24 24"><rect class="v" x="3.5" y="9" width="3.6" height="11" rx="1"/><rect class="v" x="10.2" y="4" width="3.6" height="16" rx="1"/><rect class="v" x="16.9" y="12" width="3.6" height="8" rx="1"/></svg>Stemmen</a>
+  <a href="#mensen" data-tab="mensen"><svg class="lijn" viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M15.5 5.2a3.5 3.5 0 0 1 0 6.6M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/></svg><svg class="vol" viewBox="0 0 24 24"><circle class="v" cx="9" cy="8.5" r="3.5"/><path class="v" d="M2.5 20a6.5 6.5 0 0 1 13 0z"/><path d="M15.5 5.2a3.5 3.5 0 0 1 0 6.6M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/></svg>Personen</a>
 </div></nav>
 
+<div class="suggesties" id="sug" hidden></div>
+<div class="toast-ongedaan" id="ongedaan-toast" role="status"><span></span><button type="button">Ongedaan maken</button></div>
 <div id="laag-achter"></div>
-<div class="sheet" id="filtersheet" role="dialog" aria-label="Filters"><div class="sheet-greep"></div>
-  <div class="sheet-kop"><button class="linkknop fs-terug" id="fs-terug" type="button" hidden>‹ Filters</button><b id="fs-titel">Filters</b><button class="knop" id="fs-klaar" type="button">Klaar</button></div>
-  <div class="sheet-lijf" id="fs-lijf"></div>
-</div>
 <div id="paneel" aria-modal="true" role="dialog">
-  <div class="paneel-balk"><button id="paneel-terug" aria-label="Terug"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>Terug</button><span id="paneel-titel"></span><span></span></div>
+  <div class="paneel-balk"><button id="paneel-terug" aria-label="Terug"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg><span>Terug</span></button><span id="paneel-titel"></span><button id="paneel-sluit" type="button" aria-label="Sluiten">×</button></div>
   <div id="paneel-lijf"></div>
 </div>
 <div class="uitlegpop" id="uitlegpop" role="tooltip" hidden><b></b><p></p></div>
+<template id="bronnen-inhoud">{{BRONNEN}}</template>
 <script id="begrippen" type="application/json">{{BEGRIPPEN}}</script>
 <script id="data-meta" type="application/json">{{DATA_META}}</script>
 <script>

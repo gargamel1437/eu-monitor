@@ -1,34 +1,10 @@
-<!-- Bron van web/icoon-donker.png: open in Chrome op 512×512 en maak een screenshot. -->
+<!-- Bron van web/icoon-donker.png: open in Chrome op 512×512 en maak een screenshot (zie LEESMIJ). -->
 <!doctype html><html><head><style>html,body{margin:0;width:512px;height:512px;overflow:hidden;background:#000}</style></head><body>
 <svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-<defs>
-  <radialGradient id="ach" cx="30%" cy="22%" r="95%">
-    <stop offset="0" stop-color="#16286a"/><stop offset=".45" stop-color="#0a1338"/><stop offset="1" stop-color="#040713"/>
-  </radialGradient>
-  <radialGradient id="gloed" cx="78%" cy="86%" r="55%">
-    <stop offset="0" stop-color="#1a5f8a" stop-opacity=".35"/><stop offset="1" stop-color="#1a5f8a" stop-opacity="0"/>
-  </radialGradient>
-  <linearGradient id="glas" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0" stop-color="#ffffff" stop-opacity=".09"/><stop offset=".55" stop-color="#ffffff" stop-opacity=".025"/><stop offset="1" stop-color="#ffffff" stop-opacity=".01"/>
-  </linearGradient>
-  <linearGradient id="rand" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0" stop-color="#ffffff" stop-opacity=".30"/><stop offset=".5" stop-color="#ffffff" stop-opacity=".05"/><stop offset="1" stop-color="#9fc0ff" stop-opacity=".18"/>
-  </linearGradient>
-  <linearGradient id="tekst" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#c9d8ff"/>
-  </linearGradient>
-  <linearGradient id="goud" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0" stop-color="#ffd95a"/><stop offset="1" stop-color="#f2b705"/>
-  </linearGradient>
-  <filter id="schaduw" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="14"/></filter>
-</defs>
-<rect width="512" height="512" fill="url(#ach)"/>
-<rect width="512" height="512" fill="url(#gloed)"/>
-<circle cx="256" cy="270" r="170" fill="#000" opacity=".45" filter="url(#schaduw)"/>
-<circle cx="256" cy="256" r="168" fill="#152159" opacity=".55"/>
-<circle cx="256" cy="256" r="168" fill="url(#glas)"/>
-<circle cx="256" cy="256" r="167" fill="none" stroke="url(#rand)" stroke-width="3"/>
-<path d="M120 196 A150 150 0 0 1 392 196" fill="none" stroke="#fff" stroke-opacity=".035" stroke-width="12" stroke-linecap="round"/>
-<text x="256" y="300" text-anchor="middle" font-family="-apple-system, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif" font-weight="800" font-size="138" letter-spacing="-3" fill="url(#tekst)">EU</text>
-<rect x="206" y="330" width="100" height="9" rx="4.5" fill="url(#goud)"/>
+<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2c2c2e"/><stop offset="1" stop-color="#1c1c1e"/></linearGradient></defs>
+<rect width="512" height="512" fill="url(#g)"/>
+<g fill="none" stroke="#f2f2f7" stroke-width="30" stroke-linecap="round" stroke-linejoin="round" transform="translate(-12 0)">
+  <path d="M141 262 H269 A64 64 0 1 0 252 305"/>
+  <path d="M308 198 V280 A43 43 0 0 0 394 280 V198 M394 280 V326"/>
+</g>
 </svg></body></html>

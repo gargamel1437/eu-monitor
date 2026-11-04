@@ -45,7 +45,7 @@ function vergaderingTekst(s, lang_) {
   return "Plenaire vergadering" + (v.plaats ? " " + v.plaats : "") + ", " + (lang_ ? lang(s.moment) : kort(s.moment)) + (v.tijd ? " om " + v.tijd : "");
 }
 function stemKaart(s) {
-  return '<div class="kaart compact skaart" data-id="' + esc(s.id) + '" role="button" tabindex="0">'
+  return '<div class="kaart compact skaart k-ep" data-id="' + esc(s.id) + '" role="button" tabindex="0">'
     + '<div class="klein">' + esc(vergaderingTekst(s)) + (s.terreinen || []).slice(0, 2).map(function (t) { return ' · ' + esc(t); }).join("") + "</div>"
     + '<h3 class="twee-regels">' + esc(s.titel) + "</h3>"
     + '<div class="stemregel">' + uitslag(s.uitslag) + '<span class="klein">' + (s.totaal.FOR || 0) + " voor · " + (s.totaal.AGAINST || 0) + " tegen · " + (s.totaal.ABSTENTION || 0) + " onth.</span></div>"
@@ -64,41 +64,49 @@ function stemDetail(s) {
     + uitslag(s.uitslag) + verdeling(s.totaal || {}) + cijfers(s.totaal || {})
     + '<div class="knoprij"><button class="mini" data-kopieer="s:' + esc(s.id) + '">Kopieer feiten</button>' + deelKnop(s.titel, s.url) + a(s.url, "HowTheyVote") + (s.document ? a(s.document, "Tekst") : "")
     + (s.procedure ? (s.in_dossiers ? '<a href="#dossiers?q=' + encodeURIComponent(s.procedure) + '">Dossier ' + esc(s.procedure) + "</a>" : a("https://oeil.europarl.europa.eu/oeil/en/procedure-file?reference=" + s.procedure, s.procedure)) : "") + "</div>"
-    + "<h4>Nederlandse partijen</h4><p class='klein'>Wat de meeste leden van de partij stemden.</p>" + nlPartijen(s.nl_partijen)
+    + "<h3 class='sectiekop'>Nederlandse partijen</h3><p class='klein'>Wat de meeste leden van de partij stemden.</p>" + nlPartijen(s.nl_partijen)
     + (afw.length ? "<p class='klein'><b>Partij stemde anders dan de meerderheid van haar fractie:</b><br>" + afw.join("<br>") + "</p>" : "")
-    + "<h4>Per fractie</h4><div class='tabel-scroll'><table><tr><th>Fractie</th><th>voor</th><th>tegen</th><th>onth.</th><th>niet</th></tr>"
+    + "<h3 class='sectiekop'>Per fractie</h3><div class='tabel-scroll'><table><tr><th>Fractie</th><th>voor</th><th>tegen</th><th>onth.</th><th>niet</th></tr>"
     + Object.keys(s.per_fractie || {}).map(function (f) { var c = s.per_fractie[f]; return "<tr><td>" + fr(f) + "</td><td>" + (c.FOR || 0) + "</td><td>" + (c.AGAINST || 0) + "</td><td>" + (c.ABSTENTION || 0) + "</td><td>" + (c.DID_NOT_VOTE || 0) + "</td></tr>"; }).join("") + "</table></div>"
-    + "<h4>Nederlandse europarlementariërs</h4><ul class='punten'>" + (s.nl_leden || []).slice().sort(function (x, y) { return x.partij.localeCompare(y.partij) || x.naam.localeCompare(y.naam); }).map(function (m) {
+    + "<h3 class='sectiekop'>Nederlandse europarlementariërs</h3><ul class='punten'>" + (s.nl_leden || []).slice().sort(function (x, y) { return x.partij.localeCompare(y.partij) || x.naam.localeCompare(y.naam); }).map(function (m) {
       return '<li><a href="#mensen?id=' + esc(m.id) + '">' + esc(m.naam) + "</a> (" + esc(m.partij) + ", " + esc(m.fractie) + "): <b>" + POS[m.positie][1] + "</b>"
         + (m.anders_dan_partij ? ' <span class="label">anders dan partij</span>' : "") + (m.anders_dan_fractie ? ' <span class="label">anders dan fractie</span>' : "") + "</li>";
     }).join("") + "</ul>";
-  if ((s.verwant || []).length) h += "<h4>Deelstemmingen en amendementen</h4><ul class='punten'>" + s.verwant.map(function (v) {
+  if ((s.verwant || []).length) h += "<h3 class='sectiekop'>Deelstemmingen en amendementen</h3><ul class='punten'>" + s.verwant.map(function (v) {
     return "<li>" + esc(v.nummer && v.nummer !== "§" ? "Amendement " + v.nummer + " (" + v.onderwerp + ")" : (v.wat || v.onderwerp)) + ": " + (v.uitslag === "ADOPTED" ? "aangenomen" : "verworpen") + " · " + a("https://howtheyvote.eu/votes/" + v.id, "details") + "</li>";
   }).join("") + "</ul>";
-  return h + notitie("s:" + s.id);
+  return h;
 }
 function openStem(id, dieper) { var s = STEM_INDEX[id]; if (s) openPaneel("Stemming", stemDetail(s), { dieper: dieper }); }
 function stemmenLaden() { return laden("stemmen").then(function (d) { if (!STEMMEN) STEMMEN = d; stemIndex(); return STEMMEN; }); }
 
-var sZoek = "", SOPT = {};
-var SF = maakFilter("s", [
-  { id: "sort", naam: "Sorteren", meer: false, standaard: "datum", opties: [["datum", "Nieuwste eerst"], ["oud", "Oudste eerst"], ["verschil", "Kleinste verschil voor/tegen"], ["onthouden", "Meeste onthoudingen"]] },
-  { id: "terrein", naam: "Onderwerp", meer: true, standaard: [], opties: function () { return SOPT.terrein || []; } },
-  { id: "zitting", naam: "Zitting", meer: true, standaard: [], opties: function () { return SOPT.zitting || []; } },
-  { id: "uitslag", naam: "Uitslag", meer: true, standaard: [], opties: [["ADOPTED", "Aangenomen"], ["REJECTED", "Verworpen"]] },
-  { id: "nl", naam: "Nederlandse partijen", meer: true, standaard: [], opties: [["verdeeld", "Stemden verschillend"], ["afwijk", "Een partij stemde anders dan haar fractie"]] }
-], function () { if (STEMMEN && stemmenOpgezet) stemmenTonen(); });
+var SOPT = {};
+var SZ = maakZoekbalk({
+  naam: "s", balk: "s-balk",
+  soorten: {
+    onderwerp: { naam: "Onderwerp", opties: function () { return SOPT.terrein || []; } },
+    uitslag: { naam: "Uitslag", opties: function () { return [["ADOPTED", "Aangenomen"], ["REJECTED", "Verworpen"]]; } },
+    zitting: { naam: "Zitting", opties: function () { return SOPT.zitting || []; } },
+    nl: { naam: "Nederland", opties: function () { return [["verdeeld", "NL-partijen stemden verschillend", "nederland verdeeld"], ["afwijk", "NL-partij anders dan haar fractie", "nederland fractie afwijkend"]]; } }
+  },
+  voorbeelden: { onderwerp: 3, uitslag: 2, zitting: 2, nl: 2 },
+  telling: function (tokens, tekst) { return STEMMEN ? STEMMEN.stemmen.filter(function (x) { return stemPast(x, tokens, tekst); }).length : null; },
+  opnieuw: function () { if (STEMMEN && stemmenOpgezet) stemmenTonen(); }
+});
+var SS = maakSorteer("s", [["datum", "Nieuwste eerst", "Nieuwste"], ["oud", "Oudste eerst", "Oudste"], ["verschil", "Kleinste verschil voor/tegen", "Spannendste"], ["onthouden", "Meeste onthoudingen", "Onthoudingen"]], "datum", function () { if (STEMMEN && stemmenOpgezet) stemmenTonen(); });
+function stemPast(s, tokens, tekst) {
+  if (!SZ.past("onderwerp", s.terreinen || [], tokens) || !SZ.past("uitslag", s.uitslag, tokens)) return false;
+  var d = s.moment.slice(0, 10);
+  if (!SZ.past("zitting", (STEMMEN.zittingen || []).filter(function (z) { return d >= z.begin && d <= z.eind; }).map(function (z) { return z.begin; }), tokens)) return false;
+  var nl = (tokens || []).filter(function (t) { return t.soort === "nl" && !t.uit; }).map(function (t) { return t.waarde; });
+  if (nl.indexOf("verdeeld") >= 0 && !s.nl_verdeeld) return false;
+  if (nl.indexOf("afwijk") >= 0 && !(s.afwijkers || []).length) return false;
+  return !tekst || zoeker(tekst).past(s.titel + " " + (s.procedure || "") + " " + (s.procedure_titel || ""));
+}
 function stemmenTonen() {
-  var zk = zoeker(sZoek);
-  var uit = STEMMEN.stemmen.filter(function (s) {
-    if (!SF.past("terrein", s.terreinen || []) || !SF.past("uitslag", s.uitslag)) return false;
-    var d = s.moment.slice(0, 10);
-    if (!SF.past("zitting", (STEMMEN.zittingen || []).filter(function (z) { return d >= z.begin && d <= z.eind; }).map(function (z) { return z.begin; }))) return false;
-    if (SF.aan("nl", "verdeeld") && !s.nl_verdeeld) return false;
-    if (SF.aan("nl", "afwijk") && !(s.afwijkers || []).length) return false;
-    return zk.past(s.titel + " " + (s.procedure || "") + " " + (s.procedure_titel || ""), s);
-  });
-  var srt = SF.w("sort");
+  var zk = zoeker(SZ.tekst);
+  var uit = STEMMEN.stemmen.filter(function (s) { return stemPast(s, SZ.tokens, "") && zk.past(s.titel + " " + (s.procedure || "") + " " + (s.procedure_titel || ""), s); });
+  var srt = SS.waarde;
   uit.sort(function (x, y) {
     function verschil(s) { return Math.abs((s.totaal.FOR || 0) - (s.totaal.AGAINST || 0)); }
     if (srt === "verschil") return verschil(x) - verschil(y);
@@ -107,10 +115,9 @@ function stemmenTonen() {
     return y.moment.localeCompare(x.moment);
   });
   uit = zk.ordenen(uit);
-  bedoelJe("s-zoek", zk);
   document.getElementById("s-aantal").textContent = uit.length + " hoofdstemmingen";
   var doel = document.getElementById("s-lijst");
-  doel.innerHTML = uit.map(stemKaart).join("") || '<p class="leeg">Geen stemmingen met deze filters.</p>';
+  doel.innerHTML = uit.map(stemKaart).join("") || '<p class="leeg">Niets gevonden. Haal een filter weg of tik op × om alles te wissen.</p>';
   window.euMarkeer(doel);
 }
 function stemIndex() { STEMMEN.stemmen.forEach(function (s) { STEM_INDEX[s.id] = s; }); }
@@ -120,8 +127,6 @@ function stemmenOpzetten() {
   STEMMEN.stemmen.forEach(function (s) { (s.terreinen || []).forEach(function (t) { ter[t] = 1; }); });
   SOPT.terrein = Object.keys(ter).sort().map(function (t) { return [t, t]; });
   SOPT.zitting = (STEMMEN.zittingen || []).map(function (z) { return [z.begin, "Zitting " + kort(z.begin) + " – " + kort(z.eind)]; });
-  var wacht = null;
-  document.getElementById("s-zoek").addEventListener("input", function (ev) { clearTimeout(wacht); wacht = setTimeout(function () { sZoek = ev.target.value.trim(); stemmenTonen(); }, 200); });
   bijKaartTik(document.getElementById("s-lijst"), ".skaart", function (k) { openStem(k.dataset.id); });
 }
 function stemmenTab(q) {

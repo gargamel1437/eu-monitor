@@ -37,50 +37,43 @@ Online: https://gargamel1437.github.io/eu-monitor/
 | `onderdelen/js/*.js` | de scripts per onderdeel; worden samengevoegd tot één script |
 | `onderdelen/begrippen.json` | uitleg bij begrippen (lang drukken of muis even stil houden) |
 | `onderdelen/bronnen.html` | de pagina "Bronnen en beperkingen" |
-| `web/` | icoon, manifest, robots.txt en `sw.js` (werkt ook zonder internet) |
+| `web/` | iconen (licht en donker), manifest, robots.txt en `sw.js` (werkt ook zonder internet) |
 
 ## Indeling
 
-Vijf tabbladen onderin: **Agenda** · **Nieuws** · **Overzicht** (in het midden, met zoeken) ·
-**Dossiers** · **Stemmen** (stemmingen en europarlementariërs). De bronnen staan onder de
-tandwiel rechtsboven (Instellingen > Over). Licht of donker volgt de instelling van je iPhone of computer.
+Vijf tabbladen onderin: **Agenda** · **Pers** · **Zoek** (in het midden) · **Dossiers** (met
+Stemmingen als tweede deel) · **Personen**. Het tandwiel rechtsboven opent Instellingen, met
+daarin ook Bronnen en beperkingen. Licht of donker volgt de instelling van je iPhone of computer.
 
-- **Filters**: overal hetzelfde. Naast elk zoekveld een knop Filters met een teller. Per filter
-  een rij; tik erop en vink één of meer dingen aan. Boven de lijst staat een regel met wat er aan
-  staat (met Wis). Keuzes worden bewaard. De code staat in `onderdelen/js/filters.js`.
-- **Agenda**: Week · Maand · Jaar (of knijpen met twee vingers). Week is een lijst met Deze week,
-  Volgende week en Later; Maand is een kalender met puntjes per instelling; Jaar toont twaalf
-  maanden. Filters: Wat (stemmingen en besluiten, debatten, ministersoverleg, toppen,
-  persmomenten, wetgevingsstappen), Wie (Parlement, Raad, Europese Raad, Commissie,
-  internationaal), Periode (komend of afgelopen debatten) en Ook tonen. De categorieën zet
-  `europa.py` op elk item (`categorieen()`). Tik op een item voor het programma met tijden, de
-  locatie, de livestream en **＋ Agenda** (zitting, dag of dagdeel). De planning van de Commissie
-  per kwartaal staat in een inklapbaar blok onderaan.
-- **Nieuws**: hetzelfde nieuws van meerdere media wordt één bericht met "Ook bij: …" (alleen als
-  de koppen in dezelfde taal duidelijk overeenkomen, binnen 24 uur; zie `samenvoegen()` in
-  `eu_nieuws.py`).
-- **Overzicht**: "Wijzig" linksboven. Rood min = weghalen, groen plus = toevoegen, ≡ = slepen.
-  Tik op een blok voor het aantal regels en een filter. Recente zoekopdrachten verschijnen in het
-  zoekveld (veeg naar links of Wis, met bevestiging).
-- **Instellingen** (tandwiel): eerst de categorieën (Algemeen, Nieuws, Agenda, Overzicht, Mijn
-  notities, Over), dan een niveau dieper. Terug of terugvegen gaat één niveau terug.
-- **Mensen**: in de filters kies je Wie (europarlementariërs, Commissie, Raad en ministers,
-  persdiensten). Bij een europarlementariër staan contact en activiteit (totaal en nu actief,
-  met een groen lampje voor wat nog loopt). Een link in een detail (bijvoorbeeld naar een
-  stemming) opent een scherm dieper; Terug brengt je terug.
-- **Vegen**: in Nieuws (Media | Persberichten) en Stemmen (Stemmingen | Mensen) veeg je naar
-  links of rechts. De schakelaar blijft op zijn plek; het andere deel begint bovenaan.
-- **Meldingen** (zoals "bron niet bereikbaar") klik je weg met het kruisje.
-- **Als web-app** (op het beginscherm) maakt de site geen eigen stappen in de geschiedenis.
-  Zo kan alleen het eigen terugvegen van een paneel bewegen, en schuift de pagina erachter niet mee.
-- **Zoeken** vergeeft tikfouten, accenten en hoofdletters, en kent afkortingen en
-  Nederlands/Engels (AI = KI, EC = Commissie, Oekraïne = Ukraine). Treffers zonder tikfout
-  staan eerst; bij bijna-treffers staat er "Bedoel je …?" (in de taal van wat je typte). De lijst
-  met synoniemen staat in `onderdelen/js/basis.js` (`SYNONIEMEN`).
-- **Stemmingen** tonen in welke vergadering ze waren, met links naar agenda, notulen en de
-  hoofdelijke stemmingen.
-- **App-icoon**: de bron is `onderdelen/icoon-donker.html`. Na een nieuw icoon moet je de
-  web-app op je beginscherm verwijderen en opnieuw toevoegen; iOS bewaart het oude.
+- **Kleuren per instelling** zijn overal hetzelfde: Parlement blauw, Raad paars, Europese Raad
+  marineblauw, Commissie goud, internationaal grijs (CSS-klassen `k-ep`, `k-raad`, `k-top`,
+  `k-com`, `k-int`). Ook persberichten van Commissie en Raad hebben die kleur.
+- **Details openen als wolkje** (`panelen.js`): het groeit open vanuit het item. Lang indrukken
+  geeft eerst een voorvertoning. Terug of naar rechts vegen gaat één stap terug (persoon >
+  stemming > dossier); naar beneden vegen, het kruisje of ernaast tikken sluit het.
+- **Zoeken en filteren in één veld** (`filters.js`): typ en kies een filter, dan wordt het een
+  token. Typ "wie", "wat", "waar" (of een andere soort) voor alle keuzes. Houd een label in de
+  lijst vast voor "Alleen dit tonen" of "Verbergen". Na elke wijziging kun je het ongedaan
+  maken. Sorteren (alleen bij Dossiers, Stemmingen en Debatten) met de glazen knop.
+- **Agenda**: één tijdlijn. Knijp met twee vingers (of − + op de computer) voor Ruim, Compact of
+  Overzicht (per week één kaart). De datumstrook loopt mee. Meerdaagse items staan elke dag als
+  gewone kaart, met "2/4". Tik op een item: een wolkje met Zet in agenda en Meer info
+  (programma met tijden, livestream, locatie, dossiers). Filter "Raad" kiest een specifieke
+  raad (bijvoorbeeld Ecofin-Raad). Bovenaan zacht: de planning van de Commissie en de eerdere
+  debatten.
+- **Pers**: hetzelfde nieuwsfeit van meerdere media is één verhaal (`samenvoegen()` in
+  `eu_nieuws.py`); tik erop en kies welke bron je opent.
+- **Zoek**: zoeken in alles, met recente zoekopdrachten in het veld (wissen vraagt eerst om
+  bevestiging), en widgets zoals op de iPhone: Agenda (met vandaag), Pers, Dossiers, Stemmen,
+  en naar keuze Persberichten en Personen. Houd een widget vast (of tik op Wijzig) om te slepen,
+  weg te halen (−), de maat te kiezen (klein, middel, groot) of er een toe te voegen (+).
+- **Personen**: europarlementariërs met contact en activiteit; typ "wie" voor de Commissie
+  (met woordvoerders), ministers (met persvoorlichting) of persdiensten.
+- **App-icoon**: "eu" in wit, op marineblauw (`onderdelen/icoon-licht.html`) of op het grijs van
+  de donkere modus van iOS (`onderdelen/icoon-donker.html`). iOS kiest bij "Zet op beginscherm"
+  het icoon dat past bij de modus van dat moment, en wisselt daarna niet meer mee.
+- **Meldingen** klik je weg met het kruisje. **Als web-app** maakt de site geen eigen stappen
+  in de geschiedenis.
 
 ## Iets aanpassen
 

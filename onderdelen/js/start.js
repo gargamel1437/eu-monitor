@@ -14,11 +14,11 @@ function bijTab(naam) {
   var q = hashVraag(), adres = hashNaam();
   try {
     if (naam === "overzicht") overzichtTab();
-    else if (naam === "dossiers") dossiersTab(q);
-    else if (naam === "stemmingen") {
-      if (adres === "mensen") { toonSegment("deel-mensen"); mensenTab(q); }
-      else { if (q.id) toonSegment("deel-stemmingen"); stemmenTab(q); }
+    else if (naam === "dossiers") {
+      if (adres === "stemmingen" || adres === "stemmen") { toonSegment("deel-stemmingen"); stemmenTab(q); }
+      else { if (q.open || q.q != null) toonSegment("deel-dossiers"); dossiersTab(q); }
     }
+    else if (naam === "mensen") mensenTab(q);
     else if (naam === "agenda") agendaTab(q);
   } catch (e) { if (window.console) console.error(e); }
 }
@@ -30,7 +30,7 @@ function adresOpschonen() {
   var basis = h.slice(0, i);
   if (/[?&](item|id|open)=/.test(h)) history.replaceState(history.state, "", basis + (/[?&]q=/.test(h) ? "?" + h.slice(i + 1).split("&").filter(function (x) { return /^q=/.test(x); }).join("&") : ""));
 }
-document.addEventListener("eu-tab", function (ev) { sluitSheet(); bijTab(ev.detail); setTimeout(adresOpschonen, 1500); });
+document.addEventListener("eu-tab", function (ev) { sluitSheet(); verbergSug(); bijTab(ev.detail); setTimeout(adresOpschonen, 1500); });
 
 // Een detail openen als een scherm dieper in het paneel (vanuit een ander detail).
 function openDiep(hash) {
@@ -43,6 +43,7 @@ function openDiep(hash) {
   else if (naam === "agenda" && q.item) agendaLaden().then(function () { AGENDA_INDEX[q.item] ? openAgenda(q.item, true) : mis(); }).catch(mis);
   else mis();
 }
-// het deel Mensen laadt zijn gegevens pas als je het opent
-document.addEventListener("eu-segment", function (ev) { if (ev.detail === "deel-mensen") mensenTab({}); });
+// het deel Stemmingen laadt zijn gegevens pas als je het opent
+document.addEventListener("eu-segment", function (ev) { if (ev.detail === "deel-stemmingen") stemmenTab({}); });
 bijTab(huidigeTab());
+setTimeout(adresOpschonen, 1500);

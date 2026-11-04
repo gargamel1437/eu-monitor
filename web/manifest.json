@@ -3,17 +3,17 @@
   "short_name": "EU-monitor",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#060914",
-  "theme_color": "#060914",
+  "background_color": "#141f3d",
+  "theme_color": "#141f3d",
   "icons": [
     {
-      "src": "icoon-donker.png",
+      "src": "icoon-licht.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icoon-donker.png",
+      "src": "icoon-licht.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
