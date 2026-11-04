@@ -104,7 +104,7 @@ function itemHtml(i, d) {
 function eersteDag() { var m = vandaag(); LIJST.forEach(function (i) { if (i.datum < m) m = i.datum; }); return m; }
 // Vanaf welke dag de lijst en de strook lopen: deze week, of verder terug als je eerdere weken
 // bijlaadt. Bij zoeken of filteren alles, ook het verleden.
-var A_VANAF = null, A_EERDER = null, A_STROOKMEER = null, A_STAP_WEKEN = 4;
+var A_VANAF = null, A_EERDER = null, A_STAP_WEKEN = 4;
 function agendaFilterAan() { return !!(AZ.tokens.length || AZ.tekst); }
 function beginDag() { return agendaFilterAan() ? eersteDag() : (A_VANAF || maandagVan(vandaag())); }
 function meerEerder() { return !agendaFilterAan() && eersteDag() < beginDag(); }
@@ -190,11 +190,7 @@ function agendaTonen(strookPlek) {
     + opgehaald("parlement", "Parlement") + opgehaald("raad", "Raad en toppen");
   var strook = document.getElementById("a-strook");
   strook.innerHTML = strookHtml();
-  if (A_STROOKMEER) {
-    var meer = meerEerder();
-    A_EERDER.classList.toggle("verborgen", !meer);
-    A_STROOKMEER.classList.toggle("verborgen", !meer);
-  }
+  if (A_EERDER) A_EERDER.classList.toggle("verborgen", !meerEerder());
   if (!strookHerstel(sa) && sa) strookNaarDezeWeek();
   window.euMarkeer(doel);
   volgStrook();
@@ -444,15 +440,10 @@ function agendaOpzetten() {
   agendaOpgezet = true;
   document.getElementById("a-vandaag").onclick = function () { naarVandaag(true); };
   A_EERDER = document.getElementById("a-eerder");
-  A_STROOKMEER = document.createElement("button");
-  A_STROOKMEER.type = "button"; A_STROOKMEER.className = "meerknop strookmeer verborgen"; A_STROOKMEER.setAttribute("aria-label", "Eerdere weken laden");
-  A_STROOKMEER.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
-  // beide plusjes liggen als laag over de inhoud (nemen geen ruimte in); de plek houdt meerVerleden zelf vast
-  document.querySelector("#agenda .strookrij").appendChild(A_STROOKMEER);
-  trekKnop(A_EERDER, "boven", { ouder: true, eigenPlek: true });
-  trekKnop(A_STROOKMEER, "links", { scroller: document.getElementById("a-strook"), eigenPlek: true, ouder: true });
+  // trek je bovenaan omlaag, dan schuift de lijst mee en verschijnt de ring in de vrijgekomen ruimte;
+  // de plek na het laden houdt meerVerleden zelf vast. In de datumstrook wordt niet getrokken.
+  trekKnop(A_EERDER, "boven", { drager: document.getElementById("agenda"), eigenPlek: true });
   A_EERDER.addEventListener("click", meerVerleden);
-  A_STROOKMEER.addEventListener("click", meerVerleden);
   var tl = document.getElementById("a-tijdlijn");
   tl.addEventListener("click", function (e) {
     if (e.target.closest("[data-tok-zoeker], [data-kwartaal], a")) return;
@@ -487,7 +478,7 @@ function agendaTab(q) {
     agendaOpzetten();
     // elke keer dat je de Agenda opent: bovenaan, bij deze week
     A_VANAF = null;
-    trekReset(A_EERDER, true); trekReset(A_STROOKMEER, true);
+    trekReset(A_EERDER, true);
     agendaTonen(null);
     AZ.teken();
     strookNaarDezeWeek();
