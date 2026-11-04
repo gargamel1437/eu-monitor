@@ -1120,3 +1120,16 @@ li.bericht[data-agenda] .labels, li.bericht.verhaal:has(.agenda-mini) .labels { 
 .topbalk { transform: translateY(-4px); transition: opacity .55s cubic-bezier(.33,0,.2,1), transform .55s cubic-bezier(.33,0,.2,1); }
 .topbalk.zichtbaar { transform: none; }
 html[data-beweging="minder"] .topbalk { transform: none; transition: opacity .3s ease; }
+/* titelbalk: helemaal ondoorzichtig bij de klok en de notch (de safe area), daaronder één
+   gelijkmatige fade over de titel naar helemaal doorzichtig onderaan de balk */
+.topbalk::before {
+  --v: env(safe-area-inset-top);
+  background: linear-gradient(to bottom,
+    rgba(var(--balk-rgb), 1) 0, rgba(var(--balk-rgb), 1) var(--v),
+    rgba(var(--balk-rgb), .92) calc(var(--v) + 7px), rgba(var(--balk-rgb), .81) calc(var(--v) + 14px),
+    rgba(var(--balk-rgb), .69) calc(var(--v) + 21px), rgba(var(--balk-rgb), .56) calc(var(--v) + 28px),
+    rgba(var(--balk-rgb), .43) calc(var(--v) + 35px), rgba(var(--balk-rgb), .31) calc(var(--v) + 42px),
+    rgba(var(--balk-rgb), .2) calc(var(--v) + 49px), rgba(var(--balk-rgb), .11) calc(var(--v) + 56px),
+    rgba(var(--balk-rgb), .04) calc(var(--v) + 63px), rgba(var(--balk-rgb), 0) 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 var(--v), rgba(0,0,0,.85) calc(var(--v) + 25px), rgba(0,0,0,.5) calc(var(--v) + 45px), transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0, #000 var(--v), rgba(0,0,0,.85) calc(var(--v) + 25px), rgba(0,0,0,.5) calc(var(--v) + 45px), transparent 100%); }
