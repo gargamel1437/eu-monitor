@@ -6,7 +6,10 @@
 //  - Meerdaagse items staan op elke dag als gewone kaart: instelling · plaats · 2/4.
 //  - Tik op een item: een wolkje met Zet in agenda en Meer info (programma, livestream…).
 //  - Zoeken en filteren met tokens: Wie, Wat, Waar, Raad (welke raad).
-//  - Zacht bovenaan: de planning van de Commissie en de eerdere debatten.
+//  - Terugscrollen = het verleden: de debatten van de laatste plenaire zittingen staan als gewone
+//    items op hun dag. Bij het openen sta je op vandaag.
+//  - De planning van de Commissie (alleen per kwartaal bekend) staat als één dunne regel bij
+//    het begin van elk kwartaal; het huidige kwartaal bij vandaag. Tik = de lijst.
 //  Kleuren per instelling zijn overal hetzelfde: ep, raad, top (Europese Raad), com, int.
 // =====================================================================
 
@@ -42,6 +45,14 @@ function agendaKnop(bestand, label) { return bestand ? '<a class="mini" href="' 
 
 // ---------- zoeken en filteren ----------
 function alleAgenda() { return AGENDA ? AGENDA.items.concat(AGENDA.verder || []) : []; }
+// de agenda zelf: ook de debatten die al geweest zijn
+var DEBAT_ITEMS = [];
+function agendaItems() { return DEBAT_ITEMS.concat(alleAgenda()); }
+function debatItems() {
+  return (DEBATTEN ? DEBATTEN.debatten : []).filter(function (x) { return x.datum < vandaag(); }).map(function (x) {
+    return { id: "debat-" + DEBATTEN.debatten.indexOf(x), datum: x.datum, titel: x.titel, soort: "Debat", plaats: x.plaats, wat: ["Debatten"], wie: ["Europees Parlement"], debat: x, voorbij: true };
+  });
+}
 function uniekeWaarden(f) { var m = {}; alleAgenda().forEach(function (i) { var w = f(i); (Array.isArray(w) ? w : [w]).forEach(function (x) { if (x) m[x] = 1; }); }); return Object.keys(m).sort(); }
 var AZ = maakZoekbalk({
   naam: "a", balk: "a-balk",
@@ -52,7 +63,7 @@ var AZ = maakZoekbalk({
     raad: { naam: "Raad", opties: function () { return uniekeWaarden(function (i) { return i.raad; }).map(function (r) { return [r, r, "raad ministers"]; }); }, kleur: function () { return "raad"; } }
   },
   voorbeelden: { wie: 4, wat: 3, waar: 3, raad: 0 },
-  telling: function (tokens, tekst) { return alleAgenda().filter(function (i) { return agendaPast(i, tokens, tekst); }).length; },
+  telling: function (tokens, tekst) { return agendaItems().filter(function (i) { return agendaPast(i, tokens, tekst); }).length; },
   opnieuw: function () { if (AGENDA) agendaTonen(); }
 });
 function agendaPast(i, tokens, tekst) {
@@ -74,9 +85,36 @@ function itemHtml(i, d) {
     + (aantalDagen(i) > 1 ? '<span class="duur">' + dagVan(i, d) + "</span>" : "")
     + (/^Informele/.test(i.titel) ? '<span class="plaats">informeel</span>' : "") + "</div></div>";
 }
+function eersteDag() { var m = vandaag(); LIJST.forEach(function (i) { if (i.datum < m) m = i.datum; }); return m; }
+// ---------- de planning van de Commissie als regel per kwartaal ----------
+function kwBegin(code) { var d = code.split("-"); return d[1] + "-" + ("0" + (3 * (+d[2] - 1) + 1)).slice(-2) + "-01"; }
+function planningVoor(code) {
+  if (!PLANNING) return [];
+  var z = AZ.tekst ? zoeker(AZ.tekst) : null;
+  return PLANNING.items.filter(function (x) { return (x.gepland === code || (code === PLANNING.huidig && x.achter)) && (!z || z.past(x.titel + " " + (x.titel_en || "") + " " + (x.dg || ""))); });
+}
+function kwartaalRegels() {
+  var uit = {};
+  // verbergen als je filtert op een andere instelling of op een soort item
+  if (!PLANNING || !AZ.past("wie", ["Europese Commissie"]) || AZ.tokens.some(function (t) { return (t.soort === "wat" || t.soort === "waar" || t.soort === "raad") && !t.uit; })) return uit;
+  var codes = {};
+  PLANNING.items.forEach(function (x) { if (!x.achter) codes[x.gepland] = 1; });
+  if (PLANNING.huidig) codes[PLANNING.huidig] = 1;
+  Object.keys(codes).sort().forEach(function (c) {
+    var l = planningVoor(c);
+    if (!l.length) return;
+    var d = c === PLANNING.huidig ? vandaag() : kwBegin(c);
+    if (d < vandaag()) return;
+    var p = c.split("-"), achter = l.filter(function (x) { return x.achter; }).length;
+    uit[d] = (uit[d] || "") + '<button type="button" class="kwregel k-com" data-kwartaal="' + c + '"><i class="stip"></i><span class="kw-wat">'
+      + (c === PLANNING.huidig ? "Dit kwartaal" : KW[+p[2]] + " kwartaal " + p[1]) + '</span><span class="kw-n">' + (l.length - achter) + " gepland door de Commissie"
+      + (achter ? ", " + achter + " nog uit vorig kwartaal" : "") + '</span><span class="pijl" aria-hidden="true">›</span></button>';
+  });
+  return uit;
+}
 function laatsteDag() { var m = vandaag(); LIJST.forEach(function (i) { var e = i.eind_datum || i.datum; if (e > m) m = e; }); return m; }
 function tijdlijnHtml() {
-  var h = "", d = vandaag(), eind = laatsteDag(), vorigeWeek = null, leeg = [];
+  var h = "", begin = eersteDag(), d = begin, eind = laatsteDag(), vorigeWeek = null, leeg = [], kw = kwartaalRegels();
   function leegAf() {
     if (!leeg.length) return;
     var a = dt(leeg[0]), b = dt(leeg[leeg.length - 1]);
@@ -89,30 +127,36 @@ function tijdlijnHtml() {
     if (w !== vorigeWeek) {
       leegAf();
       var ma = maandagVan(d);
-      h += '<div class="weekregel">Week ' + w + " · " + korteDatum(ma < vandaag() ? vandaag() : ma) + "–" + korteDatum(plusDagenVan(ma, 6)) + "</div>";
+      h += '<div class="weekregel" data-week="' + ma + '">Week ' + w + " · " + korteDatum(ma < begin ? begin : ma) + "–" + korteDatum(plusDagenVan(ma, 6)) + "</div>";
       vorigeWeek = w;
     }
+    if (kw[d]) { leegAf(); h += kw[d]; delete kw[d]; }
     var deze = opDag(d);
     if (!deze.length) leeg.push(d);
     else {
       leegAf();
       var x = dt(d);
-      h += '<div class="dag' + (d === vandaag() ? " vandaag" : "") + '" data-dag="' + d + '"><div class="datum"><span class="l">' + DL[x.getDay()] + '</span><span class="n">' + x.getDate() + '</span></div><div class="items">'
+      h += '<div class="dag' + (d === vandaag() ? " vandaag" : (d < vandaag() ? " voorbij" : "")) + '" data-dag="' + d + '"><div class="datum"><span class="l">' + DL[x.getDay()] + '</span><span class="n">' + x.getDate() + '</span></div><div class="items">'
         + deze.map(function (i) { return itemHtml(i, d); }).join("") + "</div></div>";
     }
     d = plusDagenVan(d, 1);
   }
   leegAf();
+  // kwartalen die na het einde van de agenda beginnen
+  var later = Object.keys(kw).sort();
+  if (later.length) h += '<div class="weekregel">Later</div>' + later.map(function (k) { return kw[k]; }).join("");
   return h;
 }
 // overzicht: per week één kaart, één regel per item; de dagelijkse briefing samengevat
 function overzichtHtml() {
-  var h = "", ma = maandagVan(vandaag()), eind = laatsteDag();
+  var begin = eersteDag(), h = "", ma = maandagVan(begin), eind = laatsteDag(), kw = kwartaalRegels();
   while (ma <= eind) {
-    var zo = plusDagenVan(ma, 6), van = ma < vandaag() ? vandaag() : ma, l = [];
+    var zo = plusDagenVan(ma, 6), van = ma < begin ? begin : ma, l = [];
+    Object.keys(kw).sort().forEach(function (k) { if (k <= zo) { h += kw[k]; delete kw[k]; } });
     for (var d = van; d <= zo; d = plusDagenVan(d, 1)) opDag(d).filter(function (i) { return i.vast !== "briefing"; }).forEach(function (i) { l.push({ i: i, d: d }); });
     var briefings = LIJST.filter(function (i) { return i.vast === "briefing" && i.datum >= van && i.datum <= zo; }).length;
-    h += '<div class="owek' + (van === vandaag() ? " deze" : "") + '" data-dag="' + van + '"><div class="owek-kop"><b>' + (van === vandaag() ? "Deze week" : "Week " + weekNr(ma)) + "</b><span>" + korteDatum(ma) + "–" + korteDatum(zo) + "</span><em>" + l.length + (l.length === 1 ? " item" : " items") + "</em></div>";
+    var deze = vandaag() >= ma && vandaag() <= zo;
+    h += '<div class="owek' + (deze ? " deze" : (zo < vandaag() ? " voorbij" : "")) + '" data-dag="' + van + '" data-week="' + ma + '"><div class="owek-kop"><b>' + (deze ? "Deze week" : "Week " + weekNr(ma)) + "</b><span>" + korteDatum(ma) + "–" + korteDatum(zo) + "</span><em>" + l.length + (l.length === 1 ? " item" : " items") + "</em></div>";
     l.forEach(function (r) {
       var i = r.i, a = dt(r.d);
       h += '<div class="orij k-' + kleurVan(i) + '" role="button" tabindex="0" data-id="' + esc(i.id) + '" data-dag="' + r.d + '"><span class="odag">' + DL[a.getDay()] + " " + a.getDate() + "</span><i></i>"
@@ -123,39 +167,44 @@ function overzichtHtml() {
     h += "</div>";
     ma = plusDagenVan(ma, 7);
   }
+  var later = Object.keys(kw).sort();
+  if (later.length) h += later.map(function (k) { return kw[k]; }).join("");
   return h;
 }
 function strookHtml() {
-  var d = maandagVan(vandaag()), eind = laatsteDag(), h = "";
+  var begin = eersteDag(), d = maandagVan(begin), eind = laatsteDag(), h = "";
   while (d <= eind) {
     var l = opDag(d), x = dt(d);
-    h += '<button type="button" class="sdag' + (d === vandaag() ? " vandaag" : "") + (x.getDay() % 6 === 0 ? " weekend" : "") + '" data-dag="' + d + '"' + (d < vandaag() ? " disabled" : "") + ">"
+    h += '<button type="button" class="sdag' + (d === vandaag() ? " vandaag" : "") + (x.getDay() % 6 === 0 ? " weekend" : "") + '" data-dag="' + d + '"' + (d < begin ? " disabled" : "") + ">"
       + '<span class="l">' + DL[x.getDay()].charAt(0) + '</span><span class="n">' + x.getDate() + '</span><span class="vol">'
       + l.slice(0, 4).map(function (i) { return '<b class="k-' + kleurVan(i) + '"></b>'; }).join("") + "</span></button>";
     d = plusDagenVan(d, 1);
   }
   return h;
 }
-function zachteRij() {
-  var h = '<div class="zachtrij">';
-  if (PLANNING) {
-    var nu = PLANNING.items.filter(function (x) { return x.gepland === PLANNING.huidig; }).length;
-    h += '<button type="button" data-zacht="planning"><span>Gepland door de Commissie</span><b>' + (nu ? nu + " dit kwartaal" : PLANNING.items.length) + "</b><i>›</i></button>";
-  } else h += '<button type="button" data-zacht="planning"><span>Gepland door de Commissie</span><b>per kwartaal</b><i>›</i></button>';
-  h += '<button type="button" data-zacht="debatten"><span>Eerdere debatten</span><b>' + (DEBATTEN ? DEBATTEN.debatten.length : "") + "</b><i>›</i></button></div>";
-  return h;
-}
 function agendaTonen() {
-  LIJST = alleAgenda().filter(function (i) { return agendaPast(i, AZ.tokens, AZ.tekst); });
+  LIJST = agendaItems().filter(function (i) { return agendaPast(i, AZ.tokens, AZ.tekst); });
   var doel = document.getElementById("a-tijdlijn");
   doel.className = "tijdlijn d" + aDicht;
   var lijst = aDicht === 2 ? overzichtHtml() : tijdlijnHtml();
-  doel.innerHTML = zachteRij() + (LIJST.length ? lijst : '<p class="leeg-filter">Niets gevonden. Haal een filter weg of tik op × om alles te wissen.</p>')
+  doel.innerHTML = (LIJST.length || aDicht < 2 ? lijst : '<p class="leeg-filter">Niets gevonden. Haal een filter weg of tik op × om alles te wissen.</p>')
     + opgehaald("parlement", "Parlement") + opgehaald("raad", "Raad en toppen");
   document.getElementById("a-strook").innerHTML = strookHtml();
   document.getElementById("a-uit").disabled = aDicht === 2;
   document.getElementById("a-in").disabled = aDicht === 0;
   window.euMarkeer(doel);
+  volgStrook();
+}
+// naar de week van vandaag, net onder de vaste zoekbalk en datumstrook
+function naarVandaag() {
+  if (huidigeTab() !== "agenda") return;
+  var el = document.querySelector('#a-tijdlijn [data-week="' + maandagVan(vandaag()) + '"]') || vindDag(vandaag());
+  if (!el) return;
+  var plak = document.querySelector("#agenda .agenda-plak");
+  window.scrollTo(0, Math.max(0, window.scrollY + el.getBoundingClientRect().top - (parseFloat(getComputedStyle(plak).top) || 0) - plak.offsetHeight - 8));
+  // de datumstrook meteen op deze week
+  var strook = document.getElementById("a-strook"), knop = strook.querySelector('.sdag[data-dag="' + maandagVan(vandaag()) + '"]');
+  if (knop) strook.scrollLeft = knop.offsetLeft - 6;
   volgStrook();
 }
 
@@ -241,7 +290,7 @@ function agendaPop(i, el) {
     + (basisInfo(i) ? '<p class="apop-wat">' + basisInfo(i) + "</p>" : "")
     + '<div class="feit"><span>Wanneer</span><b>' + wanneer + "</b></div>"
     + (i.plaats ? '<div class="feit"><span>Waar</span><b>' + esc([i.gebouw, i.plaats].filter(Boolean).join(", ")) + "</b></div>" : "")
-    + '<div class="apop-knoppen">' + (i.ics ? '<a class="hoofd" href="' + esc(i.ics) + '"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M12 13v5M9.5 15.5h5"/></svg>Zet in agenda</a>' : "")
+    + '<div class="apop-knoppen">' + (i.debat && i.debat.verslag ? '<a class="hoofd" href="' + esc(i.debat.verslag) + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h7"/></svg>Verslag</a>' : "") + (i.ics ? '<a class="hoofd" href="' + esc(i.ics) + '"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M12 13v5M9.5 15.5h5"/></svg>Zet in agenda</a>' : "")
     + '<button type="button" data-meer><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8v.01"/></svg>Meer info</button></div>';
   document.body.appendChild(achter); document.body.appendChild(pop);
   var r = el.getBoundingClientRect(), h = pop.offsetHeight, H = window.innerHeight;
@@ -275,6 +324,10 @@ var RAAD_WAT = [
 ];
 function lijstje(l, n) { return l.slice(0, n).map(esc).join("; ") + (l.length > n ? " en nog " + (l.length - n) : ""); }
 function basisInfo(i) {
+  if (i.debat) {
+    var x = i.debat, nl = (x.nederlanders || []).map(function (p) { return esc(p.naam) + " (" + esc(p.partij) + ")"; });
+    return "Debat in de plenaire zaal" + (x.sprekers_bekend ? ", " + sprekers(x) + " sprekers uit het Parlement" : "") + "." + (nl.length ? " Nederlandse sprekers: " + nl.slice(0, 3).join(", ") + (nl.length > 3 ? " en nog " + (nl.length - 3) : "") + "." : "");
+  }
   if (i.extra) return esc(i.extra);
   if ((i.punten || []).length) return "Onder meer op de agenda: " + lijstje(i.punten, 2) + ".";
   var dagpunten = [];
@@ -332,6 +385,7 @@ function agendaDetail(i) {
 }
 function openAgenda(id, dieper) {
   var i = AGENDA_INDEX[id];
+  if (i && i.debat) { openPaneel("Debat", debatDetail(i.debat), { dieper: dieper }); return; }
   if (i) openPaneel(wieKort(i), agendaDetail(i), { dieper: dieper });
 }
 paneelLijf.addEventListener("click", function (e) {
@@ -348,40 +402,18 @@ function debatDetail(x) {
     + ((x.nederlanders || []).length ? "<h3 class='sectiekop'>Nederlandse sprekers</h3><ul class='punten'>" + x.nederlanders.map(function (p) { return '<li><a href="#mensen?id=' + esc(p.id) + '">' + esc(p.naam) + "</a> (" + esc(p.partij) + ")</li>"; }).join("") + "</ul>" : "")
     + '<div class="knoprij">' + a(x.verslag, "Verslag van het debat") + deelKnop(x.titel, x.verslag) + "</div>";
 }
-var debatSort = lees("eu-sort-db") || "datum";
-function debattenHtml() {
-  var l = DEBATTEN.debatten.slice();
-  l.sort(function (x, y) { return debatSort === "sprekers" ? sprekers(y) - sprekers(x) : (y.datum.localeCompare(x.datum) || x.nummer - y.nummer); });
-  var h = '<div class="lijstbalk"><span class="telling">' + l.length + ' debatten</span><span class="seg-klein"><button type="button" data-dbsort="datum" class="' + (debatSort === "datum" ? "actief" : "") + '">Op datum</button><button type="button" data-dbsort="sprekers" class="' + (debatSort === "sprekers" ? "actief" : "") + '">Op sprekers</button></span></div>';
+function planningHtml(code) {
+  var h = '<p class="klein">Wat de Commissie zelf zegt te willen voorstellen in dit kwartaal. Alleen het kwartaal is bekend, geen datum, en de planning schuift vaak. Bron: ' + a("https://ec.europa.eu/info/law/better-regulation/have-your-say_nl", "Geef uw mening") + ".</p>";
   var huidig = null;
-  l.forEach(function (x) {
-    if (debatSort === "datum" && x.datum !== huidig) { h += '<h4 class="dagkop-lijst"><span class="dagnaam">' + esc(lang(x.datum)) + "</span><span class='dagnr'>" + esc(x.plaats) + "</span></h4>"; huidig = x.datum; }
-    var nl = (x.nederlanders || []).map(function (p) { return esc(p.naam); });
-    h += '<div class="kaart compact dbkaart k-ep" data-i="' + DEBATTEN.debatten.indexOf(x) + '" role="button" tabindex="0">' + (debatSort !== "datum" ? '<div class="klein">' + kort(x.datum) + "</div>" : "")
-      + '<h3 class="twee-regels">' + esc(x.titel) + '</h3><div class="klein feitregel">' + (x.sprekers_bekend ? sprekers(x) + " sprekers" : "sprekers onbekend") + (nl.length ? " · Nederlands: " + nl.join(", ") : "") + "</div><span class='pijl'>›</span></div>";
-  });
-  return h;
-}
-function planningHtml() {
-  var h = '<p class="klein">Wat de Commissie zelf zegt te willen voorstellen, per kwartaal. Alleen het kwartaal is bekend, geen datum, en de planning schuift vaak. Bron: ' + a("https://ec.europa.eu/info/law/better-regulation/have-your-say_nl", "Geef uw mening") + ".</p>";
-  var huidig = null;
-  PLANNING.items.forEach(function (x) {
+  planningVoor(code).sort(function (x, y) { return (x.achter ? 1 : 0) - (y.achter ? 1 : 0); }).forEach(function (x) {
     if (x.gepland !== huidig) { h += (huidig ? "</div>" : "") + '<h4 class="dagkop-lijst"><span class="dagnaam">' + KW[x.kwartaal] + " kwartaal " + x.jaar + "</span>" + (x.gepland === PLANNING.huidig ? '<span class="wanneer">nu</span>' : "") + (x.achter ? "<span class='dagnr'>nog niet aangenomen</span>" : "") + '</h4><div class="kaart lijstkaart">'; huidig = x.gepland; }
     h += '<a class="planrij k-com" href="' + esc(x.url) + '" target="_blank" rel="noopener"><span class="label k-com wie">' + esc(x.soort_naam) + "</span><b>" + esc(x.titel) + "</b>" + (x.dg ? '<span class="klein">DG ' + esc(x.dg) + "</span>" : "") + "</a>";
   });
   return h + (huidig ? "</div>" : "") + opgehaald("commissie", "Planning");
 }
 document.addEventListener("click", function (e) {
-  var z = e.target.closest && e.target.closest("[data-zacht]");
-  if (z) {
-    if (z.dataset.zacht === "debatten") openPaneel("Eerdere debatten", debattenHtml());
-    else laden("commissie").then(function (d) { PLANNING = PLANNING || d; openPaneel("Gepland door de Commissie", planningHtml()); });
-    return;
-  }
-  var s = e.target.closest && e.target.closest("[data-dbsort]");
-  if (s) { debatSort = s.dataset.dbsort; bewaar("eu-sort-db", debatSort); paneelLijf.innerHTML = debattenHtml(); return; }
-  var db = e.target.closest && e.target.closest("#paneel-lijf .dbkaart");
-  if (db) openPaneel("Debat", debatDetail(DEBATTEN.debatten[+db.dataset.i]), { dieper: true });
+  var k = e.target.closest && e.target.closest("[data-kwartaal]");
+  if (k && PLANNING) { bronRect = k.getBoundingClientRect(); var p = k.dataset.kwartaal.split("-"); openPaneel(k.dataset.kwartaal === PLANNING.huidig ? "Dit kwartaal" : KW[+p[2]] + " kwartaal " + p[1], planningHtml(k.dataset.kwartaal)); }
 });
 
 var agendaOpgezet = false;
@@ -392,7 +424,7 @@ function agendaOpzetten() {
   document.getElementById("a-in").onclick = function () { zetDichtheid(aDicht - 1); };
   var tl = document.getElementById("a-tijdlijn");
   tl.addEventListener("click", function (e) {
-    if (e.target.closest("[data-tok-zoeker], [data-zacht], a")) return;
+    if (e.target.closest("[data-tok-zoeker], [data-kwartaal], a")) return;
     var it = e.target.closest(".item, .orij[data-id]");
     if (it) agendaPop(AGENDA_INDEX[it.dataset.id], it);
   });
@@ -413,6 +445,7 @@ function agendaLaden() {
       alleAgenda().forEach(function (i) { AGENDA_INDEX[i.id] = i; });
     }
     if (!DEBATTEN) DEBATTEN = r[1];
+    if (!DEBAT_ITEMS.length) { DEBAT_ITEMS = debatItems(); DEBAT_ITEMS.forEach(function (i) { AGENDA_INDEX[i.id] = i; }); }
     return AGENDA;
   });
 }
@@ -423,6 +456,8 @@ function agendaTab(q) {
     agendaOpzetten();
     agendaTonen();
     AZ.teken();
+    // na het wisselen van tab zet toonTab de pagina bovenaan; daarna naar vandaag
+    if (!(q && q.item)) requestAnimationFrame(function () { requestAnimationFrame(naarVandaag); });
     if (q && q.item) openAgenda(q.item);
     if (!PLANNING) laden("commissie").then(function (d) { PLANNING = d; if (huidigeTab() === "agenda") agendaTonen(); }).catch(function () {});
   }).catch(function () { laadFout(doel); });

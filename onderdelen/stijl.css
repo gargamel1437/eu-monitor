@@ -986,3 +986,12 @@ li.bericht.k-com .meta .bron::before, li.bericht.k-raad .meta .bron::before { co
 .stemrij .stemregel { display: flex; gap: 8px; align-items: center; }
 .stemrij .balk { margin: 3px 0 0; }
 .stemrij .pijl { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 20px; color: var(--zacht); opacity: .6; }
+/* agenda: verleden en planning per kwartaal */
+.tijdlijn .dag.voorbij .datum { opacity: .55; }
+.owek.voorbij .owek-kop b { color: var(--zacht); }
+.kwregel { display: flex; align-items: center; gap: 4px; width: 100%; margin: 8px 0 4px; padding: 9px 12px; border: 1px dashed color-mix(in srgb, var(--k) 45%, transparent); border-radius: 14px;
+  background: color-mix(in srgb, var(--k) 7%, transparent); font: inherit; font-size: 13.5px; color: var(--tekst); text-align: left; cursor: pointer; }
+.kwregel .kw-wat { font-weight: 700; white-space: nowrap; margin-right: 4px; }
+.kwregel .kw-n { flex: 1; color: var(--zacht); min-width: 0; }
+.kwregel .pijl { font-size: 18px; color: var(--zacht); }
+.kwregel:active { transform: scale(.985); }
