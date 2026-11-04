@@ -1094,8 +1094,8 @@ li.bericht[data-agenda] .labels, li.bericht.verhaal:has(.agenda-mini) .labels { 
 .sdag .n { width: 26px; height: 26px; }
 /* titelbalk bovenaan: helemaal wit (donker: zwart) bij de klok en de notch, naar onderen toe
    geleidelijk heel doorzichtig, zonder harde rand */
-:root { --balk-rgb: 255, 255, 255; }
-@media (prefers-color-scheme: dark) { :root { --balk-rgb: 0, 0, 0; } }
+:root { --balk-rgb: 238, 242, 254; } /* licht: zacht blauwwit, net lichter dan de achtergrond */
+@media (prefers-color-scheme: dark) { :root { --balk-rgb: 16, 21, 42; } } /* donker: diep nachtblauw, zoals het glas */
 .topbalk { padding-bottom: 26px;
   background: linear-gradient(to bottom, rgb(var(--balk-rgb)) 0, rgb(var(--balk-rgb)) env(safe-area-inset-top),
     rgba(var(--balk-rgb), .82) calc(env(safe-area-inset-top) + 30px), rgba(var(--balk-rgb), .35) calc(env(safe-area-inset-top) + 50px), rgba(var(--balk-rgb), 0) 100%);

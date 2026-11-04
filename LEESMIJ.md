@@ -79,7 +79,7 @@ daarin ook Bronnen en beperkingen. Licht of donker volgt de instelling van je iP
 
 De meeschuivende balk met zoekbalk en tabwissel (`.plakblok`) steekt op elke pagina aan beide kanten even ver buiten de kaarten uit: `--plak-uit` (10px) bovenin `stijl.css`. De kaarten staan daarom `--pagina-rand` (10 + 8 = 18px) van de schermrand, zodat er naast de balk 8px lucht blijft. Pas alleen die variabelen aan, nooit per pagina.
 
-De titelbalk daarboven (`.topbalk`) is alleen helemaal bovenaan vol wit (donkere modus: zwart, via `--balk-rgb`) en loopt in één lange, zachte overgang naar helemaal doorzichtig onderaan. Kleur en vervaging zitten op `.topbalk::before`, zodat de kleine titel zelf scherp blijft terwijl hij al op een vrij doorzichtig stuk staat. De balk verschijnt en verdwijnt rustig (0,55 s).
+De titelbalk daarboven (`.topbalk`) is alleen helemaal bovenaan vol gekleurd: zacht blauwwit in lichte modus, diep nachtblauw in donkere modus (via `--balk-rgb`, passend bij de achtergrond en het glas) en loopt in één lange, zachte overgang naar helemaal doorzichtig onderaan. Kleur en vervaging zitten op `.topbalk::before`, zodat de kleine titel zelf scherp blijft terwijl hij al op een vrij doorzichtig stuk staat. De balk verschijnt en verdwijnt rustig (0,55 s).
 
 ## Tekstmaten
 
