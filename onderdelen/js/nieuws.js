@@ -24,7 +24,7 @@ var NZ = maakZoekbalk({
   },
   voorbeelden: { bron: 4, onderwerp: 3, taal: 2 },
   telling: function (tokens, tekst) { return alle("li.bericht").filter(function (li) { return nieuwsPast(li, tokens, tekst); }).length; },
-  opnieuw: function () { pasToe(); }
+  opnieuw: function () { persN = {}; pasToe(); }
 });
 function nieuwsPast(li, tokens, tekst) {
   var bronnen = (li.dataset.bronnen || li.dataset.bron).split("|");
@@ -32,16 +32,26 @@ function nieuwsPast(li, tokens, tekst) {
   if (!NZ.past("bron", bronnen, tokens) || !NZ.past("onderwerp", li.dataset.terrein.split("|"), tokens) || !NZ.past("taal", li.dataset.taal, tokens)) return false;
   return !tekst || zoeker(tekst).past(li.textContent + " " + bronnen.join(" "));
 }
+// Niet alles tegelijk: eerst 15 berichten per deel, het plusje onderaan laadt de volgende 15.
+// Zoeken en filteren kijkt wel naar alle berichten.
+var PERS_STAP = 15, persN = {};
 function pasToe() {
   var z = zoeker(NZ.tekst);
-  alle("li.bericht").forEach(function (li) {
-    var ok = nieuwsPast(li, NZ.tokens, "") && z.past(li.textContent + " " + (li.dataset.bronnen || ""), li);
-    li.classList.toggle("verborgen", !ok);
+  alle("#kanaal-media, #kanaal-officieel").forEach(function (d) {
+    var n = 0, max = persN[d.id] || PERS_STAP;
+    alle("li.bericht", d).forEach(function (li) {
+      var ok = nieuwsPast(li, NZ.tokens, "") && z.past(li.textContent + " " + (li.dataset.bronnen || ""), li);
+      li.classList.toggle("verborgen", !ok);
+      if (ok) n++;
+      li.classList.toggle("later", ok && n > max);
+    });
+    var k = d.querySelector("[data-meer-pers]");
+    if (k) k.classList.toggle("verborgen", n <= max);
   });
-  var deel = document.querySelector("#nieuws [id^=kanaal-]:not(.verborgen)");
+  var deel = document.querySelector("#kanaal-media:not(.verborgen), #kanaal-officieel:not(.verborgen)");
   var zichtbaar = deel ? alle("li.bericht:not(.verborgen)", deel).length : 0;
   alle(".nieuwslijst ul.berichten").forEach(function (ul) {
-    var leeg = !ul.querySelector("li.bericht:not(.verborgen)");
+    var leeg = !ul.querySelector("li.bericht:not(.verborgen):not(.later)");
     ul.classList.toggle("verborgen", leeg);
     ul.previousElementSibling.classList.toggle("verborgen", leeg);
   });
@@ -74,6 +84,9 @@ document.getElementById("nieuws").addEventListener("click", function (ev) {
 document.getElementById("nieuws").addEventListener("keydown", function (ev) {
   var k = ev.target.closest && ev.target.closest(".verhaal-kaart");
   if (k && (ev.key === "Enter" || ev.key === " ")) { ev.preventDefault(); openPaneel("Verhaal", verhaalDetail(k.closest("li"))); }
+});
+alle("[data-meer-pers]").forEach(function (k) {
+  k.addEventListener("click", function () { var d = k.closest("#kanaal-media, #kanaal-officieel"); persN[d.id] = (persN[d.id] || PERS_STAP) + PERS_STAP; pasToe(); });
 });
 document.addEventListener("eu-segment", function (ev) { if (/^kanaal-/.test(ev.detail)) pasToe(); });
 function nieuwsInst() { pasToe(); }

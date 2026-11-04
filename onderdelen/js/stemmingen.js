@@ -123,7 +123,7 @@ function stemDetail(s) {
 function openStem(id, dieper) {
   var s = STEM_INDEX[id];
   if (!s) return;
-  openPaneel("Stemming", stemDetail(s), { dieper: dieper });
+  openPaneel("Stemming", stemDetail(s), { dieper: dieper, vol: true });
   // het kaartje van het dossier aanvullen zodra de dossiers er zijn
   if (s.in_dossiers && !DOSSIER_INDEX[s.procedure]) dossiersLaden().then(function () {
     alle('#paneel-lijf .dkoppel[data-ref="' + s.procedure + '"]').forEach(function (el) { el.outerHTML = dossierKoppel(s); });
@@ -166,7 +166,7 @@ function stemmenTonen() {
     return y.moment.localeCompare(x.moment);
   });
   uit = zk.ordenen(uit);
-  document.getElementById("s-aantal").textContent = uit.length + " hoofdstemmingen";
+  document.getElementById("s-aantal").textContent = uit.length + (uit.length === 1 ? " hoofdstemming. " : " hoofdstemmingen. ");
   var doel = document.getElementById("s-lijst");
   doel.innerHTML = uit.map(stemKaart).join("") || '<p class="leeg">Niets gevonden. Haal een filter weg of tik op × om alles te wissen.</p>';
   window.euMarkeer(doel);

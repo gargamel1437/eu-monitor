@@ -116,7 +116,7 @@ function dossierStemmen(d) {
     }).join("") + "</div>"
     + '<p class="klein">Hoofdstemmingen uit de laatste twee plenaire zittingen (HowTheyVote.eu). Oudere stemmingen staan bij Alle stappen en in de Legislative Observatory.</p>';
 }
-function openDossier(ref, dieper) { var d = DOSSIER_INDEX[ref]; if (d) openPaneel(d.ref, dossierDetail(d), { dieper: dieper }); }
+function openDossier(ref, dieper) { var d = DOSSIER_INDEX[ref]; if (d) openPaneel(d.ref, dossierDetail(d), { dieper: dieper, vol: true }); }
 // alleen de gegevens klaarzetten (ook als je een dossier vanuit een ander scherm opent)
 function dossiersLaden() {
   return Promise.all([laden("dossiers"), mensenLaden()]).then(function (r) {
@@ -163,7 +163,7 @@ function dossiersTonen() {
   });
   uit = z.ordenen(uit);
   var doel = document.getElementById("d-lijst");
-  document.getElementById("d-aantal").textContent = uit.length + " dossiers";
+  document.getElementById("d-aantal").textContent = uit.length + (uit.length === 1 ? " dossier. " : " dossiers. ");
   doel.innerHTML = uit.slice(0, dN).map(dossierKaart).join("") || '<p class="leeg">Niets gevonden. Haal een filter weg of tik op × om alles te wissen.</p>';
   document.getElementById("d-meer").classList.toggle("verborgen", uit.length <= dN);
   window.euMarkeer(doel);

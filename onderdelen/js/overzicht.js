@@ -105,11 +105,15 @@ document.addEventListener("click", function (e) {
 // slepen; zolang je niet vasthoudt, scrolt de pagina gewoon. Tijdens het slepen scrolt de pagina
 // alleen als je vinger bij de boven- of onderrand komt, sneller naarmate je dieper in die rand zit.
 (function () {
+  // Wijzig staat onder de widgets; tijdens het bewerken staan daar Widget toevoegen en Klaar,
+  // en Klaar ook rechtsboven (dan hoef je niet eerst naar beneden).
   var data = document.getElementById("ov-data"), knop = document.getElementById("ov-wijzig"), plus = document.getElementById("w-plus");
+  var klaar = [document.getElementById("ov-klaar"), document.getElementById("ov-klaar-kop")];
   function bewerkt() { return document.body.classList.contains("bewerken"); }
-  function aan() { document.body.classList.add("bewerken"); knop.textContent = "Klaar"; plus.hidden = false; }
-  function uit() { document.body.classList.remove("bewerken"); knop.textContent = "Wijzig"; plus.hidden = true; sluitWMenu(); }
-  knop.addEventListener("click", function () { if (bewerkt()) uit(); else aan(); });
+  function aan() { document.body.classList.add("bewerken"); knop.hidden = true; plus.hidden = false; klaar.forEach(function (k) { k.hidden = false; }); }
+  function uit() { document.body.classList.remove("bewerken"); knop.hidden = false; plus.hidden = true; klaar.forEach(function (k) { k.hidden = true; }); sluitWMenu(); }
+  knop.addEventListener("click", aan);
+  klaar.forEach(function (k) { k.addEventListener("click", uit); });
   plus.addEventListener("click", function (e) { e.stopPropagation(); plusMenu(plus); });
 
   var s = null, raf = 0, vinger = { x: 0, y: 0 }, rustTot = 0, RAND = 64;
@@ -134,13 +138,14 @@ document.addEventListener("click", function (e) {
     s.gx = vinger.x - r.left; s.gy = vinger.y - r.top;
     s.sleept = true;
     s.w.classList.add("sleept");
+    document.body.classList.add("tilt");
     plaats();
     raf = requestAnimationFrame(randScroll);
   }
   // de widget onder de vinger houden (ook als de pagina scrolt of de volgorde verandert)
   function plaats() {
     var b = data.getBoundingClientRect();
-    s.w.style.transform = "translate(" + (vinger.x - s.gx - b.left - s.w.offsetLeft) + "px," + (vinger.y - s.gy - b.top - s.w.offsetTop) + "px) scale(1.03)";
+    s.w.style.transform = "translate(" + (vinger.x - s.gx - b.left - s.w.offsetLeft) + "px," + (vinger.y - s.gy - b.top - s.w.offsetTop) + "px) scale(var(--til, 1))";
   }
   // de andere widgets schuiven met een animatie naar hun nieuwe plek
   function verschuif(doe) {
@@ -185,6 +190,7 @@ document.addEventListener("click", function (e) {
     if (gehouden || gesleept) { w.dataset.netGesleept = "1"; setTimeout(function () { delete w.dataset.netGesleept; }, 450); }
     if (!gesleept) return;
     w.classList.remove("sleept");
+    document.body.classList.remove("tilt");
     w.style.transition = "transform .26s cubic-bezier(.2,.9,.3,1)"; w.style.transform = "";
     setTimeout(function () { w.style.transition = ""; }, 280);
     var volgorde = alle(".widget", data).map(function (x) { return x.dataset.id; });

@@ -134,7 +134,7 @@ function persoonDetail(p) {
 function openPersoon(id, dieper) {
   var p = MENSEN_INDEX[id];
   if (p) {
-    openPaneel(p.naam, persoonDetail(p), { dieper: dieper });
+    openPaneel(p.naam, persoonDetail(p), { dieper: dieper, vol: true });
     if (!CONTACTEN) contactenLaden().then(function (c) {
       alle('.m-contact[data-id="' + id + '"]').forEach(function (el) { el.innerHTML = contactMep(p, c[p.id] || false); });
     }).catch(function () { alle('.m-contact[data-id="' + id + '"]').forEach(function (el) { el.innerHTML = contactMep(p, null); }); });
@@ -166,7 +166,7 @@ function openBestuurder(id, dieper) {
     else h += '<p class="klein">Geen woordvoerders op de pagina van het ministerie gevonden.</p>';
     if ((p.pers || {}).url) h += '<div class="knoprij">' + a(p.pers.url, "Persinformatie van het ministerie") + "</div>";
   }
-  openPaneel(p.naam, h, { dieper: dieper });
+  openPaneel(p.naam, h, { dieper: dieper, vol: true });
 }
 function bestuurKaart(p) {
   return '<div class="kaart compact bkaart k-' + (p.soort === "commissie" ? "com" : "raad") + '" data-id="' + esc(p.id) + '" role="button" tabindex="0"><div class="kaartkop"><h3>' + esc(p.naam) + "</h3></div>"
@@ -174,6 +174,9 @@ function bestuurKaart(p) {
     + (p.soort === "commissie" ? '<div class="klein feitregel">' + esc((p.portefeuille || []).join(" · ")) + "</div>"
       : ((p.formaties || []).length ? '<div class="klein feitregel">' + esc(p.formaties.join(" · ")) + "</div>" : ""))
     + '<span class="pijl" aria-hidden="true">›</span></div>';
+}
+function persvoorlichterKaart(w) {
+  return '<div class="kaart compact pkaart"><div class="functie"><i class="stip k-com"></i>' + esc(w.dienst) + "</div>" + woordvoerderHtml(w) + "</div>";
 }
 function contactpuntenHtml(l) {
   return (l || []).map(function (c) { return '<div class="kaart compact"><h3>' + a(c.url, c.naam) + '</h3><div class="klein">' + esc(c.plaats) + " · " + esc(c.wat) + "</div></div>"; }).join("");
@@ -188,7 +191,7 @@ function bestuurTonen(soort) {
       var wv = z.ordenen(b.commissie.woordvoerders.filter(function (w) { return !z.leeg && z.past(w.naam + " " + w.functie + " " + (w.onderwerpen || []).join(" "), w); }));
       h = leden.map(bestuurKaart).join("") + (wv.length ? "<h2>Woordvoerders</h2>" + wv.map(function (w) { return '<div class="kaart compact">' + woordvoerderHtml(w) + "</div>"; }).join("") : "");
       document.getElementById("m-aantal").textContent = z.leeg ? "" : leden.length + " leden van het College" + (wv.length ? " · " + wv.length + " woordvoerders" : "");
-      uitleg = "Het College van commissarissen met portefeuilles en de woordvoerders per onderwerp, van " + a("https://commission.europa.eu/about/organisation/college-commissioners_en", "commission.europa.eu") + ". Zoek op een onderwerp (bijvoorbeeld ‘trade’) om de woordvoerders te vinden.";
+      uitleg = b.commissie.leden.length + " leden van het College en " + b.commissie.woordvoerders.length + " woordvoerders. Bron: " + a("https://commission.europa.eu/about/organisation/college-commissioners_en", "het College") + " en " + a(b.commissie.bron, "de Spokesperson’s Service") + " van de Commissie. Een woordvoerder staat bij een commissaris als hun onderwerpen overlappen.";
     } else if (soort === "raad") {
       var vz = b.voorzitterschap || {};
       var ministers = z.ordenen(b.ministers.filter(function (p) { return z.past(p.naam + " " + p.functie + " " + (p.formaties || []).join(" "), p); }));
@@ -196,12 +199,13 @@ function bestuurTonen(soort) {
         + "<h2>Nederlandse bewindspersonen</h2>" + ministers.map(bestuurKaart).join("")
         + '<p class="klein uitleg-onder">Ministers van andere lidstaten: zie per vergadering de deelnemerslijst op de ' + a("https://www.consilium.europa.eu/nl/meetings/calendar/", "agenda van de Raad") + ".</p>";
       document.getElementById("m-aantal").textContent = z.leeg ? "" : ministers.length + " Nederlandse bewindspersonen";
-      uitleg = "Bewindspersonen en woordvoerders per ministerie van " + a("https://www.rijksoverheid.nl/regering/bewindspersonen", "rijksoverheid.nl") + ". In welke raadsformatie iemand meestal zit, volgt uit de portefeuille.";
+      uitleg = b.ministers.length + " Nederlandse bewindspersonen. Bron: " + a("https://www.rijksoverheid.nl/regering/bewindspersonen", "rijksoverheid.nl") + " (bewindspersonen en woordvoerders per ministerie). In welke raadsformatie iemand meestal zit, volgt uit de portefeuille.";
     } else {
+      var pv = z.ordenen((b.persvoorlichters || []).filter(function (w) { return z.past(w.naam + " " + w.functie + " " + w.dienst, w); }));
       var pd = (b.contactpunten || []).filter(function (c) { return z.past(c.naam + " " + c.plaats + " " + c.wat, c); });
-      h = contactpuntenHtml(pd);
-      document.getElementById("m-aantal").textContent = z.leeg ? "" : pd.length + " persdiensten";
-      uitleg = "De officiële persdiensten in Brussel en Den Haag. Telefoon en e-mail staan op hun eigen pagina.";
+      h = (pv.length ? "<h2>Persvoorlichters</h2>" + pv.map(persvoorlichterKaart).join("") : "") + (pd.length ? "<h2>Persdiensten</h2>" + contactpuntenHtml(pd) : "");
+      document.getElementById("m-aantal").textContent = z.leeg ? "" : pv.length + " persvoorlichters · " + pd.length + " persdiensten";
+      uitleg = "Persvoorlichters zoals ze op de perspagina van hun dienst staan (" + a("https://netherlands.representation.ec.europa.eu/nieuws-en-evenementen/persdienst-den-haag_nl", "Vertegenwoordiging van de Commissie in Nederland") + "). De perspagina’s van het Parlement en de Raad laten automatisch ophalen niet toe; daar staat de link naar de dienst." + opgehaald("persdiensten", "Persvoorlichters");
     }
     document.getElementById("m-uitleg").innerHTML = uitleg + opgehaald("bestuur", "Commissie en ministers");
     doel.innerHTML = h || '<p class="leeg">Niemand gevonden.</p>';
@@ -227,7 +231,8 @@ function mensenWie() { var t = MZ.tokens.filter(function (x) { return x.soort ==
 function mensenTonen() {
   var wie = mensenWie();
   if (wie !== "parlement") return bestuurTonen(wie);
-  document.getElementById("m-uitleg").textContent = "Typ “wie” om ook de Commissie, ministers of persdiensten te zien, of “status” voor actieve of inactieve (oud-)leden. Inactief = oud-lid dat nog in een dossier voorkomt. Contactgegevens komen van het Parlement.";
+  var actief = MENSEN.filter(function (p) { return !isOud(p); }).length;
+  document.getElementById("m-uitleg").innerHTML = actief + " zittende europarlementariërs en " + (MENSEN.length - actief) + " oud-leden die nog in een dossier voorkomen. Bron: " + a("https://www.europarl.europa.eu/meps/nl/", "Europees Parlement") + " (leden en contactgegevens) en " + a("https://howtheyvote.eu", "HowTheyVote.eu") + " (stemgedrag).";
   var z = zoeker(MZ.tekst);
   var uit = MENSEN.filter(function (p) {
     if (!MZ.past("land", p.land) || !MZ.past("fractie", p.fractie)) return false;

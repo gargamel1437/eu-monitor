@@ -130,6 +130,49 @@ def commissie():
     return {"leden": leden, "woordvoerders": sprekers, "bron": WOORDVOERDERS}
 
 
+# ---------- persvoorlichters van de persdiensten ----------
+# Alleen wat op de officiële perspagina's staat. De perspagina's van het Parlement en de Raad
+# weigeren automatisch ophalen (HTTP 403); daar blijft alleen de link naar de pagina.
+PERSDIENST_NL = "https://netherlands.representation.ec.europa.eu/nieuws-en-evenementen/persdienst-den-haag_nl"
+
+
+def spamspan_mensen(blok):
+    """Contactblokken in de vorm <span class="spamspan">naam[dot]achternaam ec[dot]europa[dot]eu (Naam,)</span>
+    Functie<br>T ...<br>M ... -> [{naam, functie, mail, tel}]"""
+    uit = []
+    delen = re.split(r'(?=<span class="spamspan")', blok)
+    for d in delen[1:]:
+        u = re.search(r'<span class="u">(.*?)</span><img', d, re.S)
+        dom = re.search(r'<span class="d">(.*?)</span><span class="t">', d, re.S)
+        naam = re.search(r'<span class="t">\s*\((.*?)\)?</span>', d, re.S)
+        if not u or not dom:
+            continue
+        def schoon(x):
+            return re.sub(r"\s+", "", re.sub(r"<[^>]+>", "", x).replace("[dot]", "."))
+        mail = (schoon(u.group(1)) + "@" + schoon(dom.group(1))).lower()
+        rest = re.split(r"</span></span>", d, maxsplit=1)[-1]
+        regels = [tekst(x).strip(" .") for x in re.split(r"<br\s*/?>|</p>", rest)]
+        regels = [x for x in regels if x]
+        tel = [re.sub(r"^[TM]\s+", "", x) for x in regels if re.match(r"^[TM]\s+[\d+ ()]+$", x)]
+        functie = next((x for x in regels if not re.match(r"^[TM]\s+[\d+ ()]+$", x)), "")
+        n = tekst(naam.group(1)).strip(" ,") if naam else ""
+        if n:
+            uit.append({"naam": n, "functie": functie or "Persvoorlichter", "mail": mail, "tel": tel})
+    return uit
+
+
+def persdiensten():
+    t = ophalen(PERSDIENST_NL).decode("utf-8", "replace")
+    i = t.find(">Contacten<")
+    mensen = spamspan_mensen(t[i:i + 6000]) if i >= 0 else []
+    if not mensen:
+        raise RuntimeError("geen persvoorlichters gevonden bij de Vertegenwoordiging")
+    for m in mensen:
+        m["dienst"] = "Vertegenwoordiging van de Europese Commissie in Nederland"
+        m["bron"] = PERSDIENST_NL
+    return mensen
+
+
 # ---------- Nederlandse bewindspersonen ----------
 
 def ministerie_van(functie):

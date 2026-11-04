@@ -320,8 +320,12 @@ def bericht_html(b):
               + f'<div class="labels">{extra}{labels}</div>')
     deel = (f'<button class="deel-mini" aria-label="Delen" data-deel="{e(json.dumps({"t": b["titel"], "u": b["link"]}, ensure_ascii=False))}">'
             '<svg viewBox="0 0 24 24"><path d="M12 15V3.5M8 7.5l4-4 4 4"/><path d="M6 11H5v9.5h14V11h-1"/></svg></button>')
+    # hoort het bij een persmoment in de agenda: een knopje erheen
+    if b.get("agenda"):
+        deel = (f'<a class="agenda-mini" href="#agenda?item={e(b["agenda"])}" aria-label="In de agenda">'
+                '<svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/></svg></a>') + deel
     if not b.get("ook"):
-        return (kop + '>' + f'<a href="{e(b["link"])}" target="_blank" rel="noopener">'
+        return (kop + (' data-agenda="1"' if b.get("agenda") else "") + '>' + f'<a href="{e(b["link"])}" target="_blank" rel="noopener">'
                 f'<div class="meta"><span class="bron">{e(b["bron"])}</span><span class="tijd">{b["datum"]:%H:%M}</span></div>'
                 + inhoud + "</a>" + deel + "</li>")
     # meerdere bronnen over hetzelfde nieuws: één verhaal, tik = kies welke bron je opent

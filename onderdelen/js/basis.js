@@ -704,7 +704,7 @@ document.addEventListener("click", function (ev) {
   if (!el || !META.updates) return;
   var nu = new Date(), tijd = ("0" + nu.getHours()).slice(-2) + ":" + ("0" + nu.getMinutes()).slice(-2);
   var volgende = META.updates.filter(function (t) { return t > tijd; })[0];
-  el.textContent = volgende ? "volgende rond " + volgende : "volgende morgen rond " + META.updates[0];
+  el.textContent = volgende ? "volgende update rond " + volgende : "volgende update morgen rond " + META.updates[0];
 })();
 
 

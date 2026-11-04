@@ -340,6 +340,57 @@ def agenda_items(p, lijst, vergaderingen):
     return {"items": uit, "verder": verder, "later": p.get("later", [])[:1], "toppen_later": toppen[:2]}
 
 
+# ---- persmomenten: persconferenties en persverklaringen van Commissie en Raad ----
+PERSMOMENT = re.compile(r"press conference|persconferentie|press point|persmoment|doorstep|press remarks|remarks to the press|"
+                        r"press briefing|persbriefing|media briefing|persverklaring|press statement", re.I)
+# woorden die in elke persconferentie staan en dus niets zeggen over het onderwerp
+PERS_ALGEMEEN = {"remarks", "press", "conference", "persconferentie", "opmerkingen", "commissioner", "commissaris", "president",
+                 "voorzitter", "executive", "vice", "high", "representative", "following", "after", "meeting", "statement",
+                 "verklaring", "briefing", "today", "vandaag", "joint", "gezamenlijke", "speech", "toespraak", "readout",
+                 "january", "february", "march", "april", "june", "july", "august", "september", "october", "november",
+                 "december", "januari", "februari", "maart", "juni", "juli", "augustus", "oktober", "monday", "tuesday",
+                 "wednesday", "thursday", "friday", "maandag", "dinsdag", "woensdag", "donderdag", "vrijdag"}
+TITELNAAM = re.compile(r"(?:Commissioner|Commissaris|commissaris|President|Vice-President|Representative|Minister|Voorzitter|voorzitter)\s+"
+                       r"((?:[A-ZÀ-Ý][\w'’\-]+\s?){1,3})")
+
+
+def persmomenten(officieel):
+    """Een persconferentie of persverklaring (volgens de kop) als item in de agenda, op de dag van
+    publicatie bij de bron (het tijdstip geeft de bron niet). Een persbericht van dezelfde dag hoort
+    erbij als het over hetzelfde gaat: ze delen een eigennaam die geen persoon is (zoals Frontex), of
+    minstens twee kenmerkende woorden. Bij twijfel geen koppeling."""
+    uit = []
+    for b in officieel:
+        if not PERSMOMENT.search(b["titel"]):
+            continue
+        dag = b["datum"].date().isoformat()
+        personen = {w.lower() for m in TITELNAAM.finditer(b["titel"]) for w in m.group(1).split()}
+        def zinvol(w):
+            return {x for x in w - personen - PERS_ALGEMEEN if not x.isdigit()}
+        eigen = zinvol(eu_nieuws.namen(b["titel"]))
+        kern = zinvol(eu_nieuws.kopwoorden(b["titel"]))
+        bij = []
+        for x in officieel:
+            if x is b or PERSMOMENT.search(x["titel"]) or x["datum"].date().isoformat() != dag:
+                continue
+            tekst = f"{x['titel']} {x['tekst']}"
+            gedeeld_naam = eigen & eu_nieuws.namen(tekst)
+            gedeeld = kern & eu_nieuws.kopwoorden(tekst)
+            if gedeeld_naam or len(gedeeld) >= 2:
+                bij.append({"titel": x["titel"], "link": x["link"], "bron": x["bron"], "soort": x.get("soort") or "Persbericht"})
+        wie = "Raad van de EU" if b["bron"] == "Raad van de EU" else "Europese Commissie"
+        id_ = hashlib.sha1(f"Persmoment|{b['titel']}|{dag}".encode()).hexdigest()[:10]
+        b["agenda"] = id_
+        for x in officieel:
+            if any(x["link"] == y["link"] for y in bij[:3]):
+                x.setdefault("agenda", id_)
+        uit.append({"datum": dag, "soort": "Persmoment", "titel": b["titel"], "url": b["link"], "wie": [wie], "wat": ["Persmomenten"],
+                    "plaats": "", "bron": b["bron"], "persberichten": bij[:3],
+                    "extra": "Datum waarop de bron dit publiceerde; het tijdstip staat er niet bij.",
+                    "id": id_})
+    return uit
+
+
 def raadsformatie(titel):
     """'Raad Buitenlandse Zaken (defensie)' -> 'Raad Buitenlandse Zaken'; 'Ecofin-Raad (begroting)' -> 'Ecofin-Raad';
     'Raad (Landbouw): dossier' -> 'Raad Landbouw'; informeel -> 'Informele ministersbijeenkomst'. Voor het filter 'Raad'."""
@@ -578,6 +629,8 @@ def main():
 
     bs, bs_fout, bs_oud = met_cache("bestuur", bestuur.alles)
     meta["bestuur"] = {"moment": moment(bs_oud) if bs_fout else meta["bijgewerkt"], "oud": bool(bs_fout)}
+    pd, pd_fout, pd_oud = met_cache("persdiensten", bestuur.persdiensten)
+    meta["persdiensten"] = {"moment": moment(pd_oud) if pd_fout else meta["bijgewerkt"], "oud": bool(pd_fout)}
     if bs_fout:
         meldingen.append("Commissie en ministers: ophalen lukte nu niet." + (f" Je ziet de versie van {moment(bs_oud)}." if bs_oud else ""))
     try:
@@ -616,12 +669,16 @@ def main():
     schrijf_json("dossiers", lijst)
     schrijf_json("dossiers-kort", dossiers_kort(lijst, st["leden"]))
     schrijf_json("stemmen", {"zittingen": st["zittingen"], "stemmen": st["stemmen"]})
-    schrijf_json("agenda", agenda_items(p, lijst, vg or []))
+    agenda = agenda_items(p, lijst, vg or [])
+    agenda["items"] += persmomenten(officieel)
+    agenda["items"].sort(key=lambda i: i["datum"])   # stabiel: de volgorde binnen een dag blijft
+    schrijf_json("agenda", agenda)
     schrijf_json("commissie", cp or {"items": [], "bekend": 0, "huidig": ""})
     schrijf_json("debatten", {"zittingen": p.get("zittingen", []),
                               "debatten": [{k: v for k, v in x.items() if k != "sprekers"} for x in p.get("debatten", [])]})
     schrijf_json("bestuur", {**(bs or {"commissie": {"leden": [], "woordvoerders": []}, "ministers": []}),
-                             "voorzitterschap": raad.voorzitterschap(), "contactpunten": CONTACTPUNTEN})
+                             "voorzitterschap": raad.voorzitterschap(), "contactpunten": CONTACTPUNTEN,
+                             "persvoorlichters": pd or []})
     schrijf_json("contacten", mep_contact)
     schrijf_json("mensen", mensen(st["leden"], lijst, p.get("debatten", []), st["stemmen"], st.get("posities", {})))
 
@@ -638,6 +695,7 @@ def main():
         "{{AANTAL}}": str(len(nieuws)),
         "{{AANTAL_MEDIA}}": str(len(media)),
         "{{AANTAL_OFFICIEEL}}": str(len(officieel)),
+        "{{MEDIA_BRONNEN}}": e(", ".join(b for b in eu_nieuws.BRONNEN if b not in eu_nieuws.OFFICIEEL)),
         "{{BRONNEN}}": (ONDERDELEN / "bronnen.html").read_text(encoding="utf-8"),
         "{{BEGRIPPEN}}": js(begrippen(st["leden"])),
         "{{DATA_META}}": js(meta),

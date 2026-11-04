@@ -108,3 +108,8 @@ Alle tekst gebruikt één reeks maten (CSS-variabelen bovenin `stijl.css`):
   zonder de dossiers opnieuw op te halen). Bekijk het resultaat via een kleine webserver:
   `cd site && python3 -m http.server`, en open dan http://localhost:8000.
 - **Online zetten**: wijzigingen committen en pushen naar `main`; GitHub bouwt de site dan opnieuw.
+
+## Persmomenten en persvoorlichters
+
+- **Persmomenten in de agenda** komen uit de persberichten van de Commissie en de Raad (afgelopen 5 dagen): een bericht waarvan de kop een persconferentie, persverklaring of persbriefing noemt. Het staat op de dag dat de bron het publiceerde; het tijdstip geeft de bron niet. Een persbericht van dezelfde dag hoort erbij als ze een eigennaam delen die geen persoon is (zoals Frontex) of minstens twee kenmerkende woorden in de kop. Bij twijfel geen koppeling. Aangekondigde persconferenties (de planning van Europe by Satellite) zitten er niet in: die staat alleen in een app die automatisch ophalen niet ondersteunt.
+- **Persvoorlichters** onder Personen > Persdiensten komen van de perspagina van de Vertegenwoordiging van de Commissie in Nederland (`bestuur.persdiensten()`). De perspagina's van het Parlement en de Raad weigeren automatisch ophalen (HTTP 403); daar staat alleen de link naar de dienst.

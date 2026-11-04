@@ -186,8 +186,11 @@ function agendaTonen() {
 function naarVandaag(zacht) {
   zacht = zacht === true;
   if (huidigeTab() !== "agenda") return;
-  var el = document.querySelector('#a-tijdlijn [data-week="' + maandagVan(vandaag()) + '"]') || vindDag(vandaag());
+  // naar de rij van vandaag (of de lege rij waar vandaag in valt), met de weekregel en de
+  // kwartaalregel erboven als die er direct boven staan; de strook licht dan vandaag op
+  var el = vindDag(vandaag());
   if (!el) return;
+  while (el.previousElementSibling && el.previousElementSibling.matches(".weekregel, .kwregel")) el = el.previousElementSibling;
   var plak = document.querySelector("#agenda .agenda-plak");
   var gedrag = zacht && !MINDER_BEWEGING ? "smooth" : "auto";
   window.scrollTo({ top: Math.max(0, window.scrollY + el.getBoundingClientRect().top - (parseFloat(getComputedStyle(plak).top) || 0) - plak.offsetHeight - 8), behavior: gedrag });
@@ -208,6 +211,9 @@ function volgStrook() {
   var strook = document.getElementById("a-strook"), grens = document.querySelector("#agenda .agenda-plak").getBoundingClientRect().bottom + 10, eerste = null;
   alle("#a-tijdlijn .dag, #a-tijdlijn .leegrij, #a-tijdlijn .orij[data-dag]").some(function (el) { if (el.getBoundingClientRect().bottom > grens) { eerste = el.dataset.dag; return true; } return false; });
   if (!eerste) { strookMaand(); return; }
+  // een lege rij over meerdere dagen waar vandaag in valt: vandaag oplichten
+  var rij = document.querySelector('#a-tijdlijn .leegrij[data-dag="' + eerste + '"]');
+  if (rij && (" " + rij.dataset.dagen + " ").indexOf(" " + vandaag() + " ") >= 0) eerste = vandaag();
   alle(".sdag", strook).forEach(function (b) { b.classList.toggle("zicht", b.dataset.dag === eerste); });
   strookMaand();
 }
@@ -240,7 +246,9 @@ function agendaPop(i, el) {
     + (basisInfo(i) ? '<p class="apop-wat">' + basisInfo(i) + "</p>" : "")
     + '<div class="feit"><span>Wanneer</span><b>' + wanneer + "</b></div>"
     + (i.plaats ? '<div class="feit"><span>Waar</span><b>' + esc([i.gebouw, i.plaats].filter(Boolean).join(", ")) + "</b></div>" : "")
-    + '<div class="apop-knoppen">' + (i.debat && i.debat.verslag ? '<a class="hoofd" href="' + esc(i.debat.verslag) + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h7"/></svg>Verslag</a>' : "") + (i.ics ? '<a class="hoofd" href="' + esc(i.ics) + '"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M12 13v5M9.5 15.5h5"/></svg>Zet in agenda</a>' : "")
+    + '<div class="apop-knoppen">' + ((i.persberichten || [])[0] ? '<a class="hoofd" href="' + esc(i.persberichten[0].link) + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>Persbericht</a>' : "")
+    + (i.soort === "Persmoment" && i.url && !(i.persberichten || []).length ? '<a class="hoofd" href="' + esc(i.url) + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>Bron</a>' : "")
+    + (i.debat && i.debat.verslag ? '<a class="hoofd" href="' + esc(i.debat.verslag) + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h7"/></svg>Verslag</a>' : "") + (i.ics ? '<a class="hoofd" href="' + esc(i.ics) + '"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M12 13v5M9.5 15.5h5"/></svg>Zet in agenda</a>' : "")
     + '<button type="button" data-meer><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8v.01"/></svg>Meer info</button></div>';
   document.body.appendChild(achter); document.body.appendChild(pop);
   var r = el.getBoundingClientRect(), h = pop.offsetHeight, H = window.innerHeight;
@@ -330,6 +338,9 @@ function agendaDetail(i) {
   if ((i.punten || []).length && !(i.dagen || []).length) h += "<h3 class='sectiekop'>Op de agenda (dossiers)</h3><ul class='punten'>" + i.punten.map(function (p) { return "<li>" + esc(p) + "</li>"; }).join("") + "</ul>";
   if ((i.dossiers || []).length) h += "<h3 class='sectiekop'>Dossiers die OEIL in deze zitting verwacht <span class='teller-klein'>" + i.dossiers.length + "</span></h3><ul class='punten'>"
     + i.dossiers.map(function (d) { return '<li><a href="#dossiers?open=' + encodeURIComponent(d.ref) + '">' + esc(d.titel) + '</a> <span class="klein">' + esc(d.ref) + "</span></li>"; }).join("") + "</ul>";
+  if ((i.persberichten || []).length) h += "<h3 class='sectiekop'>Persberichten van dezelfde dag</h3><ul class='punten'>"
+    + i.persberichten.map(function (x) { return "<li>" + a(x.link, x.titel) + ' <span class="klein">' + esc(x.bron) + " · " + esc(x.soort) + "</span></li>"; }).join("") + "</ul>"
+    + '<p class="klein">Gekoppeld omdat ze op dezelfde dag verschenen en over hetzelfde gaan (een gedeelde naam zoals Frontex, of meerdere gedeelde kernwoorden in de kop).</p>';
   if (i.ref) h += '<div class="knoprij"><a class="mini" href="#dossiers?open=' + encodeURIComponent(i.ref) + '">Naar het dossier ' + esc(i.ref) + "</a></div>";
   return h;
 }
