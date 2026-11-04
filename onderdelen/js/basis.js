@@ -12,6 +12,8 @@ function alle(sel, ouder) { return Array.prototype.slice.call((ouder || document
 try { localStorage.removeItem("eu-thema"); } catch (e) {}
 
 // ---- instellingen (alleen in deze browser bewaard) ----
+// Lange lijsten laden overal even veel tegelijk; het ronde plusje onderaan laadt er zoveel bij.
+var LAAD_STAP = 20;
 var STANDAARD = {
   start: "overzicht", nieuwsDeel: "kanaal-media", engels: true, tekst: "standaard", beweging: "systeem",
   bronnenUit: [], informeel: true, vastePunten: true,

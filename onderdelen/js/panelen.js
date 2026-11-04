@@ -21,6 +21,32 @@ document.addEventListener("pointerdown", function (ev) {
   if (k) bronRect = k.getBoundingClientRect();
 }, true);
 
+// De pagina achter een open paneel ligt vast. Niet met overflow op <body>: dan wordt body zelf
+// de scrollcontainer, schieten de vaste balken (sticky) los en verspringt de pagina bij sluiten.
+// Wel op <html> (de pagina zelf), en op de iPhone ook: vegen buiten het paneel doet niets.
+function zetVast(aan) { document.documentElement.classList.toggle("geen-scroll", aan); }
+function kanScrollen(el, dy) {
+  for (; el && el !== document.body; el = el.parentElement) {
+    var o = getComputedStyle(el).overflowY;
+    if ((o === "auto" || o === "scroll") && el.scrollHeight > el.clientHeight + 1) {
+      if (dy > 0 ? el.scrollTop > 0 : el.scrollTop + el.clientHeight < el.scrollHeight - 1) return true;
+      if (el.id === "paneel-lijf") return false;
+    }
+  }
+  return false;
+}
+var vastY = 0, paneelY = 0, herstelTot = 0;
+// zelf gaan scrollen na het sluiten: dan niet meer terugzetten
+["wheel", "touchmove"].forEach(function (t) { window.addEventListener(t, function () { if (!paneelOpen) herstelTot = 0; }, { passive: true }); });
+document.addEventListener("touchstart", function (ev) { vastY = ev.touches[0] ? ev.touches[0].clientY : 0; }, { passive: true, capture: true });
+document.addEventListener("touchmove", function (ev) {
+  if (!document.documentElement.classList.contains("geen-scroll") || ev.touches.length !== 1) return;
+  var t = ev.target, dy = ev.touches[0].clientY - vastY;
+  // horizontaal scrollen (tabellen) mag; verticaal alleen als het element binnen het paneel dat kan
+  if (t.closest && t.closest(".tabel-scroll, .chips, .zachtrij")) return;
+  if (!(t.closest && t.closest("#paneel-lijf, .sheet")) || !kanScrollen(t, dy)) { if (ev.cancelable) ev.preventDefault(); }
+}, { passive: false, capture: true });
+
 function terugKnop() {
   var vorige = stapel[stapel.length - 1];
   var k = document.getElementById("paneel-terug");
@@ -70,12 +96,13 @@ function openPaneel(titel, html, opties) {
   peekModus = false;
   kopTitel();
   if (!wasOpen) {
+    paneelY = window.scrollY;
     zetOorsprong();
     paneel.classList.remove("direct", "dicht-gaat");
     paneel.style.transform = paneel.style.transition = "";
     paneel.classList.add("open");
     achtergrond.classList.add("zichtbaar", "voor-paneel");
-    document.body.classList.add("geen-scroll");
+    zetVast(true);
     paneelOpen = true;
     geduwd = 0; duw();
   }
@@ -108,9 +135,15 @@ function sluitPaneel(vanGeschiedenis, hoe) {
   document.body.classList.remove("sheet-open");
   setTimeout(function () { paneel.classList.remove("direct"); }, 60);
   achtergrond.classList.remove("voor-paneel");
-  if (!openSheetId) { achtergrond.classList.remove("zichtbaar"); document.body.classList.remove("geen-scroll"); }
+  if (!openSheetId) { achtergrond.classList.remove("zichtbaar"); zetVast(false); }
   var n = geduwd; geduwd = 0;
   if (!vanGeschiedenis && hoe !== "vervang" && n && history.state && history.state.paneel) history.go(-n);
+  // de pagina erachter blijft precies staan, ook als de browser bij 'terug' zelf iets verschuift
+  if (hoe !== "vervang") {
+    var y = paneelY;
+    herstelTot = performance.now() + 600;
+    [0, 60, 200, 520].forEach(function (t) { setTimeout(function () { if (!paneelOpen && performance.now() < herstelTot && Math.abs(window.scrollY - y) > 1) window.scrollTo(0, y); }, t); });
+  }
 }
 // Staat dezelfde naam bovenin het wolkje én als kop in de inhoud, dan alleen de kop tonen;
 // de naam bovenin verschijnt pas als je de kop voorbij scrollt (zoals op de iPhone).
@@ -228,6 +261,6 @@ function sluitSheet() {
   var s = document.getElementById(openSheetId);
   if (s) s.classList.remove("open");
   openSheetId = null;
-  if (!paneelOpen) { achtergrond.classList.remove("zichtbaar"); document.body.classList.remove("geen-scroll"); }
+  if (!paneelOpen) { achtergrond.classList.remove("zichtbaar"); zetVast(false); }
 }
 function filterTeller() {}

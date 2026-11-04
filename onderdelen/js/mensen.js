@@ -214,7 +214,7 @@ function bestuurTonen(soort) {
 }
 
 // ---------- lijst, zoeken en filteren ----------
-var mN = 60, MOPT = {};
+var mN = LAAD_STAP, MOPT = {};
 var WIE_P = [["parlement", "Europarlementariërs", "parlement europarlement mep"], ["commissie", "Europese Commissie", "commissie commissaris woordvoerder"], ["raad", "Raad en ministers", "raad minister bewindspersoon"], ["persdiensten", "Persdiensten", "pers persdienst contact"]];
 var MZ = maakZoekbalk({
   naam: "m", balk: "m-balk",
@@ -225,7 +225,7 @@ var MZ = maakZoekbalk({
     status: { naam: "Status", opties: function () { return [["actief", "Actief", "huidig lid zittend"], ["inactief", "Inactief", "oud-lid voormalig vertrokken"]]; } }
   },
   voorbeelden: { wie: 4, status: 2, land: 3, fractie: 4 },
-  opnieuw: function () { mN = 60; if (MENSEN && mensenOpgezet) mensenTonen(); }
+  opnieuw: function () { mN = LAAD_STAP; if (MENSEN && mensenOpgezet) mensenTonen(); }
 });
 function mensenWie() { var t = MZ.tokens.filter(function (x) { return x.soort === "wie" && !x.uit; }).pop(); return t ? t.waarde : "parlement"; }
 function mensenTonen() {
@@ -250,7 +250,7 @@ function mensenOpzetten() {
   MENSEN.forEach(function (p) { if (p.land) landen[p.land] = 1; if (p.fractie) fracties[p.fractie] = 1; });
   MOPT.land = Object.keys(landen).sort(function (x, y) { return landNaam(x).localeCompare(landNaam(y)); }).map(function (c) { return [c, landNaam(c), c]; });
   MOPT.fractie = Object.keys(fracties).sort().map(function (f) { return [f, f]; });
-  document.getElementById("m-meer").addEventListener("click", function () { mN += 60; mensenTonen(); });
+  document.getElementById("m-meer").addEventListener("click", function () { mN += LAAD_STAP; mensenTonen(); });
   bijKaartTik(document.getElementById("m-lijst"), ".mkaart", function (k) { openPersoon(k.dataset.id); });
   bijKaartTik(document.getElementById("m-lijst"), ".bkaart", function (k) { openBestuurder(k.dataset.id); });
 }

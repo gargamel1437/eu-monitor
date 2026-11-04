@@ -142,7 +142,7 @@ var SZ = maakZoekbalk({
   },
   voorbeelden: { onderwerp: 3, uitslag: 2, zitting: 2, nl: 2 },
   telling: function (tokens, tekst) { return STEMMEN ? STEMMEN.stemmen.filter(function (x) { return stemPast(x, tokens, tekst); }).length : null; },
-  opnieuw: function () { if (STEMMEN && stemmenOpgezet) stemmenTonen(); }
+  opnieuw: function () { sN = LAAD_STAP; if (STEMMEN && stemmenOpgezet) stemmenTonen(); }
 });
 var SS = maakSorteer("s", [["datum", "Nieuwste eerst", "Nieuwste"], ["oud", "Oudste eerst", "Oudste"], ["verschil", "Kleinste verschil voor/tegen", "Spannendste"], ["onthouden", "Meeste onthoudingen", "Onthoudingen"]], "datum", function () { if (STEMMEN && stemmenOpgezet) stemmenTonen(); });
 function stemPast(s, tokens, tekst) {
@@ -154,6 +154,7 @@ function stemPast(s, tokens, tekst) {
   if (nl.indexOf("afwijk") >= 0 && !(s.afwijkers || []).length) return false;
   return !tekst || zoeker(tekst).past(s.titel + " " + (s.procedure || "") + " " + (s.procedure_titel || ""));
 }
+var sN = LAAD_STAP;
 function stemmenTonen() {
   var zk = zoeker(SZ.tekst);
   var uit = STEMMEN.stemmen.filter(function (s) { return stemPast(s, SZ.tokens, "") && zk.past(s.titel + " " + (s.procedure || "") + " " + (s.procedure_titel || ""), s); });
@@ -168,7 +169,8 @@ function stemmenTonen() {
   uit = zk.ordenen(uit);
   document.getElementById("s-aantal").textContent = uit.length + (uit.length === 1 ? " hoofdstemming. " : " hoofdstemmingen. ");
   var doel = document.getElementById("s-lijst");
-  doel.innerHTML = uit.map(stemKaart).join("") || '<p class="leeg">Niets gevonden. Haal een filter weg of tik op × om alles te wissen.</p>';
+  doel.innerHTML = uit.slice(0, sN).map(stemKaart).join("") || '<p class="leeg">Niets gevonden. Haal een filter weg of tik op × om alles te wissen.</p>';
+  document.getElementById("s-meer").classList.toggle("verborgen", uit.length <= sN);
   window.euMarkeer(doel);
 }
 function stemIndex() { STEMMEN.stemmen.forEach(function (s) { STEM_INDEX[s.id] = s; }); }
@@ -177,6 +179,7 @@ function stemmenOpzetten() {
   stemIndex();
   STEMMEN.stemmen.forEach(function (s) { (s.terreinen || []).forEach(function (t) { ter[t] = 1; }); });
   SOPT.terrein = Object.keys(ter).sort().map(function (t) { return [t, t]; });
+  document.getElementById("s-meer").addEventListener("click", function () { sN += LAAD_STAP; stemmenTonen(); });
   SOPT.zitting = (STEMMEN.zittingen || []).map(function (z) { return [z.begin, "Zitting " + kort(z.begin) + " – " + kort(z.eind)]; });
   bijKaartTik(document.getElementById("s-lijst"), ".skaart", function (k) { openStem(k.dataset.id); });
 }

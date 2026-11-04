@@ -97,7 +97,7 @@ document.addEventListener("click", function (e) {
   if (!v || document.body.classList.contains("bewerken")) return;
   e.preventDefault();
   var li = alle("li.bericht")[+v.dataset.verhaalVan];
-  if (li && li.dataset.verhaal) openPaneel("Verhaal", verhaalDetail(li));
+  if (li && li.dataset.verhaal) openPaneel("Verhaal", verhaalDetail(li), { vol: true });
 });
 
 // ---------- aanpassen zoals widgets op de iPhone ----------

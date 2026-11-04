@@ -45,7 +45,8 @@ body {
   font: 16px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
   padding-bottom: calc(96px + env(safe-area-inset-bottom)); min-height: 100vh;
 }
-body.geen-scroll { overflow: hidden; }
+html.geen-scroll { overflow: hidden; }
+#paneel-lijf { overscroll-behavior: contain; }
 body::before { /* zachte kleurvlekken achter het glas */
   content: ""; position: fixed; inset: -20vmax; z-index: -1; pointer-events: none;
   background:
@@ -1088,3 +1089,15 @@ html[data-beweging="minder"] .widget.sleept { --til: 1; }
 .agenda-mini svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 .agenda-mini:active { background: var(--eu-zacht); }
 li.bericht[data-agenda] .labels, li.bericht.verhaal:has(.agenda-mini) .labels { padding-right: 76px; }
+/* datumstrook: wat ruimte tussen de blauwe cirkel van vandaag en de rand van de gekozen dag */
+.sdag { padding: 6px 0 7px; gap: 4px; border-radius: 14px; }
+.sdag .n { width: 26px; height: 26px; }
+/* titelbalk bovenaan: helemaal wit (donker: zwart) bij de klok en de notch, naar onderen toe
+   geleidelijk heel doorzichtig, zonder harde rand */
+:root { --balk-rgb: 255, 255, 255; }
+@media (prefers-color-scheme: dark) { :root { --balk-rgb: 0, 0, 0; } }
+.topbalk { padding-bottom: 26px;
+  background: linear-gradient(to bottom, rgb(var(--balk-rgb)) 0, rgb(var(--balk-rgb)) env(safe-area-inset-top),
+    rgba(var(--balk-rgb), .82) calc(env(safe-area-inset-top) + 30px), rgba(var(--balk-rgb), .35) calc(env(safe-area-inset-top) + 50px), rgba(var(--balk-rgb), 0) 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(env(safe-area-inset-top) + 34px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(env(safe-area-inset-top) + 34px), transparent); }

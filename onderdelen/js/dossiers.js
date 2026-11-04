@@ -125,7 +125,7 @@ function dossiersLaden() {
   });
 }
 
-var dN = 30, DOPT = {};
+var dN = LAAD_STAP, DOPT = {};
 var DZ = maakZoekbalk({
   naam: "d", balk: "d-balk",
   soorten: {
@@ -139,7 +139,7 @@ var DZ = maakZoekbalk({
   },
   voorbeelden: { fase: 3, onderwerp: 3, commissie: 3, soort: 0, jaar: 0, nl: 1, ook: 1 },
   telling: function (tokens, tekst) { return DOSSIERS ? DOSSIERS.filter(function (d) { return dossierPast(d, tokens, tekst); }).length : null; },
-  opnieuw: function () { dN = 30; if (DOSSIERS) dossiersTonen(); }
+  opnieuw: function () { dN = LAAD_STAP; if (DOSSIERS) dossiersTonen(); }
 });
 var DS = maakSorteer("d", [["laatst", "Laatst bijgewerkt", "Laatst bijgewerkt"], ["nieuw", "Nieuwste eerst", "Nieuwste"], ["gepland", "Eerstvolgende geplande stap", "Gepland"], ["naam", "Op naam", "Naam"]], "laatst", function () { if (DOSSIERS) dossiersTonen(); });
 function dossierPast(d, tokens, tekst) {
@@ -182,7 +182,7 @@ function dossiersOpzetten() {
   DOPT.commissie = Object.keys(com).sort().map(function (c) { return [c, c + " – " + com[c], com[c]]; });
   DOPT.soort = Object.keys(soort).sort().map(function (s) { return [s, soort[s] + " (" + s + ")"]; });
   DOPT.jaar = Object.keys(jaar).sort().reverse().map(function (j) { return [j, j]; });
-  document.getElementById("d-meer").addEventListener("click", function () { dN += 30; dossiersTonen(); });
+  document.getElementById("d-meer").addEventListener("click", function () { dN += LAAD_STAP; dossiersTonen(); });
   bijKaartTik(document.getElementById("d-lijst"), ".dkaart", function (k) { openDossier(k.dataset.ref); });
 }
 

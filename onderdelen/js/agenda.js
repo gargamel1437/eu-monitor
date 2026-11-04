@@ -346,8 +346,8 @@ function agendaDetail(i) {
 }
 function openAgenda(id, dieper) {
   var i = AGENDA_INDEX[id];
-  if (i && i.debat) { openPaneel("Debat", debatDetail(i.debat), { dieper: dieper }); return; }
-  if (i) openPaneel(wieKort(i), agendaDetail(i), { dieper: dieper });
+  if (i && i.debat) { openPaneel("Debat", debatDetail(i.debat), { dieper: dieper, vol: true }); return; }
+  if (i) openPaneel(wieKort(i), agendaDetail(i), { dieper: dieper, vol: true });
 }
 paneelLijf.addEventListener("click", function (e) {
   var m = e.target.closest(".meer-punten");
@@ -374,7 +374,7 @@ function planningHtml(code) {
 }
 document.addEventListener("click", function (e) {
   var k = e.target.closest && e.target.closest("[data-kwartaal]");
-  if (k && PLANNING) { bronRect = k.getBoundingClientRect(); var p = k.dataset.kwartaal.split("-"); openPaneel(k.dataset.kwartaal === PLANNING.huidig ? "Dit kwartaal" : KW[+p[2]] + " kwartaal " + p[1], planningHtml(k.dataset.kwartaal)); }
+  if (k && PLANNING) { bronRect = k.getBoundingClientRect(); var p = k.dataset.kwartaal.split("-"); openPaneel(k.dataset.kwartaal === PLANNING.huidig ? "Dit kwartaal" : KW[+p[2]] + " kwartaal " + p[1], planningHtml(k.dataset.kwartaal), { vol: true }); }
 });
 
 var agendaOpgezet = false;

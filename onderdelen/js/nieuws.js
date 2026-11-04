@@ -32,9 +32,9 @@ function nieuwsPast(li, tokens, tekst) {
   if (!NZ.past("bron", bronnen, tokens) || !NZ.past("onderwerp", li.dataset.terrein.split("|"), tokens) || !NZ.past("taal", li.dataset.taal, tokens)) return false;
   return !tekst || zoeker(tekst).past(li.textContent + " " + bronnen.join(" "));
 }
-// Niet alles tegelijk: eerst 15 berichten per deel, het plusje onderaan laadt de volgende 15.
+// Niet alles tegelijk: eerst LAAD_STAP (20) berichten per deel, het plusje onderaan laadt er 20 bij.
 // Zoeken en filteren kijkt wel naar alle berichten.
-var PERS_STAP = 15, persN = {};
+var PERS_STAP = LAAD_STAP, persN = {};
 function pasToe() {
   var z = zoeker(NZ.tekst);
   alle("#kanaal-media, #kanaal-officieel").forEach(function (d) {
@@ -79,11 +79,11 @@ function verhaalDetail(li) {
 document.getElementById("nieuws").addEventListener("click", function (ev) {
   var k = ev.target.closest(".verhaal-kaart");
   if (!k || ev.target.closest("[data-tok-zoeker]")) return;
-  openPaneel("Verhaal", verhaalDetail(k.closest("li")));
+  openPaneel("Verhaal", verhaalDetail(k.closest("li")), { vol: true });
 });
 document.getElementById("nieuws").addEventListener("keydown", function (ev) {
   var k = ev.target.closest && ev.target.closest(".verhaal-kaart");
-  if (k && (ev.key === "Enter" || ev.key === " ")) { ev.preventDefault(); openPaneel("Verhaal", verhaalDetail(k.closest("li"))); }
+  if (k && (ev.key === "Enter" || ev.key === " ")) { ev.preventDefault(); openPaneel("Verhaal", verhaalDetail(k.closest("li")), { vol: true }); }
 });
 alle("[data-meer-pers]").forEach(function (k) {
   k.addEventListener("click", function () { var d = k.closest("#kanaal-media, #kanaal-officieel"); persN[d.id] = (persN[d.id] || PERS_STAP) + PERS_STAP; pasToe(); });
