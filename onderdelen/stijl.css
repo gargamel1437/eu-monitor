@@ -1101,3 +1101,22 @@ li.bericht[data-agenda] .labels, li.bericht.verhaal:has(.agenda-mini) .labels { 
     rgba(var(--balk-rgb), .82) calc(env(safe-area-inset-top) + 30px), rgba(var(--balk-rgb), .35) calc(env(safe-area-inset-top) + 50px), rgba(var(--balk-rgb), 0) 100%);
   -webkit-mask-image: linear-gradient(to bottom, #000 calc(env(safe-area-inset-top) + 34px), transparent);
   mask-image: linear-gradient(to bottom, #000 calc(env(safe-area-inset-top) + 34px), transparent); }
+/* titelbalk bovenaan (ronde 7): één lange, zachte overgang van vol wit (donker: zwart) helemaal
+   bovenaan bij de notch naar helemaal doorzichtig onderaan. Kleur en vervaging zitten op een
+   eigen laag (::before), zodat de kleine titel zelf altijd scherp en volledig zichtbaar blijft. */
+.topbalk { background: none; -webkit-mask-image: none; mask-image: none;
+  -webkit-backdrop-filter: none; backdrop-filter: none; }
+.topbalk::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(to bottom,
+    rgba(var(--balk-rgb), 1) 0%, rgba(var(--balk-rgb), .93) 8%, rgba(var(--balk-rgb), .84) 16%,
+    rgba(var(--balk-rgb), .73) 25%, rgba(var(--balk-rgb), .61) 34%, rgba(var(--balk-rgb), .49) 43%,
+    rgba(var(--balk-rgb), .38) 52%, rgba(var(--balk-rgb), .28) 61%, rgba(var(--balk-rgb), .19) 70%,
+    rgba(var(--balk-rgb), .11) 79%, rgba(var(--balk-rgb), .05) 88%, rgba(var(--balk-rgb), .015) 95%,
+    rgba(var(--balk-rgb), 0) 100%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%); backdrop-filter: blur(14px) saturate(160%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0,0,0,.9) 30%, rgba(0,0,0,.65) 55%, rgba(0,0,0,.3) 78%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, rgba(0,0,0,.9) 30%, rgba(0,0,0,.65) 55%, rgba(0,0,0,.3) 78%, transparent 100%); }
+/* de titelbalk komt rustig tevoorschijn en verdwijnt net zo rustig */
+.topbalk { transform: translateY(-4px); transition: opacity .55s cubic-bezier(.33,0,.2,1), transform .55s cubic-bezier(.33,0,.2,1); }
+.topbalk.zichtbaar { transform: none; }
+html[data-beweging="minder"] .topbalk { transform: none; transition: opacity .3s ease; }
