@@ -1175,3 +1175,5 @@ html[data-beweging="minder"] .meerknop .trek-punt { display: none; }
 html[data-beweging="minder"] .meerknop[data-trek], html[data-beweging="minder"] .meerknop[data-trek] > svg:not(.trek-vink) { transform: none !important; }
 html[data-beweging="minder"] .eerder-rij > span { transform: translateX(-50%); }
 .linkknop.rood { color: var(--tegen); }
+/* tijd achteraan in een agendaregel (instelling, plaats, tijd): even groot als de rest */
+.meta2 .tijd { font-size: inherit; margin-right: 0; }

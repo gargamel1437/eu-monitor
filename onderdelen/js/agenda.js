@@ -94,9 +94,10 @@ function opDag(d) { return LIJST.filter(function (i) { return loopt(i, d); }).so
 function itemHtml(i, d) {
   var t = i.vast === "briefing" ? "12:00" : (aantalDagen(i) === 1 ? tijdTekst(i) : "");
   return '<div class="item k-' + kleurVan(i) + '" role="button" tabindex="0" data-id="' + esc(i.id) + '"><div class="t">' + esc(i.titel) + "</div>"
-    + '<div class="m">' + (t ? '<span class="duur">' + t + "</span>" : "")
-    + tokLabel("a", "wie", (i.wie || [])[0] || "", wieKort(i), "k-" + kleurVan(i))
+    // volgorde overal hetzelfde: instelling, plaats, dan tijd
+    + '<div class="m">' + tokLabel("a", "wie", (i.wie || [])[0] || "", wieKort(i), "k-" + kleurVan(i))
     + (i.plaats ? '<span class="plaats">' + esc(i.plaats) + "</span>" : "")
+    + (t ? '<span class="duur">' + t + "</span>" : "")
     + (aantalDagen(i) > 1 ? '<span class="duur">' + dagVan(i, d) + "</span>" : "")
     + (/^Informele/.test(i.titel) ? '<span class="plaats">informeel</span>' : "") + "</div></div>";
 }

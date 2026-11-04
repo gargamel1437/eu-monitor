@@ -40,8 +40,8 @@ function widgetInhoud(b) {
       return '<div class="wgroot">' + nu.length + '</div><div class="wklein">vandaag</div>' + (eerst ? '<div class="wregel k-' + kleurVan(eerst) + '"><i></i>' + esc(eerst.titel) + "</div>" : "");
     }
     var h = '<div class="wsub">Vandaag <span>' + esc(lang(dag)) + "</span></div>";
-    h += nu.length ? '<ul class="lijst">' + nu.slice(0, n).map(function (i) { var t = i.vast === "briefing" ? "12:00" : tijdTekst(i); return lijstRegel("#agenda?item=" + i.id, esc(i.titel), (t ? '<span class="tijd">' + t + "</span>" : "") + watLabel(i) + (i.plaats ? "<span>" + esc(i.plaats) + "</span>" : "")); }).join("") + "</ul>" : '<p class="wleeg">Vandaag niets in de agenda.</p>';
-    h += '<div class="wsub">Hierna</div><ul class="lijst">' + later.slice(0, n).map(function (i) { return lijstRegel("#agenda?item=" + i.id, esc(i.titel), "<span>" + esc(lang(i.datum)) + "</span>" + watLabel(i) + (i.plaats ? "<span>" + esc(i.plaats) + "</span>" : "")); }).join("") + "</ul>";
+    h += nu.length ? '<ul class="lijst">' + nu.slice(0, n).map(function (i) { var t = i.vast === "briefing" ? "12:00" : tijdTekst(i); return lijstRegel("#agenda?item=" + i.id, esc(i.titel), watLabel(i) + (i.plaats ? "<span>" + esc(i.plaats) + "</span>" : "") + (t ? '<span class="tijd">' + t + "</span>" : "")); }).join("") + "</ul>" : '<p class="wleeg">Vandaag niets in de agenda.</p>';
+    h += '<div class="wsub">Hierna</div><ul class="lijst">' + later.slice(0, n).map(function (i) { return lijstRegel("#agenda?item=" + i.id, esc(i.titel), watLabel(i) + (i.plaats ? "<span>" + esc(i.plaats) + "</span>" : "") + "<span>" + esc(lang(i.datum)) + "</span>"); }).join("") + "</ul>";
     return h;
   }
   if (b.id === "pers" || b.id === "persberichten") {
@@ -296,7 +296,7 @@ function zoekAlles(q) {
     function zoek(lijst, tekst) { return z.ordenen(lijst.filter(function (x) { return z.past(tekst(x), x); })); }
     function nieuws(sel) { return zoek(alle(sel + " li.bericht"), function (li) { return li.textContent + " " + (li.dataset.bronnen || li.dataset.bron || ""); }).map(function (li) { return nieuwsRegel(li); }); }
     var ag = zoek(alleAgenda(), agendaTekst)
-      .map(function (i) { return lijstRegel("#agenda?item=" + i.id, esc(i.titel), "<span>" + esc(lang(i.datum)) + (tijdTekst(i) ? " · " + tijdTekst(i) : "") + "</span>" + watLabel(i)); });
+      .map(function (i) { return lijstRegel("#agenda?item=" + i.id, esc(i.titel), watLabel(i) + (i.plaats ? "<span>" + esc(i.plaats) + "</span>" : "") + "<span>" + esc(lang(i.datum)) + (tijdTekst(i) ? " · " + tijdTekst(i) : "") + "</span>"); });
     var db = zoek(r[3].debatten, function (x) { return x.titel; })
       .map(function (x) { return lijstRegel(x.verslag, esc(x.titel), "<span>debat " + kort(x.datum) + "</span>", true); });
     var d = zoek(r[1], function (x) { return x.ref + " " + x.titel + " " + x.zoek; })
