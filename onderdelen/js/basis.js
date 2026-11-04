@@ -738,14 +738,8 @@ document.addEventListener("click", function (ev) {
   }
 })();
 
-// ---------- recente zoekopdrachten (Overzicht) ----------
-var RECENT = leesJSON("eu-recent", []);
-function onthoudZoek(q) {
-  q = q.trim();
-  if (normaal(q).length < 3) return;
-  RECENT = [q].concat(RECENT.filter(function (x) { return normaal(x) !== normaal(q); })).slice(0, 12);
-  bewaar("eu-recent", JSON.stringify(RECENT));
-}
+// recente zoekopdrachten bestaan niet meer: een oude lijst opruimen
+try { localStorage.removeItem("eu-recent"); } catch (e) {}
 
 
 // ---------- meldingen wegklikken (blijven weg tot er een andere melding is) ----------
@@ -777,3 +771,132 @@ function onthoudZoek(q) {
   }
   if (META.bijgewerkt) bewaar("eu-versie", META.bijgewerkt);
 })();
+
+// ---------- plusjes: verschijnen aan de rand, vasthouden laadt ----------
+// Een plusje (.meerknop) is eerst verborgen. Kom je bij de rand van de lijst en trek je verder
+// (onderaan; bij de Agenda ook bovenaan en links in de datumstrook), dan verschijnt het. Blijf je
+// doortrekken, dan loopt er in TREK_DUUR een ring omheen vol en laadt het (zelfde als een tik).
+// Loslaten voordat de ring rond is: de ring loopt terug en er gebeurt niets.
+// Op de computer telt doorscrollen bij de rand als trekken: de eerste keer verschijnt het plusje,
+// blijf je daarna doorscrollen dan loopt de ring vol; stop je, dan loopt hij terug.
+var TREK_DUUR = 600, TREK = [], TREK_OMTREK = 150.8;
+function trekKnop(knop, rand, scroller) {
+  if (!knop || knop.dataset.trek) return;
+  knop.dataset.trek = rand;
+  knop.classList.add("slaapt");
+  knop.insertAdjacentHTML("beforeend", '<svg class="ring" viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="24"/></svg>');
+  TREK.push({ knop: knop, rand: rand, scroller: scroller || null });
+  // na een tik of na het vasthouden weer verbergen (de knop staat dan onder of boven de nieuwe items)
+  knop.addEventListener("click", function () { setTimeout(function () { trekSlaap(knop, true); }, 0); });
+}
+function trekRing(knop, v, terug) {
+  var c = knop.querySelector(".ring circle");
+  if (!c) return;
+  c.style.transition = terug && !MINDER_BEWEGING ? "stroke-dashoffset .3s ease" : "none";
+  c.style.strokeDashoffset = TREK_OMTREK * (1 - v);
+}
+function trekWakker(knop) { if (!knop.classList.contains("slaapt")) return; knop.classList.remove("slaapt"); knop.dispatchEvent(new Event("trekwakker")); }
+function trekSlaap(knop, direct) {
+  trekRing(knop, 0, false);
+  if (knop.classList.contains("slaapt")) return;
+  if (direct) { knop.classList.add("direct"); knop.classList.add("slaapt"); knop.offsetWidth; requestAnimationFrame(function () { knop.classList.remove("direct"); }); }
+  else knop.classList.add("slaapt");
+}
+function trekAanRand(t) {
+  if (t.rand === "onder") return window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
+  if (t.rand === "boven") return window.scrollY <= 0;
+  return t.scroller.scrollLeft <= 0;
+}
+function trekKandidaat(rand, doel) {
+  if (document.documentElement.classList.contains("geen-scroll")) return null;
+  for (var n = 0; n < TREK.length; n++) {
+    var t = TREK[n], k = t.knop;
+    if (t.rand !== rand || k.classList.contains("verborgen") || !k.offsetParent || !trekAanRand(t)) continue;
+    if (rand === "links" && !(doel && t.scroller.contains(doel))) continue;
+    if (rand === "onder") { var r = k.getBoundingClientRect(); if (r.top > window.innerHeight || r.bottom < 0) continue; }
+    return t;
+  }
+  return null;
+}
+// Eén trekbeweging tegelijk: welke knop, sinds wanneer de ring loopt, en of hij al geladen heeft.
+var trekNu = null;
+function trekStart(t, vasthouden) {
+  trekNu = { t: t, sinds: performance.now(), klaar: false, loopt: vasthouden };
+  if (vasthouden) trekLus();
+}
+function trekLus() {
+  if (!trekNu || trekNu.klaar || !trekNu.loopt) return;
+  var v = Math.min(1, (performance.now() - trekNu.sinds) / TREK_DUUR);
+  trekRing(trekNu.t.knop, v, false);
+  if (v >= 1) {
+    trekNu.klaar = true;
+    try { if (navigator.vibrate) navigator.vibrate(12); } catch (e) {}
+    trekNu.t.knop.click();
+    return;
+  }
+  requestAnimationFrame(trekLus);
+}
+function trekLos() {
+  if (trekNu && !trekNu.klaar) trekRing(trekNu.t.knop, 0, true);
+  trekNu = null;
+}
+// vinger: vanaf het punt waar je de rand bereikte telt hoe ver je doortrekt
+(function () {
+  var vorig = null, basis = null;
+  document.addEventListener("touchstart", function (e) {
+    trekLos(); basis = null;
+    vorig = e.touches.length === 1 ? { x: e.touches[0].clientX, y: e.touches[0].clientY, doel: e.target } : null;
+  }, { passive: true });
+  document.addEventListener("touchmove", function (e) {
+    if (!vorig || e.touches.length !== 1) return;
+    var p = e.touches[0], x = p.clientX, y = p.clientY;
+    if (!basis) {
+      var dx = x - vorig.x, dy = y - vorig.y;
+      var rand = Math.abs(dy) >= Math.abs(dx) ? (dy < 0 ? "onder" : dy > 0 ? "boven" : null) : (dx > 0 ? "links" : null);
+      var t = rand && trekKandidaat(rand, vorig.doel);
+      vorig.x = x; vorig.y = y;
+      if (!t) return;
+      basis = { t: t, x: x, y: y, wakker: false };
+    }
+    var r = basis.t.rand, trek = r === "onder" ? basis.y - y : r === "boven" ? y - basis.y : x - basis.x;
+    // bovenaan de Agenda: de pagina niet laten verend meetrekken of vernieuwen
+    if (r === "boven" && e.cancelable) e.preventDefault();
+    if (trek < -8) { trekLos(); basis = null; vorig.x = x; vorig.y = y; return; }
+    if (!basis.wakker && trek > 12) {
+      basis.wakker = true;
+      trekWakker(basis.t.knop);
+      trekStart(basis.t, true);
+    }
+  }, { passive: false });
+  function eind() { trekLos(); basis = null; vorig = null; }
+  document.addEventListener("touchend", eind, { passive: true });
+  document.addEventListener("touchcancel", eind, { passive: true });
+})();
+// muiswiel en trackpad
+(function () {
+  var reeks = null, stil = null;
+  window.addEventListener("wheel", function (e) {
+    var ax = Math.abs(e.deltaX), ay = Math.abs(e.deltaY);
+    var rand = ay >= ax ? (e.deltaY > 0 ? "onder" : e.deltaY < 0 ? "boven" : null) : (e.deltaX < 0 ? "links" : null);
+    var t = rand && trekKandidaat(rand, e.target);
+    clearTimeout(stil);
+    if (!t) { if (reeks) { trekLos(); reeks = null; } return; }
+    if (!reeks || reeks.t !== t) {
+      // een nieuwe reeks: was het plusje nog verborgen, dan alleen laten verschijnen
+      var wasWakker = !t.knop.classList.contains("slaapt");
+      trekLos();
+      reeks = { t: t };
+      trekWakker(t.knop);
+      if (wasWakker) trekStart(t, true);
+    }
+    stil = setTimeout(function () { trekLos(); reeks = null; }, 180);
+  }, { passive: true });
+})();
+// weer verbergen als je wegscrolt van de rand
+window.addEventListener("scroll", function () {
+  TREK.forEach(function (t) {
+    if (t.rand !== "onder" || t.knop.classList.contains("slaapt")) return;
+    if (document.documentElement.scrollHeight - window.innerHeight - window.scrollY > 220) trekSlaap(t.knop);
+  });
+}, { passive: true });
+alle(".meerknop").forEach(function (k) { if (k.id !== "a-eerder") trekKnop(k, "onder"); });

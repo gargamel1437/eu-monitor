@@ -78,7 +78,6 @@ function maakZoekbalk(cfg) {
       h = "<h4>Filter op</h4>" + soortNamen.filter(function (s) { return (cfg.voorbeelden || {})[s] !== 0; }).map(function (s) {
         return woorden(s, cfg.soorten[s].opties().slice(0, (cfg.voorbeelden || {})[s] || 4));
       }).join("");
-      if (cfg.naam === "ov" && RECENT.length) h = "";
     } else if (gevraagd.length) {
       h = "<h4>Filter op</h4>" + gevraagd.map(function (s) { return woorden(s, cfg.soorten[s].opties()); }).join("");
     } else {

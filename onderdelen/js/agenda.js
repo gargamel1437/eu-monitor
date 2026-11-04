@@ -6,8 +6,10 @@
 //  - Meerdaagse items staan op elke dag als gewone kaart: instelling · plaats · 2/4.
 //  - Tik op een item: een wolkje met Zet in agenda en Meer info (programma, livestream…).
 //  - Zoeken en filteren met tokens: Wanneer, Wie, Wat, Waar, Raad (welke raad).
-//  - Terugscrollen = het verleden: de debatten van de laatste plenaire zittingen staan als gewone
-//    items op hun dag. Bij het openen sta je op vandaag.
+//  - Bij het openen sta je bovenaan, zoals op de andere pagina's: de lijst en de strook beginnen
+//    bij deze week. Het verleden (debatten van de laatste plenaire zittingen, persmomenten) komt
+//    erbij met het plusje "Eerdere weken": trek bovenaan de pagina (of links in de strook) door en
+//    houd vast, of tik erop. Zoeken en filteren doorzoeken altijd ook het verleden.
 //  - De planning van de Commissie (alleen per kwartaal bekend) staat als één dunne regel bij
 //    het begin van elk kwartaal; het huidige kwartaal bij vandaag. Tik = de lijst.
 //  Kleuren per instelling zijn overal hetzelfde: ep, raad, top (Europese Raad), com, int.
@@ -99,6 +101,12 @@ function itemHtml(i, d) {
     + (/^Informele/.test(i.titel) ? '<span class="plaats">informeel</span>' : "") + "</div></div>";
 }
 function eersteDag() { var m = vandaag(); LIJST.forEach(function (i) { if (i.datum < m) m = i.datum; }); return m; }
+// Vanaf welke dag de lijst en de strook lopen: deze week, of verder terug als je eerdere weken
+// bijlaadt. Bij zoeken of filteren alles, ook het verleden.
+var A_VANAF = null, A_EERDER = null, A_STROOKMEER = null, A_STAP_WEKEN = 4;
+function agendaFilterAan() { return !!(AZ.tokens.length || AZ.tekst); }
+function beginDag() { return agendaFilterAan() ? eersteDag() : (A_VANAF || maandagVan(vandaag())); }
+function meerEerder() { return !agendaFilterAan() && eersteDag() < beginDag(); }
 // ---------- de planning van de Commissie als regel per kwartaal ----------
 function kwBegin(code) { var d = code.split("-"); return d[1] + "-" + ("0" + (3 * (+d[2] - 1) + 1)).slice(-2) + "-01"; }
 function planningVoor(code) {
@@ -127,7 +135,7 @@ function kwartaalRegels() {
 }
 function laatsteDag() { var m = vandaag(); LIJST.forEach(function (i) { var e = i.eind_datum || i.datum; if (e > m) m = e; }); return m; }
 function tijdlijnHtml() {
-  var h = "", begin = eersteDag(), d = begin, eind = laatsteDag(), vorigeWeek = null, leeg = [], kw = kwartaalRegels();
+  var h = "", begin = beginDag(), d = begin, eind = laatsteDag(), vorigeWeek = null, leeg = [], kw = kwartaalRegels();
   function leegAf() {
     if (!leeg.length) return;
     var a = dt(leeg[0]), b = dt(leeg[leeg.length - 1]);
@@ -161,7 +169,7 @@ function tijdlijnHtml() {
   return h;
 }
 function strookHtml() {
-  var begin = eersteDag(), d = maandagVan(begin), eind = laatsteDag(), h = "";
+  var begin = beginDag(), d = maandagVan(begin), eind = laatsteDag(), h = "";
   while (d <= eind) {
     var l = opDag(d), x = dt(d);
     h += '<button type="button" class="sdag' + (d === vandaag() ? " vandaag" : "") + (x.getDay() % 6 === 0 ? " weekend" : "") + '" data-dag="' + d + '"' + (d < begin ? " disabled" : "") + ">"
@@ -171,17 +179,74 @@ function strookHtml() {
   }
   return h;
 }
-function agendaTonen() {
+function agendaTonen(strookPlek) {
+  var sa = strookPlek === undefined ? strookAnker() : strookPlek;
   LIJST = agendaItems().filter(function (i) { return agendaPast(i, AZ.tokens, AZ.tekst); });
   var doel = document.getElementById("a-tijdlijn");
   doel.className = "tijdlijn";
   var lijst = tijdlijnHtml();
   doel.innerHTML = (LIJST.length || Object.keys(kwartaalRegels()).length ? lijst : '<p class="leeg-filter">Niets gevonden. Haal een filter weg of tik op × om alles te wissen.</p>')
     + opgehaald("parlement", "Parlement") + opgehaald("raad", "Raad en toppen");
-  document.getElementById("a-strook").innerHTML = strookHtml();
+  var strook = document.getElementById("a-strook");
+  strook.innerHTML = strookHtml();
+  if (A_STROOKMEER) {
+    strook.insertBefore(A_STROOKMEER, strook.firstChild);
+    var meer = meerEerder();
+    A_EERDER.classList.toggle("verborgen", !meer);
+    A_STROOKMEER.classList.toggle("verborgen", !meer);
+  }
+  if (!strookHerstel(sa) && sa) strookNaarDezeWeek();
   window.euMarkeer(doel);
   volgStrook();
 }
+// ---------- eerdere weken bijladen zonder dat de pagina verspringt ----------
+// Wat je zag, blijft staan: we onthouden waar het eerste element onder de vaste balk (en de
+// eerste dag in de strook) stond en schuiven na het opnieuw opbouwen precies zoveel bij.
+function plakOnder() { return document.querySelector("#agenda .agenda-plak").getBoundingClientRect().bottom; }
+function lijstAnker() {
+  var grens = plakOnder(), uit = null;
+  alle("#a-tijdlijn .weekregel[data-week], #a-tijdlijn [data-dag]").some(function (el) {
+    var r = el.getBoundingClientRect();
+    if (r.bottom <= grens) return false;
+    uit = { sel: el.dataset.week ? '.weekregel[data-week="' + el.dataset.week + '"]' : '[data-dag="' + el.dataset.dag + '"]', top: r.top };
+    return true;
+  });
+  return uit;
+}
+function lijstHerstel(a) {
+  var el = a && document.querySelector("#a-tijdlijn " + a.sel);
+  if (el) { var d = el.getBoundingClientRect().top - a.top; if (Math.abs(d) > .5) window.scrollBy(0, d); }
+}
+function strookAnker() {
+  var s = document.getElementById("a-strook"), links = s.getBoundingClientRect().left, uit = null;
+  alle(".sdag", s).some(function (b) { var r = b.getBoundingClientRect(); if (r.right <= links + 1) return false; uit = { dag: b.dataset.dag, x: r.left }; return true; });
+  return uit;
+}
+function strookHerstel(a) {
+  var s = document.getElementById("a-strook"), b = a && s.querySelector('.sdag[data-dag="' + a.dag + '"]');
+  if (b) s.scrollLeft += b.getBoundingClientRect().left - a.x;
+  return !!b;
+}
+function meerVerleden() {
+  if (!meerEerder()) return;
+  var la = lijstAnker(), sa = strookAnker();
+  trekSlaap(A_EERDER, true); trekSlaap(A_STROOKMEER, true);
+  var oudst = maandagVan(eersteDag()), v = plusDagenVan(beginDag(), -7 * A_STAP_WEKEN);
+  A_VANAF = v < oudst ? oudst : v;
+  agendaTonen(sa);
+  lijstHerstel(la);
+  volgStrook();
+}
+// de plusjes weer wegzetten als je wegscrolt (zonder dat de rest verschuift)
+function eerderSlaap() { if (A_EERDER.classList.contains("slaapt")) return; var a = lijstAnker(); trekSlaap(A_EERDER, true); lijstHerstel(a); }
+function strookMeerSlaap() { if (A_STROOKMEER.classList.contains("slaapt")) return; var a = strookAnker(); trekSlaap(A_STROOKMEER, true); strookHerstel(a); }
+// de strook op deze week (zonder de pagina te verschuiven)
+function strookNaarDezeWeek() {
+  var strook = document.getElementById("a-strook"), knop = strook.querySelector('.sdag[data-dag="' + maandagVan(vandaag()) + '"]');
+  if (knop) strook.scrollLeft = knop.offsetLeft - strook.firstElementChild.offsetLeft;
+  strookMaand();
+}
+
 // naar de week van vandaag, net onder de vaste zoekbalk en datumstrook
 function naarVandaag(zacht) {
   zacht = zacht === true;
@@ -382,6 +447,21 @@ function agendaOpzetten() {
   if (agendaOpgezet) return;
   agendaOpgezet = true;
   document.getElementById("a-vandaag").onclick = function () { naarVandaag(true); };
+  A_EERDER = document.getElementById("a-eerder");
+  A_STROOKMEER = document.createElement("button");
+  A_STROOKMEER.type = "button"; A_STROOKMEER.className = "meerknop strookmeer verborgen"; A_STROOKMEER.setAttribute("aria-label", "Eerdere weken laden");
+  A_STROOKMEER.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
+  trekKnop(A_EERDER, "boven");
+  trekKnop(A_STROOKMEER, "links", document.getElementById("a-strook"));
+  A_EERDER.addEventListener("click", meerVerleden);
+  A_STROOKMEER.addEventListener("click", meerVerleden);
+  // het plusje in de strook groeit links aan: de strook op het begin houden, zodat het in beeld komt
+  A_STROOKMEER.addEventListener("trekwakker", function () {
+    var strook = document.getElementById("a-strook"), tot = performance.now() + 450;
+    (function vast() { strook.scrollLeft = 0; if (performance.now() < tot) requestAnimationFrame(vast); })();
+  });
+  window.addEventListener("scroll", function () { if (window.scrollY > 160 && huidigeTab() === "agenda") eerderSlaap(); }, { passive: true });
+  document.getElementById("a-strook").addEventListener("scroll", function () { if (this.scrollLeft > 160) strookMeerSlaap(); }, { passive: true });
   var tl = document.getElementById("a-tijdlijn");
   tl.addEventListener("click", function (e) {
     if (e.target.closest("[data-tok-zoeker], [data-kwartaal], a")) return;
@@ -414,13 +494,16 @@ function agendaTab(q) {
   bezig(doel);
   agendaLaden().then(function () {
     agendaOpzetten();
-    agendaTonen();
+    // elke keer dat je de Agenda opent: bovenaan, bij deze week
+    A_VANAF = null;
+    trekSlaap(A_EERDER, true); trekSlaap(A_STROOKMEER, true);
+    agendaTonen(null);
     AZ.teken();
-    // na het wisselen van tab zet toonTab de pagina bovenaan; daarna naar vandaag
-    if (!(q && q.item)) requestAnimationFrame(function () { requestAnimationFrame(function () { naarVandaag(false); }); });
+    strookNaarDezeWeek();
+    volgStrook();
     if (q && q.item) openAgenda(q.item);
     if (!PLANNING) laden("commissie").then(function (d) { PLANNING = d; if (huidigeTab() === "agenda") agendaTonen(); }).catch(function () {});
   }).catch(function () { laadFout(doel); });
 }
-// bij het laden van de pagina zet basis.js alles bovenaan; de agenda daarna naar vandaag
-window.addEventListener("load", function () { if (huidigeTab() === "agenda" && AGENDA) requestAnimationFrame(function () { naarVandaag(); }); });
+// bij het laden van de pagina zet basis.js alles bovenaan; de strook dan op deze week
+window.addEventListener("load", function () { if (huidigeTab() === "agenda" && AGENDA) strookNaarDezeWeek(); });

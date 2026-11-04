@@ -571,15 +571,6 @@ ul.bewerk li.sleept { z-index: 3; box-shadow: 0 12px 30px rgba(0,0,0,.22); trans
 .bewerk-naam > span:first-child { font-weight: 600; }
 ul.bewerk li.uit .bewerk-naam > span:first-child { color: var(--tekst); font-weight: 500; }
 
-/* ---------- recente zoekopdrachten ---------- */
-.recentlijst { margin: 6px 0 10px; background: var(--kaart); border: 1px solid var(--rand); border-radius: 16px; overflow: hidden; box-shadow: var(--schaduw); }
-.recent-kop { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px 6px; font-size: var(--t-meta); font-weight: 600; color: var(--zacht); text-transform: uppercase; letter-spacing: .5px; }
-.recent-kop .linkknop { text-transform: none; letter-spacing: 0; font-size: var(--t-sub); text-decoration: none; }
-.recent-rij-wrap { position: relative; overflow: hidden; border-top: 1px solid var(--lijn); }
-.recent-rij { position: relative; z-index: 1; display: flex; gap: 10px; align-items: center; width: 100%; min-height: 46px; padding: 0 14px; border: 0; background: var(--kaart); font: inherit; color: inherit; text-align: left; cursor: pointer; transition: transform .2s ease; }
-.lijstkaart .recent-rij { border-top: 1px solid var(--lijn); }
-.lijstkaart .recent-rij:first-child { border-top: 0; }
-.recent-weg { position: absolute; right: 0; top: 0; bottom: 0; width: 96px; border: 0; background: #ff3b30; color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
 .klokje { font-size: var(--t-sub); opacity: .6; }
 
 /* ---------- agenda: week, maand, jaar ---------- */
@@ -910,9 +901,6 @@ body.bewerken .widget a { pointer-events: none; }
 .wmaten button.actief { border-color: var(--eu); color: var(--eu); font-weight: 650; }
 .wvoorbeeld { display: block; border-radius: 4px; background: var(--eu-zacht); border: 1px solid var(--lijn); }
 .wvoorbeeld.v-k { width: 18px; height: 18px; } .wvoorbeeld.v-m { width: 38px; height: 18px; } .wvoorbeeld.v-g { width: 38px; height: 30px; }
-.recent-kop .rood, .linkknop.rood { color: var(--tegen); }
-.recent-vraag { display: flex; gap: 10px; align-items: center; text-transform: none; letter-spacing: 0; color: var(--tekst); font-weight: 500; }
-.recent-rij .ik { color: var(--zacht); }
 .bronnen-tekst .kaart { box-shadow: none; }
 #sug { background: var(--glas-sterk); -webkit-backdrop-filter: blur(28px) saturate(180%); backdrop-filter: blur(28px) saturate(180%); }
 @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) { #sug { background: var(--achter); } }
@@ -1018,7 +1006,6 @@ li.bericht.k-com .meta .bron::before, li.bericht.k-raad .meta .bron::before { co
 .plakblok > .zoekbalk:first-child { margin-top: 0; }
 .plakblok .zoekgroot { margin: 0; }
 .plakblok .zoekgroot .zoek { box-shadow: none; border: 0; background: var(--glas-zacht); min-height: 44px; }
-.plakblok .recentlijst { margin: 6px 0 0; box-shadow: none; }
 .agenda-plak .strook { padding: 0; }
 .strookkop { display: flex; align-items: center; justify-content: space-between; padding: 6px 6px 0; }
 #agenda .strookkop .maand { padding: 0; }
@@ -1133,3 +1120,26 @@ html[data-beweging="minder"] .topbalk { transform: none; transition: opacity .3s
     rgba(var(--balk-rgb), .04) calc(var(--v) + 63px), rgba(var(--balk-rgb), 0) 100%);
   -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 var(--v), rgba(0,0,0,.85) calc(var(--v) + 25px), rgba(0,0,0,.5) calc(var(--v) + 45px), transparent 100%);
   mask-image: linear-gradient(to bottom, #000 0, #000 var(--v), rgba(0,0,0,.85) calc(var(--v) + 25px), rgba(0,0,0,.5) calc(var(--v) + 45px), transparent 100%); }
+/* plusjes: eerst verborgen, verschijnen als je aan de rand doortrekt; de ring loopt vol als je vasthoudt */
+.meerknop { position: relative; transition: opacity .3s ease, transform .35s cubic-bezier(.2,.9,.3,1.25); }
+.meerknop.slaapt { opacity: 0; transform: scale(.6); pointer-events: none; }
+.meerknop.direct, .eerder-rij:has(> .meerknop.direct), .eerder-rij:has(> .meerknop.direct) > * { transition: none !important; }
+.meerknop svg.ring { position: absolute; left: -4px; top: -4px; width: calc(100% + 8px); height: calc(100% + 8px); transform: rotate(-90deg);
+  stroke: var(--eu); stroke-width: 3; fill: none; stroke-linecap: round; pointer-events: none; }
+.meerknop svg.ring circle { stroke-dasharray: 150.8; stroke-dashoffset: 150.8; }
+/* Agenda: "Eerdere weken" boven deze week; ingeklapt zolang het plusje verborgen is */
+.eerder-rij { display: flex; flex-direction: column; align-items: center; gap: 2px; overflow: hidden; max-height: 90px; padding-bottom: 8px;
+  transition: max-height .35s cubic-bezier(.2,.9,.3,1), opacity .3s ease, padding .35s ease; }
+.eerder-rij:has(> .meerknop.slaapt), .eerder-rij:has(> .meerknop.verborgen) { max-height: 0; opacity: 0; padding-bottom: 0; }
+.eerder-rij .meerknop { margin: 6px auto 0; }
+.eerder-rij span { font-size: var(--t-label); font-weight: 600; color: var(--zacht); }
+/* datumstrook: klein plusje links voor de eerdere weken */
+.strook .meerknop.strookmeer { flex: none; align-self: center; width: 34px; height: 34px; margin: 0 8px 0 4px; overflow: visible;
+  transition: opacity .3s ease, transform .35s cubic-bezier(.2,.9,.3,1.25), width .35s cubic-bezier(.2,.9,.3,1), margin .35s ease; }
+.strook .meerknop.strookmeer svg:not(.ring) { width: 18px; height: 18px; }
+.strook .meerknop.strookmeer.slaapt { width: 0; margin: 0; }
+.strook .meerknop.strookmeer.verborgen { display: none; }
+@media (prefers-reduced-motion: reduce) { .meerknop.slaapt { transform: none; } }
+html[data-beweging="minder"] .meerknop.slaapt { transform: none; }
+.strook:has(> .strookmeer:not(.slaapt):not(.verborgen)) { scroll-snap-type: none; }
+.linkknop.rood { color: var(--tegen); }

@@ -283,13 +283,12 @@ document.addEventListener("click", function (e) {
 })();
 
 // ---------- zoeken over alles ----------
-var zoekOnthoud = null;
 function zoekAlles(q) {
   var doel = document.getElementById("ov-resultaten"), blokken = document.getElementById("ov-data");
   q = q.trim();
-  if (normaal(q).length < 2) { clearTimeout(zoekOnthoud); overzichtTonen(); bedoelJe("ov-zoek", null); doel.innerHTML = ""; doel.classList.add("verborgen"); blokken.classList.remove("verborgen"); return; }
+  if (normaal(q).length < 2) { overzichtTonen(); bedoelJe("ov-zoek", null); doel.innerHTML = ""; doel.classList.add("verborgen"); blokken.classList.remove("verborgen"); return; }
   blokken.classList.add("verborgen");
-  Promise.all([agendaLaden(), laden("dossiers-kort"), laden("stemmen"), laden("debatten"), mensenLaden(), laden("commissie")]).then(function (r) {
+  Promise.all([agendaLaden(), laden("dossiers-kort"), laden("stemmen"), laden("debatten"), mensenLaden(), laden("commissie"), bestuurLaden().catch(function () { return null; })]).then(function (r) {
     function blok(titel, items, link) {
       return items.length ? '<div class="kop-met-link"><h2>' + titel + ' <small>' + items.length + "</small></h2>" + (link ? '<a href="' + link + '">Alles ›</a>' : "") + '</div><div class="kaart"><ul class="lijst">' + items.slice(0, 5).join("") + "</ul></div>" : "";
     }
@@ -304,15 +303,21 @@ function zoekAlles(q) {
       .map(function (x) { return lijstRegel("#dossiers?open=" + encodeURIComponent(x.ref), esc(x.titel), "<span>" + esc(x.ref) + "</span><span>" + esc(x.status) + "</span>"); });
     var s = zoek(r[2].stemmen, function (x) { return x.titel + " " + (x.procedure || ""); })
       .map(function (x) { return lijstRegel("#stemmingen?id=" + x.id, esc(x.titel), uitslag(x.uitslag) + "<span>" + kort(x.moment) + "</span>"); });
-    var m = zoek(r[4], function (p) { return p.naam + " " + p.partij + " " + landNaam(p.land); })
-      .map(function (p) { return lijstRegel("#mensen?id=" + p.id, esc(p.naam), "<span>" + esc(p.partij || "") + "</span><span>" + esc(p.fractie || "") + "</span>"); });
+    // personen: europarlementariërs, de Commissie en de Nederlandse bewindspersonen; wie op naam
+    // past eerst, en dan staat het blok Personen ook bovenaan
+    var zn = zoeker(q), bestuurders = r[6] ? r[6].commissie.leden.concat(r[6].ministers) : [];
+    var pm = zoek(bestuurders, function (p) { return p.naam + " " + p.functie + " " + (p.portefeuille || p.formaties || []).join(" "); })
+      .concat(zoek(r[4], function (p) { return p.naam + " " + p.partij + " " + landNaam(p.land); }));
+    var opNaam = pm.filter(function (p) { return zn.past(p.naam); });
+    pm = opNaam.concat(pm.filter(function (p) { return opNaam.indexOf(p) < 0; }));
+    var m = pm.map(function (p) { return p.functie ? lijstRegel("#mensen?id=" + p.id, esc(p.naam), '<span class="label wie k-' + (p.soort === "commissie" ? "com" : "raad") + '">' + esc(p.soort === "commissie" ? "Commissie" : "Kabinet") + "</span><span>" + esc(p.functie) + "</span>")
+      : lijstRegel("#mensen?id=" + p.id, esc(p.naam), "<span>" + esc(p.partij || "") + "</span><span>" + esc(p.fractie || "") + "</span>"); });
     var cp = zoek(r[5].items, function (x) { return x.titel + " " + x.titel_en + " " + x.dg; })
       .map(function (x) { return lijstRegel(x.url, esc(x.titel), '<span class="label wie k-com">' + esc(x.soort_naam) + "</span><span>" + KW[x.kwartaal] + " kwartaal " + x.jaar + "</span>", true); });
-    var h = blok("Agenda", ag, "#agenda") + blok("Pers", nieuws("#kanaal-media"), "#nieuws") + blok("Persberichten", nieuws("#kanaal-officieel"), "#nieuws")
-      + blok("Dossiers", d, "#dossiers?q=" + encodeURIComponent(q)) + blok("Stemmingen", s, "#stemmingen") + blok("Personen", m, "#mensen")
+    var h = (opNaam.length ? blok("Personen", m, "#mensen") : "") + blok("Agenda", ag, "#agenda") + blok("Pers", nieuws("#kanaal-media"), "#nieuws") + blok("Persberichten", nieuws("#kanaal-officieel"), "#nieuws")
+      + blok("Dossiers", d, "#dossiers?q=" + encodeURIComponent(q)) + blok("Stemmingen", s, "#stemmingen") + (opNaam.length ? "" : blok("Personen", m, "#mensen"))
       + blok("Debatten", db, "") + blok("Gepland door de Commissie", cp, "");
     doel.innerHTML = h || '<p class="leeg">Niets gevonden voor “' + esc(q) + "”. Probeer minder woorden, of een Engels woord: veel titels van dossiers zijn Engels.</p>";
-    if (h) { clearTimeout(zoekOnthoud); zoekOnthoud = setTimeout(function () { onthoudZoek(q); }, 1500); }
     bedoelJe("ov-zoek", z);
     doel.classList.remove("verborgen");
   }).catch(function () { laadFout(doel); doel.classList.remove("verborgen"); });
@@ -322,42 +327,3 @@ function zoekAlles(q) {
   if (veld) veld.addEventListener("input", function (ev) { clearTimeout(wacht); wacht = setTimeout(function () { zoekAlles(ev.target.value); }, 250); });
 })();
 
-// ---------- recente zoekopdrachten in het zoekveld (zoals Safari) ----------
-var KLOK = '<svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>';
-(function () {
-  var veld = document.getElementById("ov-zoek"), lijst = document.getElementById("ov-recent");
-  if (!veld || !lijst) return;
-  var vraagt = false;
-  function teken() {
-    var toon = document.activeElement === veld && !veld.value.trim() && RECENT.length;
-    lijst.classList.toggle("verborgen", !toon);
-    if (!toon) return;
-    lijst.innerHTML = '<div class="recent-kop"><span>Recent gezocht</span>'
-      + (vraagt ? '<span class="recent-vraag">Alles wissen? <button type="button" class="linkknop rood" data-recent-ja>Wis</button><button type="button" class="linkknop" data-recent-nee>Annuleer</button></span>' : '<button type="button" class="linkknop" data-recent-wis>Wis</button>') + "</div>"
-      + RECENT.slice(0, 8).map(function (q) { return '<div class="recent-rij-wrap" data-q="' + esc(q) + '"><button type="button" class="recent-rij" data-recent="' + esc(q) + '">' + KLOK + esc(q) + '</button><button type="button" class="recent-weg" data-recent-weg="' + esc(q) + '">Verwijder</button></div>'; }).join("");
-  }
-  veld.addEventListener("focus", teken);
-  veld.addEventListener("input", teken);
-  veld.addEventListener("blur", function () { setTimeout(function () { if (document.activeElement !== veld) { lijst.classList.add("verborgen"); vraagt = false; } }, 200); });
-  lijst.addEventListener("pointerdown", function (ev) { ev.preventDefault(); });
-  lijst.addEventListener("click", function (ev) {
-    var t = ev.target;
-    var r = t.closest("[data-recent]");
-    if (r) { veld.value = r.dataset.recent; veld.dispatchEvent(new Event("input", { bubbles: true })); lijst.classList.add("verborgen"); return; }
-    var w = t.closest("[data-recent-weg]");
-    if (w) { RECENT = RECENT.filter(function (x) { return x !== w.dataset.recentWeg; }); bewaar("eu-recent", JSON.stringify(RECENT)); teken(); return; }
-    // wissen vraagt eerst om bevestiging, in de lijst zelf
-    if (t.closest("[data-recent-wis]")) { vraagt = true; teken(); return; }
-    if (t.closest("[data-recent-nee]")) { vraagt = false; teken(); return; }
-    if (t.closest("[data-recent-ja]")) { RECENT = []; bewaar("eu-recent", "[]"); vraagt = false; teken(); }
-  });
-  var veeg = null;
-  lijst.addEventListener("touchstart", function (ev) { var w = ev.target.closest(".recent-rij-wrap"); if (w) veeg = { w: w, x: ev.touches[0].clientX }; }, { passive: true });
-  lijst.addEventListener("touchmove", function (ev) { if (!veeg) return; var dx = Math.min(0, ev.touches[0].clientX - veeg.x); veeg.w.querySelector(".recent-rij").style.transform = "translateX(" + Math.max(dx, -96) + "px)"; veeg.dx = dx; }, { passive: true });
-  lijst.addEventListener("touchend", function () {
-    if (!veeg) return;
-    var r = veeg.w.querySelector(".recent-rij");
-    r.style.transform = (veeg.dx || 0) < -50 ? "translateX(-96px)" : "";
-    veeg = null;
-  });
-})();

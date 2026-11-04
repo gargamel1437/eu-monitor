@@ -227,6 +227,18 @@ var MZ = maakZoekbalk({
   voorbeelden: { wie: 4, status: 2, land: 3, fractie: 4 },
   opnieuw: function () { mN = LAAD_STAP; if (MENSEN && mensenOpgezet) mensenTonen(); }
 });
+// Zoeken zonder te kiezen bij Wie: ook in de Commissie, de ministers en de persvoorlichters.
+// Wie op naam past staat bovenaan (dus "von der leyen" geeft eerst Ursula von der Leyen).
+function bestuurTreffers(b, z) {
+  var zn = zoeker(MZ.tekst), uit = [];
+  function bij(p, tekst, html) { if (z.past(tekst, p)) uit.push({ p: p, html: html, naam: zn.past(p.naam || "") }); }
+  b.commissie.leden.forEach(function (p) { bij(p, p.naam + " " + p.functie + " " + (p.portefeuille || []).join(" "), bestuurKaart(p)); });
+  b.ministers.forEach(function (p) { bij(p, p.naam + " " + p.functie + " " + (p.formaties || []).join(" "), bestuurKaart(p)); });
+  b.commissie.woordvoerders.forEach(function (w) { bij(w, w.naam + " " + w.functie + " " + (w.onderwerpen || []).join(" "), '<div class="kaart compact">' + woordvoerderHtml(w) + "</div>"); });
+  (b.persvoorlichters || []).forEach(function (w) { bij(w, w.naam + " " + w.functie + " " + w.dienst, persvoorlichterKaart(w)); });
+  return uit.filter(function (x) { return x.naam; }).concat(uit.filter(function (x) { return !x.naam; }));
+}
+var mensenRonde = 0;
 function mensenWie() { var t = MZ.tokens.filter(function (x) { return x.soort === "wie" && !x.uit; }).pop(); return t ? t.waarde : "parlement"; }
 function mensenTonen() {
   var wie = mensenWie();
@@ -240,10 +252,25 @@ function mensenTonen() {
     return z.past(p.naam + " " + p.partij + " " + p.fractie + " " + landNaam(p.land) + " " + (p.land || ""), p);
   }).sort(function (x, y) { return (x.land === "NL" ? 0 : 1) - (y.land === "NL" ? 0 : 1) || landNaam(x.land).localeCompare(landNaam(y.land)) || (x.fractie || "").localeCompare(y.fractie || "") || (x.partij || "").localeCompare(y.partij || "") || x.naam.localeCompare(y.naam); });
   uit = z.ordenen(uit);
+  // wie op naam past eerst
+  var zn = zoeker(MZ.tekst);
+  if (!zn.leeg) { var opNaam = uit.filter(function (p) { return zn.past(p.naam); }); uit = opNaam.concat(uit.filter(function (p) { return opNaam.indexOf(p) < 0; })); }
+  var ookBestuur = !z.leeg && !MZ.tokens.some(function (x) { return x.soort === "wie" && !x.uit; }), ronde = ++mensenRonde;
   document.getElementById("m-aantal").textContent = MZ.leeg() ? "" : uit.length + (uit.length === 1 ? " persoon" : " personen");
   var doel = document.getElementById("m-lijst");
   doel.innerHTML = uit.slice(0, mN).map(persoonKaart).join("") || '<p class="leeg">Niemand gevonden. Haal een filter weg of tik op × om alles te wissen.</p>';
   document.getElementById("m-meer").classList.toggle("verborgen", uit.length <= mN);
+  if (ookBestuur) bestuurLaden().then(function (b) {
+    if (ronde !== mensenRonde) return;
+    var t = bestuurTreffers(b, z);
+    if (!t.length) return;
+    var opNaamB = t.some(function (x) { return x.naam; }), meps = uit.filter(function (p) { return zn.past(p.naam); }).length;
+    var blok = "<h2>Commissie en ministers</h2>" + t.map(function (x) { return x.html; }).join("");
+    if (!uit.length) doel.innerHTML = blok;
+    else if (opNaamB && !meps) doel.innerHTML = blok + "<h2>Europarlementariërs</h2>" + doel.innerHTML;
+    else doel.insertAdjacentHTML("beforeend", blok);
+    document.getElementById("m-aantal").textContent = (uit.length + t.length) + " personen";
+  }).catch(function () {});
 }
 function mensenOpzetten() {
   var landen = {}, fracties = {};

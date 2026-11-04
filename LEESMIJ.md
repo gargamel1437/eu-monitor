@@ -63,8 +63,7 @@ daarin ook Bronnen en beperkingen. Licht of donker volgt de instelling van je iP
   debatten.
 - **Pers**: hetzelfde nieuwsfeit van meerdere media is één verhaal (`samenvoegen()` in
   `eu_nieuws.py`); tik erop en kies welke bron je opent.
-- **Zoek**: zoeken in alles, met recente zoekopdrachten in het veld (wissen vraagt eerst om
-  bevestiging), en widgets zoals op de iPhone: Agenda (met vandaag), Pers, Dossiers, Stemmen,
+- **Zoek**: zoeken in alles (zonder lijst met recente zoekopdrachten), en widgets zoals op de iPhone: Agenda (met vandaag), Pers, Dossiers, Stemmen,
   en naar keuze Persberichten en Personen. Houd een widget vast (of tik op Wijzig) om te slepen,
   weg te halen (−), de maat te kiezen (klein, middel, groot) of er een toe te voegen (+).
 - **Personen**: europarlementariërs met contact en activiteit; typ "wie" voor de Commissie
@@ -119,5 +118,7 @@ Alle tekst gebruikt één reeks maten (CSS-variabelen bovenin `stijl.css`):
 ## Lijsten, pop-ups en scrollen
 
 - Lange lijsten (Pers, Procedures, Stemmingen, Personen) laden er `LAAD_STAP` (20) tegelijk, met overal hetzelfde ronde plusje onderaan. De agenda is één doorlopende lijst.
+- Plusjes (`.meerknop`) zijn eerst verborgen. Trek je aan de rand van de lijst door, dan verschijnen ze; blijf je trekken en houd je vast, dan loopt er een ring omheen vol (`TREK_DUUR`, 0,6 s) en laadt het. Loslaten = ring terug, niets geladen. Tikken op een zichtbaar plusje laadt ook. Op de computer: de eerste keer doorscrollen bij de rand laat het plusje verschijnen, blijf je daarna doorscrollen dan loopt de ring vol. Alles via `trekKnop(knop, rand, scroller)` in `basis.js` (rand: `onder`, `boven` of `links`).
+- De agenda begint bij het openen bovenaan, bij deze week (lijst én datumstrook). Eerdere weken (`A_STAP_WEKEN`, 4 tegelijk) komen erbij met het plusje "Eerdere weken": bovenaan de pagina doortrekken, of links in de datumstrook. Wat je zag blijft op zijn plek (`lijstAnker`/`strookAnker`). Bij zoeken of filteren staat het verleden er altijd in.
 - Alle details openen als hele pagina van onderen (`openPaneel(..., { vol: true })`); alleen het kleine wolkje bij een agenda-item blijft een wolkje.
 - Zolang een paneel open is, ligt de pagina erachter vast via `html.geen-scroll` (niet op `body`: dan schieten de vaste balken los). Op de iPhone houdt een touchmove-wachter scrollen buiten het paneel tegen, en na sluiten wordt de scrollpositie zo nodig teruggezet.
