@@ -9,6 +9,8 @@
 /* ---------- kleuren ---------- */
 :root {
   /* tekstmaten: overal dezelfde reeks (zie LEESMIJ) */
+  /* vaste balk bovenaan steekt zoveel buiten de kaarten uit (zie LEESMIJ) */
+  --plak-uit: 6px;
   --t-titel: 34px; --t-kop: 22px; --t-kop2: 20px; --t-kaart: 17px; --t-tekst: 16px; --t-sub: 15px; --t-meta: 13px; --t-label: 12px; --t-mini: 11px;
   color-scheme: light;
   --achter: #e4ebff;
@@ -911,7 +913,6 @@ body.bewerken .widget a { pointer-events: none; }
 .bronnen-tekst .kaart { box-shadow: none; }
 #sug { background: var(--glas-sterk); -webkit-backdrop-filter: blur(28px) saturate(180%); backdrop-filter: blur(28px) saturate(180%); }
 @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) { #sug { background: var(--achter); } }
-.widgets { padding-left: 6px; }
 
 /* =====================================================================
    Ronde 4 november (middag): geen gekleurde lijn links meer, maar een stip in de kleur van de
@@ -1006,7 +1007,7 @@ li.bericht.k-com .meta .bron::before, li.bericht.k-raad .meta .bron::before { co
    ===================================================================== */
 /* het vaste blok bovenaan elke tab: één glazen bobbel met schakelaar en/of zoekbalk.
    Geen negatieve marge: zo valt het blok binnen dezelfde marges als de kaarten. */
-.plakrij.plakblok, .agenda-plak.plakblok { position: sticky; top: calc(env(safe-area-inset-top) + 50px); z-index: 15; margin: 4px 0 12px; padding: 6px; border-radius: 22px;
+.plakrij.plakblok, .agenda-plak.plakblok { position: sticky; top: calc(env(safe-area-inset-top) + 50px); z-index: 15; margin: 4px calc(-1 * var(--plak-uit)) 12px; padding: var(--plak-uit); border-radius: 22px;
   background: var(--glas); -webkit-backdrop-filter: blur(22px) saturate(175%); backdrop-filter: blur(22px) saturate(175%);
   box-shadow: 0 4px 14px rgba(20,30,80,.07); border: 0; }
 .plakblok .schakel { margin: 0; background: var(--glas-zacht); border: 0; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; }

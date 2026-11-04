@@ -75,6 +75,10 @@ daarin ook Bronnen en beperkingen. Licht of donker volgt de instelling van je iP
 - **Meldingen** klik je weg met het kruisje. **Als web-app** maakt de site geen eigen stappen
   in de geschiedenis.
 
+## Vaste balk bovenaan
+
+De meeschuivende balk met zoekbalk en tabwissel (`.plakblok`) steekt op elke pagina aan beide kanten even ver buiten de kaarten uit: `--plak-uit` (6px) bovenin `stijl.css`. Dezelfde maat is de binnenruimte van de balk, zodat de velden erin precies op één lijn staan met de kaarten eronder. Pas alleen die variabele aan, nooit per pagina.
+
 ## Tekstmaten
 
 Alle tekst gebruikt één reeks maten (CSS-variabelen bovenin `stijl.css`):
