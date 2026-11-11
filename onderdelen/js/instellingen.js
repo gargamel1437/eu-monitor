@@ -11,6 +11,7 @@ var INST_IK = {
   pers: ["#ff3b30", '<path d="M5 5h11v14H7a2 2 0 0 1-2-2z"/><path d="M16 9h3v8a2 2 0 0 1-2 2"/><path d="M8 9h5M8 13h5"/>'],
   agenda: ["#ff9500", '<rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/>'],
   over: ["#34c759", '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v6M12 7.5v.01"/>'],
+  sleutel: ["#5856d6", '<circle cx="8" cy="15" r="4"/><path d="M11 12l8-8M16 7l2.5 2.5M14 9l2 2"/>'],
   bronnen: ["#007aff", '<path d="M5 4h10l4 4v12H5z"/><path d="M8 11h8M8 15h8"/>']
 };
 function ikoon(k) { return '<span class="inst-ik"><svg viewBox="0 0 24 24">' + INST_IK[k][1] + "</svg></span>"; }
@@ -30,6 +31,7 @@ var TEKST = { klein: "Klein", standaard: "Standaard", groot: "Groot", groter: "G
 var INST_SCHERM = {
   hoofd: function () {
     return groep("", instKnopRij("Algemeen", "algemeen", "", "algemeen") + instKnopRij("Pers", "pers", "", "pers") + instKnopRij("Agenda", "agenda", "", "agenda"))
+      + groep("", instKnopRij("GitHub-sleutel", "sleutel", ghSleutel() ? "ingesteld" : "geen", "sleutel"), "Voor echt nieuw nieuws als je in Pers omlaag trekt.")
       + groep("", instKnopRij("Bronnen en beperkingen", "bronnen", "", "bronnen") + instKnopRij("Over deze site", "over", "", "over"))
       + '<p class="klein inst-voet">Het Zoek-scherm pas je aan met Wijzig, of door een widget even vast te houden.</p>';
   },
