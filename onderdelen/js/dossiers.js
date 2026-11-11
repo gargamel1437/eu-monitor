@@ -171,7 +171,13 @@ function dossiersTonen() {
 }
 
 function dossiersOpzetten() {
+  dossiersIndex();
+  document.getElementById("d-meer").addEventListener("click", function () { dN += LAAD_STAP; dossiersTonen(); });
+  bijKaartTik(document.getElementById("d-lijst"), ".dkaart", function (k) { openDossier(k.dataset.ref); });
+}
+function dossiersIndex() {
   var ter = {}, com = {}, soort = {}, jaar = {};
+  Object.keys(DOSSIER_INDEX).forEach(function (k) { delete DOSSIER_INDEX[k]; });
   DOSSIERS.forEach(function (d) {
     DOSSIER_INDEX[d.ref] = d;
     (d.terreinen || []).forEach(function (t) { ter[t] = 1; });
@@ -182,8 +188,6 @@ function dossiersOpzetten() {
   DOPT.commissie = Object.keys(com).sort().map(function (c) { return [c, c + " – " + com[c], com[c]]; });
   DOPT.soort = Object.keys(soort).sort().map(function (s) { return [s, soort[s] + " (" + s + ")"]; });
   DOPT.jaar = Object.keys(jaar).sort().reverse().map(function (j) { return [j, j]; });
-  document.getElementById("d-meer").addEventListener("click", function () { dN += LAAD_STAP; dossiersTonen(); });
-  bijKaartTik(document.getElementById("d-lijst"), ".dkaart", function (k) { openDossier(k.dataset.ref); });
 }
 
 function dossiersTab(q) {
@@ -196,3 +200,21 @@ function dossiersTab(q) {
     else if (q.q && uit.length === 1) openDossier(uit[0].ref);
   }).catch(function () { laadFout(doel); });
 }
+
+// ---------- verversen: omlaag trekken bovenaan Dossiers (alleen het deel dat je ziet) ----------
+function dossiersVerversen() {
+  if (!document.getElementById("deel-stemmingen").classList.contains("verborgen")) return stemmenVerversen();
+  return verversBuild(["dossiers", "dossiers-kort"], function () {
+    var oud = {};
+    (DOSSIERS || []).forEach(function (d) { oud[d.ref] = d.laatst || ""; });
+    return verversData("dossiers").then(function (d) {
+      verversData("dossiers-kort").catch(function () {});
+      DOSSIERS = d;
+      dossiersIndex();
+      var n = d.filter(function (x) { return !(x.ref in oud) || oud[x.ref] !== (x.laatst || ""); }).length;
+      dossiersTonen();
+      return n;
+    });
+  });
+}
+verversKnop("d-ververs", dossiersVerversen);

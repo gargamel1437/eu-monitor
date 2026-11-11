@@ -6,6 +6,7 @@
 - Vaste lijsten (fracties, maanden) die meerdere onderdelen gebruiken."""
 
 import json
+import os
 import re
 import time
 import urllib.error
@@ -63,9 +64,14 @@ def ophalen_json(url, timeout=30):
 
 def met_cache(naam, functie):
     """Voert functie() uit en bewaart het resultaat. Mislukt dat, dan de vorige versie.
-    Geeft (gegevens, fout, moment_van_vorige_versie) terug."""
+    Geeft (gegevens, fout, moment_van_vorige_versie) terug. Met EU_ALLEEN_CACHE in de omgeving
+    (de snelle nieuwsronde) altijd de bewaarde versie, met fout None en het moment van die versie."""
     CACHE.mkdir(exist_ok=True)
     bestand = CACHE / f"{naam}.json"
+    # snelle nieuwsronde (europa.py --alleen-nieuws): alleen de bewaarde versie, niets ophalen
+    if os.environ.get("EU_ALLEEN_CACHE") and bestand.exists():
+        oud = json.loads(bestand.read_text(encoding="utf-8"))
+        return oud["gegevens"], None, oud["moment"]
     try:
         gegevens = functie()
         bestand.write_text(json.dumps({"moment": datetime.now().isoformat(timespec="minutes"),

@@ -44,7 +44,22 @@ var INST_SCHERM = {
     alle("li.bericht").forEach(function (li) { (li.dataset.bronnen || li.dataset.bron).split("|").forEach(function (x) { b[x] = li.classList.contains("officieel") ? "Persberichten" : "Media"; }); });
     var namen = Object.keys(b).sort(function (x, y) { return b[x].localeCompare(b[y]) || x.localeCompare(y); });
     return groep("", instKnopRij("Standaard tonen", "nieuwsDeel", INST.nieuwsDeel === "kanaal-officieel" ? "Persberichten" : "Media") + instRij("Engelstalige berichten", schakel("engels", INST.engels)))
+      + groep("Verversen", instKnopRij("GitHub-sleutel", "sleutel", ghSleutel() ? "ingesteld" : "geen"),
+        ghSleutel() ? "Omlaag trekken in Pers haalt nu echt nieuw nieuws op (een à twee minuten)." : "Zonder sleutel laadt omlaag trekken de laatste versie (07:15, 12:15, 18:15).")
       + groep("Bronnen", namen.map(function (x) { return instRij(esc(x), schakel("bron", INST.bronnenUit.indexOf(x) < 0, x), b[x]); }).join(""), "Uitgezette bronnen zie je niet in Pers, op het Zoek-scherm en bij zoeken.");
+  },
+  sleutel: function () {
+    var heeft = !!ghSleutel();
+    return '<div class="inst-groep"><p class="klein inst-voet sleutel-uitleg">Met een sleutel laat omlaag trekken in Pers GitHub meteen het nieuws ophalen, in plaats van te wachten op 07:15, 12:15 of 18:15. Dat duurt een à twee minuten. De sleutel blijft alleen op dit apparaat en mag maar één ding: deze site bijwerken.</p></div>'
+      + groep("Zo maak je hem", '<ol class="sleutel-stappen klein">'
+        + '<li>Open <a href="https://github.com/settings/personal-access-tokens/new?name=EU-monitor+verversen&amp;description=Pers+verversen+in+de+EU-monitor&amp;target_name=gargamel1437&amp;expires_in=365&amp;actions=write" target="_blank" rel="noopener">deze link</a> en log in. Naam, vervaldatum (een jaar) en het recht Actions staan dan meestal al ingevuld.</li>'
+        + "<li>Repository access: <b>Only select repositories</b> en kies <b>eu-monitor</b>.</li>"
+        + "<li>Controleer bij Permissions dat <b>Actions</b> op <b>Read and write</b> staat. Verder niets.</li>"
+        + "<li>Tik op <b>Generate token</b>, kopieer hem en plak hem hieronder.</li></ol>")
+      + groep("Sleutel", '<div class="inst-rij sleutel-rij"><input id="gh-sleutel" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="github_pat_…" value="' + esc(ghSleutel()) + '"></div>'
+        + '<button type="button" class="inst-rij inst-link" data-inst-doe="sleutel-bewaar"><span class="inst-label">Bewaren en testen</span></button>'
+        + (heeft ? '<button type="button" class="inst-rij inst-link rood" data-inst-doe="sleutel-weg"><span class="inst-label">Verwijderen</span></button>' : ""),
+        '<span id="sleutel-uitslag"></span>');
   },
   nieuwsDeel: function () { return vinkLijst("nieuwsDeel", { "kanaal-media": "Media", "kanaal-officieel": "Persberichten" }, INST.nieuwsDeel); },
   agenda: function () {
@@ -60,7 +75,7 @@ var INST_SCHERM = {
       + groep("", '<button type="button" class="inst-rij inst-link rood" data-inst-doe="reset"><span class="inst-label">Alle instellingen terugzetten</span></button>', "Filters, widgets en voorkeuren gaan terug naar standaard.");
   }
 };
-var INST_TITEL = { hoofd: "Instellingen", algemeen: "Algemeen", start: "Openen met", tekst: "Tekstgrootte", pers: "Pers", nieuwsDeel: "Standaard tonen",
+var INST_TITEL = { sleutel: "GitHub-sleutel", hoofd: "Instellingen", algemeen: "Algemeen", start: "Openen met", tekst: "Tekstgrootte", pers: "Pers", nieuwsDeel: "Standaard tonen",
   agenda: "Agenda", bronnen: "Bronnen", over: "Over deze site" };
 var instHuidig = null;
 function instTeken() { if (instHuidig && paneelOpen && INST_SCHERM[instHuidig]) paneelLijf.innerHTML = '<div data-inst-scherm="' + instHuidig + '">' + INST_SCHERM[instHuidig]() + "</div>"; }
@@ -86,6 +101,23 @@ paneelLijf.addEventListener("click", function (ev) {
     return;
   }
   var doe = t.closest("[data-inst-doe]");
+  if (doe && doe.dataset.instDoe === "sleutel-bewaar") {
+    var waarde = (document.getElementById("gh-sleutel").value || "").trim(), uit = document.getElementById("sleutel-uitslag");
+    if (!waarde) { uit.textContent = "Plak eerst een sleutel."; return; }
+    bewaar("eu-gh-sleutel", waarde);
+    uit.textContent = "Even testen…";
+    gh("/actions/workflows/" + GH.workflow).then(function () {
+      uit.textContent = "Werkt. Trek in Pers omlaag om nieuw nieuws op te halen.";
+    }, function (e) {
+      uit.textContent = e && e.message === "sleutel" ? "GitHub accepteert deze sleutel niet. Kijk of hij bij eu-monitor hoort en Actions: Read and write heeft." : "Testen lukte niet (internet?). De sleutel is wel bewaard.";
+    });
+    return;
+  }
+  if (doe && doe.dataset.instDoe === "sleutel-weg") {
+    try { localStorage.removeItem("eu-gh-sleutel"); } catch (e) {}
+    instTeken();
+    return;
+  }
   if (doe && doe.dataset.instDoe === "reset") {
     if (doe.dataset.zeker) {
       try { Object.keys(localStorage).filter(function (x) { return /^eu-(instellingen|f-|z-|sort-|a-dicht)/.test(x); }).forEach(function (x) { localStorage.removeItem(x); }); } catch (e) {}

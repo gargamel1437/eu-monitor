@@ -38,6 +38,16 @@ BRONNEN = {
     "Euronews": [("https://www.euronews.com/rss?format=mrss&level=program&name=europe-news", "en", True)],
 }
 
+# Analyses van denktanks: geen nieuws, maar wel bij Media, met het label Analyse. Ze worden niet
+# met nieuwsberichten samengevoegd tot één verhaal. Carnegie Europe (het Europa-deel van de Carnegie
+# Endowment for International Peace) heeft geen RSS-feed (gezocht op 11 november 2026), dus lezen we
+# de lijst op hun Europa-pagina's en van elk stuk de titel, samenvatting en datum uit de pagina zelf.
+ANALYSE = {
+    "Carnegie Europe": ["https://carnegieendowment.org/europe", "https://carnegieendowment.org/europe/strategic-europe"],
+}
+ANALYSE_DAGEN_TERUG = 14   # een denktank publiceert minder vaak dan een krant
+ALLE_BRONNEN = list(BRONNEN) + list(ANALYSE)
+
 # Officiële communicatie van de EU zelf (persberichten) houden we apart van journalistiek nieuws.
 OFFICIEEL = {"Europese Commissie", "Raad van de EU"}
 # Bronnen waarvan (een deel van) de artikelen achter een betaalmuur staat.
@@ -144,6 +154,52 @@ def persnummer(link):
     return m.group(1).lower() if m else None
 
 
+CARNEGIE_LINK = re.compile(r'href="(/europe/(?!events/|podcasts/)[a-z-]+/(20\d\d)/(\d\d)/[a-z0-9-]+)"')
+
+
+def _meta(pagina, naam):
+    m = re.search(r'<meta (?:property|name)="' + re.escape(naam) + r'" content="([^"]*)"', pagina)
+    return html.unescape(m.group(1)).strip() if m else ""
+
+
+def carnegie(grens):
+    """Stukken van Carnegie Europe van na 'grens'. Wat al eens is opgehaald staat in
+    data/carnegie.json, zodat elk stuk maar één keer wordt opgevraagd."""
+    from bronnen import CACHE
+    pad = CACHE / "carnegie.json"
+    try:
+        bewaard = json.loads(pad.read_text(encoding="utf-8"))
+    except Exception:
+        bewaard = {}
+    links = {}
+    for lijst_url in ANALYSE["Carnegie Europe"]:
+        pagina = ophalen(lijst_url).decode("utf-8", "replace")
+        for pad_, jaar, maand in CARNEGIE_LINK.findall(pagina):
+            if (int(jaar), int(maand)) >= (grens.year, grens.month):
+                links["https://carnegieendowment.org" + pad_] = 1
+    uit = []
+    for url in links:
+        if url not in bewaard:
+            try:
+                pagina = ophalen(url, timeout=30, pogingen=2).decode("utf-8", "replace")
+            except Exception:
+                continue
+            bewaard[url] = {"titel": _meta(pagina, "og:title"), "tekst": _meta(pagina, "og:description") or _meta(pagina, "description"),
+                            "datum": _meta(pagina, "article:published_time")}
+        x = bewaard[url]
+        try:
+            datum = datetime.fromisoformat(x["datum"].replace("Z", "+00:00"))
+        except Exception:
+            continue
+        if datum >= grens and x["titel"]:
+            uit.append((url, x["titel"], x["tekst"], datum))
+    # alleen bewaren wat nog binnen het venster valt
+    houden = {u for u, *_ in uit} | set(links)
+    CACHE.mkdir(exist_ok=True)
+    pad.write_text(json.dumps({u: v for u, v in bewaard.items() if u in houden}, ensure_ascii=False), encoding="utf-8")
+    return uit
+
+
 def berichten():
     grens = datetime.now(timezone.utc) - timedelta(days=DAGEN_TERUG)
     gezien, lijst, fouten = set(), [], []
@@ -182,6 +238,19 @@ def berichten():
                     "kanaal": "officieel" if bron in OFFICIEEL else "media",
                     "terreinen": terreinen_van(f"{titel} {tekst}", " ".join(categorie_lijst)),
                 })
+    analyse_grens = datetime.now(timezone.utc) - timedelta(days=ANALYSE_DAGEN_TERUG)
+    try:
+        for link, titel, tekst, datum in carnegie(analyse_grens):
+            if link in gezien:
+                continue
+            gezien.add(link)
+            lijst.append({
+                "bron": "Carnegie Europe", "taal": "en", "titel": titel, "tekst": kort(tekst), "link": link,
+                "datum": datum.astimezone(), "soort": "Analyse", "voorstel": False, "kanaal": "media", "analyse": True,
+                "terreinen": terreinen_van(f"{titel} {tekst}"),
+            })
+    except Exception as e:
+        fouten.append(f"Carnegie Europe: {e}")
     lijst.sort(key=lambda b: b["datum"], reverse=True)
     return samenvoegen(lijst), fouten
 
@@ -222,7 +291,7 @@ def samenvoegen(lijst):
       eigennaam (zo werken ook een Nederlandse en een Engelse kop over hetzelfde); of
     - ze minstens 2 eigennamen en 3 kenmerkende woorden delen.
     Algemene woorden (EU, Commissie, Brussel…) tellen niet mee. Persberichten voegen we niet samen."""
-    media = [b for b in lijst if b["kanaal"] == "media"]
+    media = [b for b in lijst if b["kanaal"] == "media" and not b.get("analyse")]
     info = {}
     for b in media:
         kop = kopwoorden(b["titel"])
@@ -261,7 +330,7 @@ def samenvoegen(lijst):
     gehad = set()
     for b in lijst:
         b["ook"] = []
-        if b["kanaal"] != "media":
+        if b["kanaal"] != "media" or b.get("analyse"):
             uit.append(b)
             continue
         g = groepen[wortel(id(b))]

@@ -302,3 +302,22 @@ function mensenTab(q) {
     if (q && q.id) openPersoon(q.id);
   }).catch(function () { laadFout(doel); });
 }
+
+// ---------- verversen: omlaag trekken bovenaan Personen ----------
+function mensenVerversen() {
+  return verversBuild(["mensen", "bestuur", "contacten"], function () {
+    var oud = {};
+    (MENSEN || []).forEach(function (p) { oud[p.id] = 1; });
+    return Promise.all([verversData("mensen"), verversData("bestuur").catch(function () { return null; }), verversData("contacten").catch(function () { return null; })]).then(function (r) {
+      MENSEN = null;
+      Object.keys(MENSEN_INDEX).forEach(function (k) { delete MENSEN_INDEX[k]; });
+      if (r[1]) BESTUUR = r[1];
+      if (r[2]) { CONTACTEN = r[2]; _contactenBezig = null; }
+      return mensenLaden().then(function (lijst) {
+        if (mensenOpgezet) mensenTonen();
+        return lijst.filter(function (p) { return !oud[p.id]; }).length;
+      });
+    });
+  });
+}
+verversKnop("m-ververs", mensenVerversen);

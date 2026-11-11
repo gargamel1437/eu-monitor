@@ -2,13 +2,23 @@
 # GitHub rekent in UTC. Om in winter- én zomertijd steeds rond 07:15, 12:15 en 18:15
 # Nederlandse tijd te draaien, staan er twee schema's; de eerste stap kijkt welke bij de
 # huidige Nederlandse tijd hoort en slaat de andere over.
+#
+# Snelle nieuwsronde: trek je in Pers omlaag (met een GitHub-sleutel in Instellingen), dan start de
+# site deze workflow met alleen_nieuws=true. Dan wordt alleen het nieuws opgehaald; al het andere
+# komt uit de bewaarde gegevens van de vorige run. Dat duurt ongeveer een à twee minuten.
 name: EU-monitor bijwerken
+run-name: ${{ inputs.alleen_nieuws && 'Alleen nieuws' || 'EU-monitor bijwerken' }}
 
 on:
   schedule:
     - cron: "15 6,11,17 * * *"   # wintertijd (UTC+1)
     - cron: "15 5,10,16 * * *"   # zomertijd (UTC+2)
-  workflow_dispatch:              # handmatig starten via "Run workflow"
+  workflow_dispatch:              # handmatig starten via "Run workflow", of vanuit Pers (omlaag trekken)
+    inputs:
+      alleen_nieuws:
+        description: "Alleen het nieuws ophalen (snel)"
+        type: boolean
+        default: false
   push:
     branches: [main]
 
@@ -24,7 +34,7 @@ concurrency:
 jobs:
   bouwen:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: ${{ inputs.alleen_nieuws && 10 || 45 }}
     environment:
       name: github-pages
       url: ${{ steps.publiceren.outputs.page_url }}
@@ -56,9 +66,10 @@ jobs:
         if: steps.tijd.outputs.ga == 'ja'
         env:
           TZ: Europe/Amsterdam
-        run: python3 europa.py
+        run: python3 europa.py ${{ inputs.alleen_nieuws && '--alleen-nieuws' || '' }}
 
-      - if: always() && steps.tijd.outputs.ga == 'ja'
+      # de snelle nieuwsronde verandert de bewaarde gegevens niet: niet opnieuw opslaan
+      - if: always() && steps.tijd.outputs.ga == 'ja' && !inputs.alleen_nieuws
         uses: actions/cache/save@v6
         with:
           path: data

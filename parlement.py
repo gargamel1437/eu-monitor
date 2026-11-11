@@ -4,6 +4,7 @@ Bron: de open data van het Europees Parlement, https://data.europarl.europa.eu
 Afgelopen vergaderdagen veranderen niet meer en worden bewaard in data/debatten/."""
 
 import json
+import os
 import re
 from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor
@@ -34,6 +35,8 @@ def schoon_label(label):
 def vergaderdagen():
     """Met een bewaarde kopie: de vergaderkalender verandert zelden en de API is soms traag."""
     pad = CACHE / "vergaderdagen.json"
+    if os.environ.get("EU_ALLEEN_CACHE") and pad.exists():   # snelle nieuwsronde
+        return json.loads(pad.read_text(encoding="utf-8"))
     try:
         dagen = _vergaderdagen()
         pad.parent.mkdir(exist_ok=True)

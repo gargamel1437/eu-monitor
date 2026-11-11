@@ -58,13 +58,16 @@ function pasToe() {
   document.getElementById("niets").classList.toggle("verborgen", zichtbaar > 0);
 }
 // bron en onderwerp in de lijst: vasthouden = alleen dit tonen of verbergen
-alle("li.bericht").forEach(function (li) {
-  var b = li.querySelector(".meta .bron");
-  if (b && !li.classList.contains("verhaal")) { b.dataset.tokZoeker = "n"; b.dataset.tokSoort = "bron"; b.dataset.tokWaarde = li.dataset.bron; }
-  alle(".labels .label", li).forEach(function (l) {
-    if (l.classList.length === 1) { l.dataset.tokZoeker = "n"; l.dataset.tokSoort = "onderwerp"; l.dataset.tokWaarde = l.textContent; }
+function persKoppel() {
+  alle("li.bericht").forEach(function (li) {
+    var b = li.querySelector(".meta .bron");
+    if (b && !li.classList.contains("verhaal")) { b.dataset.tokZoeker = "n"; b.dataset.tokSoort = "bron"; b.dataset.tokWaarde = li.dataset.bron; }
+    alle(".labels .label", li).forEach(function (l) {
+      if (l.classList.length === 1) { l.dataset.tokZoeker = "n"; l.dataset.tokSoort = "onderwerp"; l.dataset.tokWaarde = l.textContent; }
+    });
   });
-});
+}
+persKoppel();
 // een verhaal met meerdere bronnen: kies welke je opent
 function verhaalDetail(li) {
   var l = JSON.parse(li.dataset.verhaal), terreinen = li.dataset.terrein.split("|").filter(Boolean);
@@ -92,3 +95,124 @@ document.addEventListener("eu-segment", function (ev) { if (/^kanaal-/.test(ev.d
 function nieuwsInst() { pasToe(); }
 pasToe();
 if (INST.nieuwsDeel === "kanaal-officieel") toonSegment("kanaal-officieel");
+
+// ---------- verversen: omlaag trekken bovenaan Pers ----------
+// Zonder GitHub-sleutel: de nieuwste build ophalen (data/pers.json). Met sleutel (Instellingen →
+// Pers): GitHub laat de snelle nieuwsronde draaien (workflow met alleen_nieuws), die de feeds
+// ophaalt en de site opnieuw online zet; de app kijkt elke 10 s of het nieuws er al is. Dat duurt
+// een à twee minuten; intussen draait een klein ringetje in de balk bovenaan en lees je gewoon door.
+var PERS_STAND = META.nieuws_bijgewerkt || META.bijgewerkt || "";
+var GH = { repo: "gargamel1437/eu-monitor", workflow: "europa.yml", tak: "main" };
+var PERS_BEZIG = null;
+function ghSleutel() { return (lees("eu-gh-sleutel") || "").trim(); }
+function persHaal() { return verversData("pers"); }
+function persLinks(li) {
+  if (li.dataset.verhaal) { try { return JSON.parse(li.dataset.verhaal).map(function (x) { return x.link; }); } catch (e) {} }
+  var a = li.querySelector("a[href]");
+  return [a ? a.getAttribute("href") : li.textContent];
+}
+// nieuwe lijsten in de pagina zetten; geeft het aantal nieuwe berichten in het deel dat je ziet
+function persToepassen(d) {
+  var oud = {};
+  alle("li.bericht").forEach(function (li) { persLinks(li).forEach(function (l) { oud[l] = 1; }); });
+  document.querySelector("#kanaal-media .nieuwslijst").innerHTML = d.media;
+  document.querySelector("#kanaal-officieel .nieuwslijst").innerHTML = d.officieel;
+  var tel = { "kanaal-media": d.aantal_media, "kanaal-officieel": d.aantal_officieel };
+  alle("#kanaal-schakel button").forEach(function (b) { var s = b.querySelector("small"); if (s && tel[b.dataset.toon] != null) s.textContent = tel[b.dataset.toon]; });
+  PERS_STAND = d.bijgewerkt;
+  persKoppel();
+  pasToe();
+  var deel = document.querySelector("#kanaal-media:not(.verborgen), #kanaal-officieel:not(.verborgen)");
+  var nieuw = alle("li.bericht", deel).filter(function (li) { return !persLinks(li).some(function (l) { return oud[l]; }); });
+  nieuw.forEach(function (li, n) {
+    li.style.animationDelay = Math.min(n, 10) * 35 + "ms";
+    li.classList.add("nieuw-in", "vers");
+    setTimeout(function () { li.classList.remove("nieuw-in"); li.style.animationDelay = ""; }, 900);
+    setTimeout(function () { li.classList.remove("vers"); }, 2600);
+  });
+  try { overzichtTonen(); } catch (e) {}
+  return nieuw.filter(function (li) { return !li.classList.contains("verborgen"); }).length;
+}
+function persUitkomst(n) { return n ? n + " nieuw" : "Niets nieuws"; }
+
+// het kleine ringetje in de balk bovenaan Pers
+var PS = document.getElementById("n-status");
+function persStatus(stand, tekst) {
+  if (!PS) return;
+  clearTimeout(persStatus.t);
+  PS.hidden = false;
+  PS.className = "ververs-status " + stand;
+  PS.querySelector(".vs-tekst").textContent = tekst;
+  if (stand !== "bezig") persStatus.t = setTimeout(function () { PS.classList.add("weg"); setTimeout(function () { PS.hidden = true; }, 300); }, stand === "klaar" ? 2400 : 4500);
+}
+
+function gh(pad, opties) {
+  opties = opties || {};
+  return fetch("https://api.github.com/repos/" + GH.repo + pad, {
+    method: opties.method || "GET", cache: "no-store",
+    headers: { "Authorization": "Bearer " + ghSleutel(), "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" },
+    body: opties.body ? JSON.stringify(opties.body) : undefined
+  }).then(function (r) {
+    if (r.status === 401 || r.status === 403 || r.status === 404) throw new Error("sleutel");
+    if (!r.ok) throw new Error("github");
+    return r.status === 204 ? null : r.json();
+  });
+}
+// loopt er al een ronde (ook als die op een ander apparaat is gestart)? Dan geen tweede.
+function ghLopend() {
+  return gh("/actions/runs?event=workflow_dispatch&per_page=5").then(function (d) {
+    var grens = Date.now() - 15 * 60000;
+    return (d.workflow_runs || []).some(function (r) { return r.status !== "completed" && Date.parse(r.created_at) > grens; });
+  });
+}
+function ghStart() {
+  return ghLopend().then(function (loopt) {
+    if (!loopt) return gh("/actions/workflows/" + GH.workflow + "/dispatches", { method: "POST", body: { ref: GH.tak, inputs: { alleen_nieuws: true } } });
+  });
+}
+// wachten tot de nieuwe build online staat (elke 10 s kijken, hoogstens 6 minuten)
+function persWacht(voor) {
+  var begin = Date.now();
+  return new Promise(function (goed, fout) {
+    (function kijk() {
+      persHaal().then(function (d) {
+        if (d.bijgewerkt > voor) goed(d);
+        else if (Date.now() - begin > 6 * 60000) fout(new Error("duur"));
+        else setTimeout(kijk, 10000);
+      }, function () {
+        if (Date.now() - begin > 6 * 60000) fout(new Error("duur")); else setTimeout(kijk, 10000);
+      });
+    })();
+  });
+}
+function persOpGitHub() {
+  var voor = PERS_STAND;
+  persStatus("bezig", "Nieuws wordt opgehaald");
+  PERS_BEZIG = ghStart().then(function () { return persWacht(voor); }).then(function (d) {
+    var n = persToepassen(d);
+    persStatus("klaar", persUitkomst(n));
+  }, function (e) {
+    var m = e && e.message;
+    persStatus("fout", m === "sleutel" ? "GitHub-sleutel werkt niet. Kijk in Instellingen → Pers."
+      : m === "duur" ? "Duurt langer dan normaal. Straks staat het er vanzelf als je opnieuw ververst."
+      : "Ophalen lukte niet. Controleer je internet.");
+  }).then(function () { PERS_BEZIG = null; });
+}
+function persVerversen() {
+  if (PERS_BEZIG) return Promise.resolve("stil");   // er loopt al een ronde; het ringetje staat bovenin
+  var voor = PERS_STAND;
+  // eerst kijken of er al een nieuwere build is (bijvoorbeeld van 12:15)
+  var eerst = persHaal().then(function (d) { return d.bijgewerkt > voor ? persToepassen(d) : -1; });
+  if (!ghSleutel()) {
+    return eerst.then(function (n) {
+      kortBericht(n < 0 ? "Niets nieuws · stand van " + uurVan(PERS_STAND) + " uur" : persUitkomst(n));
+      return true;
+    }, function (e) { kortBericht("Verversen lukte niet. Controleer je internet."); throw e; });
+  }
+  // met sleutel: na ongeveer een seconde veert de lijst terug, het ophalen gaat bovenin door
+  return Promise.all([eerst.catch(function () { return -1; }), new Promise(function (k) { setTimeout(k, 1000); })]).then(function () {
+    persOpGitHub();
+    return "stil";
+  });
+}
+verversKnop("n-ververs", persVerversen);

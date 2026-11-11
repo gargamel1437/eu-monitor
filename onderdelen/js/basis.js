@@ -660,6 +660,53 @@ function laden(naam) {
   }
   return _geladen[naam];
 }
+// Verversen: één bestand opnieuw ophalen, langs elke cache heen (?t=…), en laden() laat daarna
+// ook de nieuwe versie zien. STAND houdt per onderdeel bij van welke build de gegevens zijn.
+function verversData(naam) {
+  var p = fetch("data/" + naam + ".json?t=" + Date.now(), { cache: "no-store" }).then(function (r) {
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return r.json();
+  });
+  _geladen[naam] = p;
+  p.catch(function () { delete _geladen[naam]; });
+  return p;
+}
+var STAND = {};
+function standVan(naam) { return STAND[naam] || META.bijgewerkt || ""; }
+// is er een nieuwere build dan die van dit onderdeel? Zo ja: {bijgewerkt}, anders null
+function nieuwereBuild(naam) {
+  return fetch("data/meta.json?t=" + Date.now(), { cache: "no-store" }).then(function (r) {
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return r.json();
+  }).then(function (m) { return (m.bijgewerkt || "") > standVan(naam) ? m : null; });
+}
+function uurVan(stand) { return (stand || "").slice(11, 16); }
+// korte melding bovenin (zoals "Bijgewerkt"), gaat vanzelf weg
+function kortBericht(tekst, ms) {
+  alle(".toast.kort").forEach(function (x) { x.remove(); });
+  var t = document.createElement("div");
+  t.className = "toast kort"; t.setAttribute("role", "status"); t.textContent = tekst;
+  document.body.appendChild(t);
+  requestAnimationFrame(function () { requestAnimationFrame(function () { t.classList.add("zichtbaar"); }); });
+  setTimeout(function () { t.classList.remove("zichtbaar"); setTimeout(function () { t.remove(); }, 400); }, ms || 2600);
+}
+// Verversen bovenaan een tab: een ring in .ververs-rij die met trekKnop werkt; denk() doet het werk.
+function verversKnop(id, denk) {
+  var k = document.getElementById(id);
+  if (k) trekKnop(k, "boven", { drager: k.closest(".tab"), eigenPlek: true, denk: denk });
+}
+// Gewoon verversen (Dossiers, Personen): is er een nieuwere build, dan haalt haal() de gegevens
+// opnieuw op en tekent het scherm; haal() geeft het aantal nieuwe of gewijzigde items terug.
+function verversBuild(namen, haal) {
+  return nieuwereBuild(namen[0]).then(function (m) {
+    if (!m) { kortBericht("Niets nieuws · stand van " + uurVan(standVan(namen[0])) + " uur"); return true; }
+    return Promise.resolve(haal()).then(function (n) {
+      namen.forEach(function (x) { STAND[x] = m.bijgewerkt; });
+      kortBericht(n ? n + (n === 1 ? " nieuw of gewijzigd" : " nieuw of gewijzigd") : "Bijgewerkt · stand van " + uurVan(m.bijgewerkt) + " uur");
+      return true;
+    });
+  }, function (e) { kortBericht("Verversen lukte niet. Controleer je internet."); throw e; });
+}
 function laadFout(doel) {
   doel.innerHTML = '<div class="kaart"><h3>Gegevens niet geladen</h3><p class="klein">' + (location.protocol === "file:"
     ? 'Deze pagina is als bestand geopend. Open de online versie: <a href="https://gargamel1437.github.io/eu-monitor/">gargamel1437.github.io/eu-monitor</a>.'
@@ -810,9 +857,11 @@ function trekKnop(knop, rand, opties) {
   opties = opties || {};
   knop.dataset.trek = rand;
   knop.insertAdjacentHTML("beforeend", '<span class="trek-ring" aria-hidden="true"></span>' + VINK);
-  var t = { knop: knop, rand: rand, drager: opties.drager || null, eigenPlek: !!opties.eigenPlek, off: 0 };
+  var t = { knop: knop, rand: rand, drager: opties.drager || null, eigenPlek: !!opties.eigenPlek, off: 0, denk: opties.denk || null };
   TREK.push(t);
   trekZet(t, 0);
+  // verversen: de ring blijft staan en denkt even na (zie trekDenk)
+  if (t.denk) { knop.addEventListener("click", function () { trekDenk(t); }); return; }
   // bij laden (loslaten met volle ring, of een tik): de plek vasthouden, nieuwe items zacht laten
   // verschijnen en de ring terug naar begin
   knop.addEventListener("click", function () {
@@ -823,6 +872,27 @@ function trekKnop(knop, rand, opties) {
       trekZet(t, 0, t.rand === "boven");
     }, 0);
   }, true);
+}
+// Verversen bovenaan: na loslaten met een volle ring blijft de lijst iets omlaag staan en draait
+// dezelfde dunne ring als een boogje rond (nadenken), minstens 0,6 s. Daarna sluit de ring met
+// het vinkje en veert alles terug. t.denk() geeft een belofte; levert die "stil" op, dan veert het
+// zonder vinkje terug (het werk loopt dan op de achtergrond door). Mislukt het, dan ook zonder vinkje.
+var DENK_MIN = 600;
+function trekDenk(t) {
+  if (t.bezig) return;
+  t.bezig = true;
+  var k = t.knop, begin = Date.now();
+  trekZet(t, TREK_DREMPEL, true);
+  k.classList.add("denkt");
+  function klaar(gelukt) {
+    setTimeout(function () {
+      k.classList.remove("denkt");
+      setTimeout(function () { trekZet(t, 0, true); t.bezig = false; }, gelukt ? 650 : 0);
+    }, Math.max(0, DENK_MIN - (Date.now() - begin)));
+  }
+  var p;
+  try { p = Promise.resolve(t.denk()); } catch (e) { p = Promise.reject(e); }
+  p.then(function (r) { klaar(r !== "stil" && r !== false); }, function () { klaar(false); });
 }
 function trekReset(knop, direct) { var t = trekVan(knop); if (t) trekZet(t, 0, !direct); }
 
@@ -870,7 +940,7 @@ function trekKandidaat(rand) {
   if (document.documentElement.classList.contains("geen-scroll")) return null;
   for (var n = 0; n < TREK.length; n++) {
     var t = TREK[n], k = t.knop;
-    if (t.rand !== rand || k.classList.contains("verborgen") || !k.offsetParent || !trekAanRand(t)) continue;
+    if (t.rand !== rand || t.bezig || k.classList.contains("verborgen") || !k.offsetParent || !trekAanRand(t)) continue;
     if (rand === "onder") { var r = k.getBoundingClientRect(); if (r.top > window.innerHeight || r.bottom < 0) continue; }
     return t;
   }
@@ -928,9 +998,9 @@ function trekLaad(t) { if (t.rand === "onder") naVeren(function () { t.knop.clic
   // weg van de rand (bijvoorbeeld met de vinger gescrold): terug naar normaal
   window.addEventListener("scroll", function () {
     TREK.forEach(function (t) {
-      if (!t.off) return;
+      if (!t.off || t.bezig) return;
       if (!trekAanRand(t)) { if (wiel && wiel.t === t) wiel = null; trekZet(t, 0, true); }
     });
   }, { passive: true });
 })();
-alle(".meerknop").forEach(function (k) { if (k.id !== "a-eerder") trekKnop(k, "onder"); });
+alle(".meerknop").forEach(function (k) { if (k.id !== "a-eerder" && !k.closest(".ververs-rij")) trekKnop(k, "onder"); });

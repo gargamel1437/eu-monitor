@@ -174,13 +174,16 @@ function stemmenTonen() {
   window.euMarkeer(doel);
 }
 function stemIndex() { STEMMEN.stemmen.forEach(function (s) { STEM_INDEX[s.id] = s; }); }
-function stemmenOpzetten() {
+function stemmenOpties() {
   var ter = {};
   stemIndex();
   STEMMEN.stemmen.forEach(function (s) { (s.terreinen || []).forEach(function (t) { ter[t] = 1; }); });
   SOPT.terrein = Object.keys(ter).sort().map(function (t) { return [t, t]; });
-  document.getElementById("s-meer").addEventListener("click", function () { sN += LAAD_STAP; stemmenTonen(); });
   SOPT.zitting = (STEMMEN.zittingen || []).map(function (z) { return [z.begin, "Zitting " + kort(z.begin) + " – " + kort(z.eind)]; });
+}
+function stemmenOpzetten() {
+  stemmenOpties();
+  document.getElementById("s-meer").addEventListener("click", function () { sN += LAAD_STAP; stemmenTonen(); });
   bijKaartTik(document.getElementById("s-lijst"), ".skaart", function (k) { openStem(k.dataset.id); });
 }
 function stemmenTab(q) {
@@ -194,4 +197,19 @@ function stemmenTab(q) {
     stemmenTonen();
     if (q.id) openStem(q.id);
   }).catch(function () { laadFout(doel); });
+}
+
+// verversen van het deel Stemmingen (via de ring bovenaan Dossiers)
+function stemmenVerversen() {
+  return verversBuild(["stemmen"], function () {
+    var oud = {};
+    (STEMMEN ? STEMMEN.stemmen : []).forEach(function (x) { oud[x.id] = 1; });
+    return verversData("stemmen").then(function (d) {
+      STEMMEN = d;
+      Object.keys(STEM_INDEX).forEach(function (k) { delete STEM_INDEX[k]; });
+      stemmenOpties();
+      if (stemmenOpgezet) stemmenTonen();
+      return d.stemmen.filter(function (x) { return !oud[x.id]; }).length;
+    });
+  });
 }

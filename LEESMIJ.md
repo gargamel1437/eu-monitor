@@ -11,7 +11,7 @@ Online: https://gargamel1437.github.io/eu-monitor/
 1. GitHub draait `europa.py` drie keer per dag (07:15, 12:15 en 18:15 Nederlandse tijd,
    ook in de zomertijd). Zie `.github/workflows/europa.yml`.
 2. `europa.py` haalt de gegevens op en bouwt de site in de map `site/`:
-   - `site/index.html`: de pagina zelf, met het nieuws erin;
+   - `site/index.html`: de pagina zelf, met het nieuws erin (en los in `site/data/pers.json`, voor verversen);
    - `site/data/*.json`: dossiers, stemmingen, agenda, debatten en mensen. Die laadt de
      pagina pas als je het tabblad opent (sneller op de iPhone).
 3. Opgehaalde gegevens worden bewaard in `data/`, zodat niet alles elke keer opnieuw hoeft.
@@ -109,6 +109,27 @@ Alle tekst gebruikt één reeks maten (CSS-variabelen bovenin `stijl.css`):
   zonder de dossiers opnieuw op te halen). Bekijk het resultaat via een kleine webserver:
   `cd site && python3 -m http.server`, en open dan http://localhost:8000.
 - **Online zetten**: wijzigingen committen en pushen naar `main`; GitHub bouwt de site dan opnieuw.
+
+## Verversen (omlaag trekken bovenaan)
+
+Op **Pers**, **Dossiers** en **Personen** kun je bovenaan omlaag trekken om te verversen. Het werkt met dezelfde ring als meer laden (`trekKnop` met de optie `denk`, zie `trekDenk` in `basis.js`): de lijst schuift mee, de ring loopt vol, en na loslaten blijft hij staan en draait hij als een boogje (minstens 0,6 s). Daarna verschijnt het vinkje en veert alles terug. Bij Minder beweging pulseert de ring in plaats van te draaien. De **Agenda** heeft geen verversen, want daar laadt omlaag trekken de eerdere weken.
+
+Je ververst alleen het deel dat je ziet:
+- **Pers → Media** en **Pers → Persberichten**: het nieuws (`data/pers.json`).
+- **Dossiers**: Procedures (`dossiers.json`) of Stemmingen (`stemmen.json`), afhankelijk van het deel dat open is.
+- **Personen**: `mensen.json`, `bestuur.json` en `contacten.json`.
+
+Zoeken, filters en het gekozen deel blijven staan. Nieuwe berichten lichten even op.
+
+**Waar komt nieuw nieuws vandaan?** De site staat als vaste pagina op GitHub Pages. Je telefoon haalt zelf niets bij de nieuwsbronnen op (dat blokkeren zij), dus doet GitHub het:
+- **Zonder sleutel** laadt verversen de nieuwste versie die GitHub heeft gebouwd (07:15, 12:15, 18:15). Is die er nog niet, dan staat er "Niets nieuws · stand van …".
+- **Met een GitHub-sleutel** (Instellingen → Pers → GitHub-sleutel) start omlaag trekken in Pers meteen een **snelle nieuwsronde**: de workflow met `alleen_nieuws=true` draait `europa.py --alleen-nieuws`. Die haalt alleen de feeds en Carnegie opnieuw op. Al het andere komt uit de bewaarde gegevens (`EU_ALLEEN_CACHE`, zie `met_cache` in `bronnen.py`). Daarna staat de site opnieuw online. Dat duurt ongeveer een à twee minuten. Na een seconde veert de lijst terug, en in de balk bovenaan draait een klein ringetje met "Nieuws wordt opgehaald". De app kijkt elke 10 s of `data/pers.json` nieuwer is. Loopt er al een ronde (ook van een ander apparaat), dan wordt er geen tweede gestart. Loopt er net een grote build, dan wacht de nieuwsronde daarop.
+- **De sleutel** maak je op github.com (fine-grained token): alleen voor de repo eu-monitor, alleen *Actions: Read and write*, met een vervaldatum. Hij staat alleen in `localStorage` (`eu-gh-sleutel`) op dat apparaat, nooit in de code of op de site. "Alle instellingen terugzetten" laat hem staan; verwijderen doe je in het sleutelscherm.
+- De build schrijft ook `data/meta.json` (moment van de build). Zo ziet verversen op Dossiers en Personen of er iets nieuwers is.
+
+## Carnegie Europe (analyse)
+
+Carnegie Europe, het Europa-deel van de Carnegie Endowment for International Peace, staat bij Pers → Media met het label **Analyse**. Er is geen RSS-feed, dus `eu_nieuws.carnegie()` leest de lijst op carnegieendowment.org/europe en /europe/strategic-europe. Van elk stuk haalt hij één keer de titel, samenvatting en publicatiedatum uit de pagina zelf en bewaart die in `data/carnegie.json`. Een denktank publiceert minder vaak dan een krant, daarom geldt hier de afgelopen 14 dagen (`ANALYSE_DAGEN_TERUG`). Analyses worden nooit met nieuwsberichten samengevoegd tot één verhaal. Uitzetten kan via Instellingen → Pers → Bronnen.
 
 ## Persmomenten en persvoorlichters
 

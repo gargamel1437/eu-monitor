@@ -22,6 +22,7 @@ import json
 import os
 import re
 import shutil
+import sys
 from collections import Counter
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
@@ -595,8 +596,14 @@ def schrijf_json(naam, obj):
 
 
 def main():
+    # --alleen-nieuws: de snelle ronde als je in Pers omlaag trekt. Alleen het nieuws wordt opnieuw
+    # opgehaald; al het andere komt uit de bewaarde gegevens in data/ (zie bronnen.met_cache).
+    alleen_nieuws = "--alleen-nieuws" in sys.argv
+    if alleen_nieuws:
+        os.environ["EU_ALLEEN_CACHE"] = "1"
     nu = datetime.now().astimezone()
-    meta = {"bijgewerkt": nu.strftime("%Y-%m-%d %H:%M"), "updates": UPDATE_TIJDEN}
+    meta = {"bijgewerkt": nu.strftime("%Y-%m-%d %H:%M"), "updates": UPDATE_TIJDEN,
+            "nieuws_bijgewerkt": nu.strftime("%Y-%m-%d %H:%M:%S")}
     meldingen = []
 
     nieuws, nieuws_fouten = eu_nieuws.berichten()
@@ -607,30 +614,30 @@ def main():
 
     st, st_fout, st_oud = met_cache("stemmingen", stemmingen.alles)
     st = st or {"zittingen": [], "stemmen": [], "leden": {}}
-    meta["stemmen"] = {"moment": moment(st_oud) if st_fout else meta["bijgewerkt"], "oud": bool(st_fout)}
+    meta["stemmen"] = {"moment": moment(st_oud) if st_oud else meta["bijgewerkt"], "oud": bool(st_fout)}
     if st_fout:
         meldingen.append("Stemmingen: ophalen lukte nu niet." + (f" Je ziet de versie van {moment(st_oud)}." if st_oud else ""))
 
     p, p_fout, p_oud = met_cache("parlement", lambda: parlement.alles(st["leden"]))
     p = p or {"debatten": [], "agenda": [], "zittingen": [], "later": []}
-    meta["parlement"] = {"moment": moment(p_oud) if p_fout else meta["bijgewerkt"], "oud": bool(p_fout)}
+    meta["parlement"] = {"moment": moment(p_oud) if p_oud else meta["bijgewerkt"], "oud": bool(p_fout)}
     if p_fout:
         meldingen.append("Agenda en debatten: ophalen lukte nu niet." + (f" Je ziet de versie van {moment(p_oud)}." if p_oud else ""))
 
     vg, vg_fout, vg_oud = met_cache("raad", raad.vergaderingen)
-    meta["raad"] = {"moment": moment(vg_oud) if vg_fout else meta["bijgewerkt"], "oud": bool(vg_fout)}
+    meta["raad"] = {"moment": moment(vg_oud) if vg_oud else meta["bijgewerkt"], "oud": bool(vg_fout)}
     if vg_fout:
         meldingen.append("Raad en EU-toppen: ophalen lukte nu niet." + (f" Je ziet de versie van {moment(vg_oud)}." if vg_oud else ""))
 
     cp, cp_fout, cp_oud = met_cache("commissie", commissie.planning)
-    meta["commissie"] = {"moment": moment(cp_oud) if cp_fout else meta["bijgewerkt"], "oud": bool(cp_fout)}
+    meta["commissie"] = {"moment": moment(cp_oud) if cp_oud else meta["bijgewerkt"], "oud": bool(cp_fout)}
     if cp_fout:
         meldingen.append("Planning van de Commissie: ophalen lukte nu niet." + (f" Je ziet de versie van {moment(cp_oud)}." if cp_oud else ""))
 
     bs, bs_fout, bs_oud = met_cache("bestuur", bestuur.alles)
-    meta["bestuur"] = {"moment": moment(bs_oud) if bs_fout else meta["bijgewerkt"], "oud": bool(bs_fout)}
+    meta["bestuur"] = {"moment": moment(bs_oud) if bs_oud else meta["bijgewerkt"], "oud": bool(bs_fout)}
     pd, pd_fout, pd_oud = met_cache("persdiensten", bestuur.persdiensten)
-    meta["persdiensten"] = {"moment": moment(pd_oud) if pd_fout else meta["bijgewerkt"], "oud": bool(pd_fout)}
+    meta["persdiensten"] = {"moment": moment(pd_oud) if pd_oud else meta["bijgewerkt"], "oud": bool(pd_fout)}
     if bs_fout:
         meldingen.append("Commissie en ministers: ophalen lukte nu niet." + (f" Je ziet de versie van {moment(bs_oud)}." if bs_oud else ""))
     try:
@@ -682,6 +689,13 @@ def main():
     schrijf_json("contacten", mep_contact)
     schrijf_json("mensen", mensen(st["leden"], lijst, p.get("debatten", []), st["stemmen"], st.get("posities", {})))
 
+    schrijf_json("meta", meta)   # zo ziet verversen in de app of er een nieuwere build is
+    # het nieuws ook los, zodat Pers het kan verversen zonder de hele pagina opnieuw te laden
+    schrijf_json("pers", {"bijgewerkt": meta["nieuws_bijgewerkt"],
+                          "media": eu_nieuws.nieuws_html(media), "officieel": eu_nieuws.nieuws_html(officieel),
+                          "aantal_media": len(media), "aantal_officieel": len(officieel),
+                          "fouten": nieuws_fouten})
+
     terrein_namen = [n for n, _ in eu_nieuws.TERREINEN] + ["Overig"]
     vervang = {
         "{{STIJL}}": (ONDERDELEN / "stijl.css").read_text(encoding="utf-8"),
@@ -690,7 +704,7 @@ def main():
         "{{NIEUWS_MEDIA}}": eu_nieuws.nieuws_html(media),
         "{{NIEUWS_OFFICIEEL}}": eu_nieuws.nieuws_html(officieel),
         "{{TERREIN_KNOPPEN}}": eu_nieuws.knoppen_html(nieuws, "terreinen", terrein_namen),
-        "{{BRON_KNOPPEN_MEDIA}}": eu_nieuws.knoppen_html(media, "bron", [b for b in eu_nieuws.BRONNEN if b not in eu_nieuws.OFFICIEEL]),
+        "{{BRON_KNOPPEN_MEDIA}}": eu_nieuws.knoppen_html(media, "bron", [b for b in eu_nieuws.ALLE_BRONNEN if b not in eu_nieuws.OFFICIEEL]),
         "{{BRON_KNOPPEN_OFFICIEEL}}": eu_nieuws.knoppen_html(officieel, "bron", [b for b in eu_nieuws.BRONNEN if b in eu_nieuws.OFFICIEEL]),
         "{{AANTAL}}": str(len(nieuws)),
         "{{AANTAL_MEDIA}}": str(len(media)),
@@ -707,7 +721,7 @@ def main():
     (SITE / "index.html").write_text(pagina, encoding="utf-8")
 
     grootte = sum(f.stat().st_size for f in SITE.rglob("*") if f.is_file()) // 1024
-    print(f"{nu:%Y-%m-%d %H:%M} — {len(nieuws)} berichten, {len(lijst)} dossiers ({len(alle)} bekend), "
+    print(f"{nu:%Y-%m-%d %H:%M}{' (alleen nieuws)' if alleen_nieuws else ''} — {len(nieuws)} berichten, {len(lijst)} dossiers ({len(alle)} bekend), "
           f"{len(st['stemmen'])} stemmingen, {len(p.get('debatten', []))} debatten, {gekoppeld} persberichten aan dossiers gekoppeld; pagina "
           f"{(SITE / 'index.html').stat().st_size // 1024} kB, alles samen {grootte} kB"
           + (f" | {' | '.join(meldingen)}" if meldingen else ""))

@@ -1145,7 +1145,41 @@ html[data-beweging="minder"] .topbalk { transform: none; transition: opacity .3s
 .eerder-rij { position: relative; height: 0; z-index: 6; }
 .eerder-rij .meerknop[data-trek] { position: absolute; left: calc(50% - 14px); top: calc(var(--off) / 2 - 14px); margin: 0; }
 .eerder-rij:has(> .meerknop.verborgen) { display: none; }
+/* Verversen bovenaan Pers, Dossiers en Personen: hetzelfde trekken als bovenaan de Agenda; alles
+   onder de ring schuift met je vinger mee */
+.ververs-rij ~ * { transform: translateY(var(--off)); }
+.ververs-rij .meerknop[data-trek] > svg:not(.trek-vink) { width: 13px; height: 13px; stroke-width: 2.6; }
+/* nadenken: dezelfde dunne ring, nu als draaiend boogje */
+.meerknop[data-trek].denkt { opacity: 1; transform: none; pointer-events: none; }
+.meerknop[data-trek].denkt > svg { opacity: 0 !important; }
+.meerknop.denkt .trek-ring { background: conic-gradient(var(--eu) 0 95deg, color-mix(in srgb, var(--eu) 16%, transparent) 95deg); animation: trek-draai .75s linear infinite; }
+@keyframes trek-draai { to { transform: rotate(360deg); } }
+@keyframes trek-puls { 50% { opacity: .35; } }
+/* na het nadenken: de ring loopt vol en het vinkje verschijnt (zelfde als bij meer laden) */
+.meerknop[data-trek].vol:not(.denkt) .trek-ring { transition: background .2s ease; }
+/* het kleine ringetje in de balk bovenaan Pers terwijl GitHub het nieuws ophaalt */
+.ververs-status { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 6px 0 0; min-height: 26px;
+  font-size: var(--t-meta); color: var(--zacht); transition: opacity .3s ease; }
+.ververs-status[hidden] { display: none; }
+.ververs-status.weg { opacity: 0; }
+.ververs-status .vs-ring { position: relative; flex: none; width: 16px; height: 16px; border-radius: 50%;
+  background: conic-gradient(var(--eu) 0 95deg, color-mix(in srgb, var(--eu) 16%, transparent) 95deg);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px)); mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px));
+  animation: trek-draai .75s linear infinite; }
+.ververs-status .vs-vink { display: none; flex: none; width: 16px; height: 16px; fill: none; stroke: var(--eu); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.ververs-status.klaar .vs-ring, .ververs-status.fout .vs-ring { display: none; }
+.ververs-status.klaar .vs-vink { display: block; }
+.ververs-status.klaar { color: var(--eu); }
+/* nieuwe berichten na verversen: even een zachte tint */
+li.bericht { transition: background-color 1.2s ease; }
+li.bericht.vers { background-color: var(--eu-zacht); }
+/* GitHub-sleutel in Instellingen */
+.sleutel-stappen { margin: 0; padding: 12px 16px 12px 34px; line-height: 1.5; }
+.sleutel-stappen li + li { margin-top: 4px; }
+.sleutel-rij input { width: 100%; border: 0; background: transparent; font: inherit; color: inherit; padding: 4px 0; outline: none; }
 @media (prefers-reduced-motion: reduce) { .meerknop[data-trek] { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .meerknop.denkt .trek-ring, .ververs-status .vs-ring { animation: trek-puls 1.2s ease-in-out infinite; background: var(--eu); } }
+html[data-beweging="minder"] .meerknop.denkt .trek-ring, html[data-beweging="minder"] .ververs-status .vs-ring { animation: trek-puls 1.2s ease-in-out infinite; background: var(--eu); }
 html[data-beweging="minder"] .meerknop[data-trek] { transform: none; }
 .linkknop.rood { color: var(--tegen); }
 /* tijd achteraan in een agendaregel (instelling, plaats, tijd): even groot als de rest */

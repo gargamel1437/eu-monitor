@@ -7,6 +7,7 @@ haalt de ontbrekende op en ververst de oudste (hoogstens VERVERS per keer).
 Wordt gebruikt door europa.py."""
 
 import json
+import os
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 
@@ -48,6 +49,8 @@ def bijwerken(ids):
     except Exception:
         bewaard = {}
     ids = [str(i) for i in ids]
+    if os.environ.get("EU_ALLEEN_CACHE"):   # snelle nieuwsronde: niets ophalen
+        return {i: bewaard[i] for i in ids if i in bewaard}
     nodig = [i for i in ids if i not in bewaard]
     nodig += sorted((i for i in ids if i in bewaard), key=lambda i: bewaard[i].get("opgehaald", ""))[:max(0, VERVERS - len(nodig))]
 
